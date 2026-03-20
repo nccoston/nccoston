@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>For Andy</title>
+  <title>Da Ripper</title>
   <style>
     body {
       margin: 0;
@@ -14,6 +14,7 @@
       justify-content: center;
       background: #f0f0f0;
       font-family: sans-serif;
+      transition: background 0.1s;
     }
 
     h1 {
@@ -33,6 +34,7 @@
       box-shadow: 0 6px #2e7d32;
       transition: transform 0.1s, box-shadow 0.1s;
       user-select: none;
+      position: relative;
     }
 
     #fart-btn:active {
@@ -45,6 +47,36 @@
       font-size: 1.5rem;
       color: #555;
       min-height: 2rem;
+      text-align: center;
+      max-width: 80vw;
+    }
+
+    .puff {
+      position: fixed;
+      font-size: 2rem;
+      pointer-events: none;
+      animation: floatUp 1.8s ease-out forwards;
+      z-index: 999;
+    }
+
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-180px) scale(2.5); }
+    }
+
+    @keyframes shake {
+      0%  { transform: translate(0, 0); }
+      15% { transform: translate(-8px, 4px); }
+      30% { transform: translate(8px, -4px); }
+      45% { transform: translate(-6px, 6px); }
+      60% { transform: translate(6px, -2px); }
+      75% { transform: translate(-4px, 4px); }
+      90% { transform: translate(4px, -2px); }
+      100%{ transform: translate(0, 0); }
+    }
+
+    body.shaking {
+      animation: shake 0.45s ease;
     }
   </style>
 </head>
@@ -55,60 +87,182 @@
 
   <script>
     const messages = [
-      "Classic.",
-      "Disgusting.",
-      "Blaming it on the dog.",
-      "Whoever smelt it...",
-      "The silent ones are worse.",
-      "Was that necessary?",
-      "10/10.",
-      "You monster.",
-      "Art.",
+      "That came from INSIDE you.",
+      "Biohazard detected.",
+      "Evacuate the building.",
+      "That one had chunks.",
+      "Call a doctor.",
+      "The paint is peeling.",
+      "That's a felony in 12 states.",
+      "There are no survivors.",
+      "Your intestines hate you.",
+      "The dog just moved out.",
+      "CDC has been notified.",
+      "That smells like a crime scene.",
+      "Please seek help.",
+      "Something died in there.",
+      "You absolute animal.",
+      "The wallpaper is melting.",
+      "That violated the Geneva Convention.",
+      "Your colon is not okay.",
+      "Forensics has been called.",
+      "That one left a mark.",
     ];
 
-    document.getElementById("fart-btn").addEventListener("click", () => {
+    const flashColors = ["#c8f5a0", "#ffe082", "#ffab91", "#b2dfdb", "#f48fb1"];
+
+    document.getElementById("fart-btn").addEventListener("click", (e) => {
       fart();
       const msg = messages[Math.floor(Math.random() * messages.length)];
       document.getElementById("message").textContent = msg;
+      spawnPuffs(e.clientX, e.clientY);
+      flashBackground();
+      shakeScreen();
     });
+
+    function flashBackground() {
+      const color = flashColors[Math.floor(Math.random() * flashColors.length)];
+      document.body.style.background = color;
+      setTimeout(() => { document.body.style.background = "#f0f0f0"; }, 300);
+    }
+
+    function shakeScreen() {
+      document.body.classList.remove("shaking");
+      void document.body.offsetWidth;
+      document.body.classList.add("shaking");
+      document.body.addEventListener("animationend", () => {
+        document.body.classList.remove("shaking");
+      }, { once: true });
+    }
+
+    function spawnPuffs(x, y) {
+      const emojis = ["💨", "🟢", "💚", "🤢", "😵"];
+      const count = 5 + Math.floor(Math.random() * 5);
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement("span");
+        el.className = "puff";
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        el.style.left = (x + (Math.random() - 0.5) * 120) + "px";
+        el.style.top  = (y + (Math.random() - 0.5) * 80) + "px";
+        el.style.animationDelay = (Math.random() * 0.2) + "s";
+        document.body.appendChild(el);
+        el.addEventListener("animationend", () => el.remove());
+      }
+    }
 
     function fart() {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const duration = 0.6 + Math.random() * 0.6;
-      const startFreq = 80 + Math.random() * 100;
-      const endFreq = 30 + Math.random() * 40;
+      const type = Math.random();
+
+      if (type < 0.33) {
+        wetFart(ctx);
+      } else if (type < 0.66) {
+        explosiveFart(ctx);
+      } else {
+        longRipper(ctx);
+      }
+    }
+
+    function wetFart(ctx) {
+      const duration = 0.4 + Math.random() * 0.4;
+      const bursts = 3 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < bursts; i++) {
+        const delay = i * (duration / bursts) * 0.6;
+        const burstDur = 0.08 + Math.random() * 0.12;
+
+        const osc = ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(60 + Math.random() * 80, ctx.currentTime + delay);
+        osc.frequency.exponentialRampToValueAtTime(30 + Math.random() * 20, ctx.currentTime + delay + burstDur);
+
+        const bufSize = ctx.sampleRate * burstDur;
+        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let j = 0; j < bufSize; j++) data[j] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource();
+        noise.buffer = buf;
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.5, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + burstDur);
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + burstDur);
+
+        osc.connect(gain); noise.connect(noiseGain);
+        gain.connect(ctx.destination); noiseGain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime + delay); noise.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + burstDur); noise.stop(ctx.currentTime + delay + burstDur);
+      }
+    }
+
+    function explosiveFart(ctx) {
+      const duration = 0.15 + Math.random() * 0.2;
+      const startFreq = 150 + Math.random() * 150;
 
       const osc = ctx.createOscillator();
       osc.type = "sawtooth";
       osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + duration);
+      osc.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + duration);
 
-      const bufferSize = ctx.sampleRate * duration;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1);
-      }
+      const bufSize = Math.floor(ctx.sampleRate * duration);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
       const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
+      noise.buffer = buf;
 
-      const gainNode = ctx.createGain();
-      gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.9, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
 
       const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.15, ctx.currentTime);
+      noiseGain.gain.setValueAtTime(0.6, ctx.currentTime);
       noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
 
-      osc.connect(gainNode);
-      noise.connect(noiseGain);
-      gainNode.connect(ctx.destination);
-      noiseGain.connect(ctx.destination);
+      osc.connect(gain); noise.connect(noiseGain);
+      gain.connect(ctx.destination); noiseGain.connect(ctx.destination);
 
-      osc.start();
-      noise.start();
-      osc.stop(ctx.currentTime + duration);
-      noise.stop(ctx.currentTime + duration);
+      osc.start(); noise.start();
+      osc.stop(ctx.currentTime + duration); noise.stop(ctx.currentTime + duration);
+    }
+
+    function longRipper(ctx) {
+      const duration = 1.2 + Math.random() * 1.2;
+      const startFreq = 90 + Math.random() * 60;
+      const endFreq = 40 + Math.random() * 30;
+
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
+      for (let t = 0; t < duration; t += 0.08) {
+        const wobble = startFreq + (Math.random() - 0.5) * 30 - (startFreq - endFreq) * (t / duration);
+        osc.frequency.setValueAtTime(wobble, ctx.currentTime + t);
+      }
+
+      const bufSize = Math.floor(ctx.sampleRate * duration);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.35, ctx.currentTime);
+      gain.gain.setValueAtTime(0.5, ctx.currentTime + duration * 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.2, ctx.currentTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+      osc.connect(gain); noise.connect(noiseGain);
+      gain.connect(ctx.destination); noiseGain.connect(ctx.destination);
+
+      osc.start(); noise.start();
+      osc.stop(ctx.currentTime + duration); noise.stop(ctx.currentTime + duration);
     }
   </script>
 </body>
