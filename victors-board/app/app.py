@@ -235,12 +235,28 @@ def message(message_id):
     thread_rows = db.execute(
         "SELECT * FROM messages WHERE thread_id = ?", (msg["thread_id"],)).fetchall()
     roots = build_tree(thread_rows)
+
+    # find this message's node in the tree to list its replies
+    def find_node(nodes, target):
+        for n in nodes:
+            if n["id"] == target:
+                return n
+            hit = find_node(n["children"], target)
+            if hit:
+                return hit
+        return None
+
+    node = find_node(roots, message_id)
     parent = None
     if msg["parent_id"]:
         parent = db.execute("SELECT * FROM messages WHERE id = ?",
                             (msg["parent_id"],)).fetchone()
+    reply_subject = msg["subject"]
+    if not reply_subject.lower().startswith("re"):
+        reply_subject = "Re: " + reply_subject
     return render_template("message.html", msg=msg, parent=parent,
-                           thread=roots[0] if roots else None)
+                           children=node["children"] if node else [],
+                           reply_subject=reply_subject)
 
 
 @app.route("/post", methods=["GET", "POST"])

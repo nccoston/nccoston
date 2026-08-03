@@ -44,12 +44,10 @@ ul.thread-list li { margin: 5px 0; }
 .byline i { color: #333; }
 
 .message-box {
-  border: 1px solid #999;
-  padding: 12px 16px;
   margin: 12px 0;
-  max-width: 900px;
+  max-width: 1100px;
 }
-.message-box h2 { margin: 0 0 4px; font-size: 18px; }
+.message-box h2 { margin: 0 0 4px; font-size: 22px; }
 .message-body { margin: 12px 0; overflow-x: auto; }
 .message-body img { max-width: 100%; }
 

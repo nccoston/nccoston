@@ -3,11 +3,7 @@
 
 {% macro render_node(node) %}
 <li>
-  {% if node['id'] == msg['id'] %}
-    <b>{{ node['subject'] }}</b>
-  {% else %}
-    <a href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
-  {% endif %}
+  <a href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
   <span class="byline">- By <b>{{ node['author_name'] }}</b>
     <i>{{ node['created_at'] | boardtime }}</i></span>
   {% if node['children'] %}
@@ -21,8 +17,7 @@
 {% block content %}
 <div class="message-box">
   <h2>{{ msg['subject'] }}</h2>
-  <p class="byline">By <b>{{ msg['author_name'] }}</b>
-    <i>{{ msg['created_at'] | boardtime }}</i>
+  <p class="byline">Posted on {{ msg['created_at'] | boardtime }} by <b>{{ msg['author_name'] }}</b>
     {% if msg['edited_at'] %}<span class="legacy-tag">(edited {{ msg['edited_at'] | boardtime }})</span>{% endif %}</p>
   {% if parent %}
   <p class="byline">In response to:
@@ -38,11 +33,10 @@
   </div>
 
   <p>
-    {% if user %}<a href="{{ url_for('post', reply_to=msg['id']) }}">Reply to this message</a>{% else %}<a href="{{ url_for('login') }}">Log in to reply</a>{% endif %}
     {% if user and (user['id'] == msg['user_id'] or user['is_admin']) %}
-    | <a href="{{ url_for('edit', message_id=msg['id']) }}">Edit</a>
+    <a href="{{ url_for('edit', message_id=msg['id']) }}">Edit Post</a> |
     {% endif %}
-    | <a href="{{ url_for('index') }}">Back to the board</a>
+    <a href="{{ url_for('index') }}">Back to the board</a>
     {% if user and user['is_admin'] %}
     <form class="inline-form" method="post"
           action="{{ url_for('delete_message', message_id=msg['id']) }}"
@@ -51,12 +45,31 @@
     </form>
     {% endif %}
   </p>
-</div>
 
-{% if thread %}
-<p><b>Thread:</b></p>
-<ul class="thread-list">
-  {{ render_node(thread) }}
-</ul>
-{% endif %}
+  {% if children %}
+  <p><b>Replies:</b></p>
+  <ul class="thread-list">
+    {% for child in children %}{{ render_node(child) }}{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if user %}
+  <p><b>Post a reply:</b></p>
+  <form class="board-form" method="post" action="{{ url_for('post', reply_to=msg['id']) }}">
+    <label>Subject
+      <input type="text" name="subject" maxlength="300" required
+             value="{{ reply_subject }}">
+    </label>
+    <label>Message <span class="hint">(optional — leave blank for subject-only)</span>
+      <textarea name="body"></textarea>
+    </label>
+    <label>Image URL <span class="hint">(optional — paste the URL of a picture to embed it)</span>
+      <input type="text" name="image_url">
+    </label>
+    <button type="submit">Post Reply</button>
+  </form>
+  {% else %}
+  <p><a href="{{ url_for('login') }}">Log in to reply.</a></p>
+  {% endif %}
+</div>
 {% endblock %}
