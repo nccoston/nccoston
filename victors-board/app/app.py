@@ -31,7 +31,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "board.db"
 SECRET_FILE = DATA_DIR / "secret_key"
 
-THREADS_PER_PAGE = 50
+THREADS_PER_PAGE = 80
 
 app = Flask(__name__)
 if os.environ.get("SECRET_KEY"):
