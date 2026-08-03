@@ -16,6 +16,10 @@ a:visited { color: #551a8b; }
   font-size: 34px;
   margin: 24px 0 16px;
 }
+.board-title a, .board-title a:visited {
+  color: inherit;
+  text-decoration: none;
+}
 .links-row, .nav-row, .page-row { text-align: center; }
 
 .flash {
