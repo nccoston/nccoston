@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Edit - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Edit Message</h2>
+  <p class="byline">Posted by <b>{{ msg['author_name'] }}</b>
+    <i>{{ msg['created_at'] | boardtime }}</i></p>
+
+  <form class="board-form" method="post">
+    <label>Subject
+      <input type="text" name="subject" maxlength="300" required
+             value="{{ request.form.get('subject', msg['subject']) }}">
+    </label>
+    <label>Message <span class="hint">(optional — leave blank for subject-only)</span>
+      <textarea name="body">{{ request.form.get('body', msg['body'] or '') }}</textarea>
+    </label>
+    <label>Image URL <span class="hint">(optional)</span>
+      <input type="text" name="image_url"
+             value="{{ request.form.get('image_url', msg['image_url'] or '') }}">
+    </label>
+    <button type="submit">Save Changes</button>
+    <a href="{{ url_for('message', message_id=msg['id']) }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

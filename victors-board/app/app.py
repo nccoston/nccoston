@@ -89,6 +89,11 @@ def close_db(_exc):
 def init_db():
     db = sqlite3.connect(DB_PATH)
     db.executescript((APP_DIR / "schema.sql").read_text())
+    # migrations for databases created before a column existed
+    try:
+        db.execute("ALTER TABLE messages ADD COLUMN edited_at TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already there
     for key, value in DEFAULT_SETTINGS.items():
         db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
                    (key, value))
@@ -279,6 +284,35 @@ def post(reply_to=None):
         if not subject_prefill.lower().startswith("re:"):
             subject_prefill = "Re: " + subject_prefill
     return render_template("post.html", parent=parent, subject_prefill=subject_prefill)
+
+
+@app.route("/edit/<int:message_id>", methods=["GET", "POST"])
+@login_required
+def edit(message_id):
+    db = get_db()
+    msg = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if msg is None:
+        abort(404)
+    user = current_user()
+    if msg["user_id"] != user["id"] and not user["is_admin"]:
+        abort(403)
+    if request.method == "POST":
+        subject = request.form.get("subject", "").strip()
+        body = request.form.get("body", "").strip()
+        image_url = request.form.get("image_url", "").strip()
+        if not subject:
+            flash("A subject is required.")
+        else:
+            if image_url and not image_url.lower().startswith(("http://", "https://")):
+                image_url = ""
+            db.execute(
+                "UPDATE messages SET subject = ?, body = ?, image_url = ?,"
+                " edited_at = ? WHERE id = ?",
+                (subject, body or None, image_url or None,
+                 datetime.now().isoformat(timespec="seconds"), message_id))
+            db.commit()
+            return redirect(url_for("message", message_id=message_id))
+    return render_template("edit.html", msg=msg)
 
 
 @app.route("/search")

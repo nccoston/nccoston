@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS messages (
     image_url   TEXT,
     author_name TEXT NOT NULL,
     user_id     INTEGER REFERENCES users(id),
-    created_at  TEXT NOT NULL   -- ISO 8601
+    created_at  TEXT NOT NULL,  -- ISO 8601
+    edited_at   TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id, created_at);

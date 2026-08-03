@@ -22,7 +22,8 @@
 <div class="message-box">
   <h2>{{ msg['subject'] }}</h2>
   <p class="byline">By <b>{{ msg['author_name'] }}</b>
-    <i>{{ msg['created_at'] | boardtime }}</i></p>
+    <i>{{ msg['created_at'] | boardtime }}</i>
+    {% if msg['edited_at'] %}<span class="legacy-tag">(edited {{ msg['edited_at'] | boardtime }})</span>{% endif %}</p>
   {% if parent %}
   <p class="byline">In response to:
     <a href="{{ url_for('message', message_id=parent['id']) }}">{{ parent['subject'] }}</a>
@@ -38,6 +39,9 @@
 
   <p>
     {% if user %}<a href="{{ url_for('post', reply_to=msg['id']) }}">Reply to this message</a>{% else %}<a href="{{ url_for('login') }}">Log in to reply</a>{% endif %}
+    {% if user and (user['id'] == msg['user_id'] or user['is_admin']) %}
+    | <a href="{{ url_for('edit', message_id=msg['id']) }}">Edit</a>
+    {% endif %}
     | <a href="{{ url_for('index') }}">Back to the board</a>
     {% if user and user['is_admin'] %}
     <form class="inline-form" method="post"
