@@ -260,9 +260,9 @@ def post(reply_to=None):
             user = current_user()
             now = datetime.now().isoformat(timespec="seconds")
             cur = db.execute(
-                "INSERT INTO messages (thread_id, parent_id, subject, body, is_legacy,"
+                "INSERT INTO messages (thread_id, parent_id, subject, body,"
                 " image_url, author_name, user_id, created_at)"
-                " VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)",
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (parent["thread_id"] if parent else None,
                  parent["id"] if parent else None,
                  subject, body or None, image_url or None,
@@ -394,8 +394,7 @@ def admin():
                       f"(share it with them privately)")
         return redirect(url_for("admin"))
     users = db.execute("SELECT * FROM users ORDER BY handle COLLATE NOCASE").fetchall()
-    counts = db.execute(
-        "SELECT COUNT(*) total, SUM(is_legacy) legacy FROM messages").fetchone()
+    counts = db.execute("SELECT COUNT(*) total FROM messages").fetchone()
     return render_template("admin.html", users=users, counts=counts,
                            registration_open=get_setting("registration_open") == "1")
 

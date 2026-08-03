@@ -22,9 +22,7 @@
 <div class="message-box">
   <h2>{{ msg['subject'] }}</h2>
   <p class="byline">By <b>{{ msg['author_name'] }}</b>
-    <i>{{ msg['created_at'] | boardtime }}</i>
-    {% if msg['is_legacy'] %}<span class="legacy-tag">[archived from Boards2Go]</span>{% endif %}
-  </p>
+    <i>{{ msg['created_at'] | boardtime }}</i></p>
   {% if parent %}
   <p class="byline">In response to:
     <a href="{{ url_for('message', message_id=parent['id']) }}">{{ parent['subject'] }}</a>
@@ -32,11 +30,7 @@
   {% endif %}
 
   <div class="message-body">
-    {% if msg['is_legacy'] %}
-      {{ msg['body'] | safe if msg['body'] }}
-    {% else %}
-      {{ msg['body'] | rendertext if msg['body'] }}
-    {% endif %}
+    {{ msg['body'] | rendertext if msg['body'] }}
     {% if msg['image_url'] %}
       <p><img src="{{ msg['image_url'] }}" alt=""></p>
     {% endif %}

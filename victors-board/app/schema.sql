@@ -12,15 +12,11 @@ CREATE TABLE IF NOT EXISTS messages (
     thread_id   INTEGER,                          -- id of the root message
     parent_id   INTEGER REFERENCES messages(id),  -- NULL for thread roots
     subject     TEXT NOT NULL,
-    body        TEXT,           -- HTML for imported legacy posts (pre-sanitized),
-                                -- plain text for new posts
-    is_legacy   INTEGER NOT NULL DEFAULT 0,
+    body        TEXT,
     image_url   TEXT,
     author_name TEXT NOT NULL,
     user_id     INTEGER REFERENCES users(id),
-    created_at  TEXT NOT NULL,  -- ISO 8601
-    legacy_id   TEXT UNIQUE,    -- Boards2Go message id, for imported posts
-    legacy_url  TEXT
+    created_at  TEXT NOT NULL   -- ISO 8601
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id, created_at);

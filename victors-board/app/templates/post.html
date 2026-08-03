@@ -8,9 +8,7 @@
     <p class="byline">By <b>{{ parent['author_name'] }}</b>
       <i>{{ parent['created_at'] | boardtime }}</i></p>
     {% if parent['body'] %}
-    <div class="message-body">
-      {% if parent['is_legacy'] %}{{ parent['body'] | safe }}{% else %}{{ parent['body'] | rendertext }}{% endif %}
-    </div>
+    <div class="message-body">{{ parent['body'] | rendertext }}</div>
     {% endif %}
   {% else %}
     <h2>Post a New Message</h2>
