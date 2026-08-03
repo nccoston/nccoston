@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: the-victors-board
+    runtime: docker
+    rootDir: victors-board/app
+    plan: starter
+    autoDeploy: true
+    disk:
+      name: board-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATA_DIR
+        value: /data
