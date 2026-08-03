@@ -195,8 +195,9 @@ def build_tree(rows):
             nodes[pid]["children"].append(node)
         else:
             roots.append(node)
+    # newest replies first, matching the old board
     for node in nodes.values():
-        node["children"].sort(key=lambda n: n["created_at"])
+        node["children"].sort(key=lambda n: n["created_at"], reverse=True)
     return roots
 
 
