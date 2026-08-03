@@ -31,7 +31,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "board.db"
 SECRET_FILE = DATA_DIR / "secret_key"
 
-THREADS_PER_PAGE = 25
+THREADS_PER_PAGE = 50
 
 app = Flask(__name__)
 if os.environ.get("SECRET_KEY"):
@@ -419,6 +419,36 @@ def admin():
             set_setting("registration_open",
                         "1" if request.form.get("registration_open") else "0")
             flash("Settings saved.")
+        elif action == "create_user":
+            handle = request.form.get("handle", "").strip()
+            if not re.fullmatch(r"[A-Za-z0-9_ .@'-]{2,30}", handle or ""):
+                flash("Handle must be 2-30 characters (letters, numbers, basic punctuation).")
+            elif db.execute("SELECT 1 FROM users WHERE handle = ?", (handle,)).fetchone():
+                flash("That handle is taken.")
+            else:
+                new_pw = secrets.token_urlsafe(8)
+                db.execute(
+                    "INSERT INTO users (handle, password_hash, created_at) VALUES (?, ?, ?)",
+                    (handle, generate_password_hash(new_pw),
+                     datetime.now().isoformat(timespec="seconds")))
+                db.commit()
+                flash(f"Created {handle} with password: {new_pw} "
+                      f"(share it with them privately; they can keep it or you can "
+                      f"reset it later)")
+        elif action == "delete_user":
+            uid = request.form.get("user_id", type=int)
+            target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+            if target is None:
+                flash("No such user.")
+            elif target["is_admin"]:
+                flash("Admins can't be deleted.")
+            else:
+                # posts keep their author name; the handle becomes free again
+                db.execute("UPDATE messages SET user_id = NULL WHERE user_id = ?", (uid,))
+                db.execute("DELETE FROM users WHERE id = ?", (uid,))
+                db.commit()
+                flash(f"Deleted account {target['handle']} (their posts remain, "
+                      f"the handle is free to register again).")
         elif action in ("ban", "unban", "make_admin", "reset_password"):
             uid = request.form.get("user_id", type=int)
             target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
