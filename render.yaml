@@ -1,5 +1,15 @@
 services:
   - type: web
+    name: vb
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: victors-board/redirect
+    routes:
+      - type: redirect
+        source: /*
+        destination: https://the-victors-board.onrender.com/*
+
+  - type: web
     name: the-victors-board
     runtime: docker
     rootDir: victors-board/app
