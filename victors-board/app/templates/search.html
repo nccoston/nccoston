@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Search - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Search</h2>
+  <form class="board-form" method="get">
+    <input type="text" name="q" value="{{ q }}" placeholder="subject, text, or poster">
+    <button type="submit">Search</button>
+  </form>
+
+  {% if q %}
+    <p><b>{{ results | length }}</b> result(s) for &ldquo;{{ q }}&rdquo;
+      {% if results | length == 200 %}(showing first 200){% endif %}</p>
+    <ul class="thread-list">
+      {% for r in results %}
+      <li>
+        <a href="{{ url_for('message', message_id=r['id']) }}">{{ r['subject'] }}</a>
+        <span class="byline">- By <b>{{ r['author_name'] }}</b>
+          <i>{{ r['created_at'] | boardtime }}</i></span>
+      </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endblock %}

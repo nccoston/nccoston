@@ -1,0 +1,86 @@
+body {
+  font-family: Verdana, Geneva, sans-serif;
+  font-size: 13px;
+  background: #fff;
+  color: #000;
+  margin: 12px 16px;
+}
+a { color: #00e; }
+a:visited { color: #551a8b; }
+
+.header-block { font-size: 12px; }
+.header-block ol { margin: 4px 0 8px 24px; padding: 0; }
+
+.board-title {
+  text-align: center;
+  font-size: 34px;
+  margin: 24px 0 16px;
+}
+.links-row, .nav-row, .page-row { text-align: center; }
+
+.flash {
+  border: 1px solid #c00;
+  background: #ffeaea;
+  padding: 4px 10px;
+  margin: 10px auto;
+  max-width: 600px;
+  text-align: center;
+}
+
+ul.thread-list, ul.thread-list ul {
+  list-style-type: disc;
+  margin: 4px 0 4px 22px;
+  padding: 0;
+}
+ul.thread-list ul { list-style-type: circle; }
+ul.thread-list ul ul { list-style-type: square; }
+ul.thread-list li { margin: 5px 0; }
+.byline { font-size: 11px; }
+.byline b { font-size: 12px; }
+.byline i { color: #333; }
+
+.message-box {
+  border: 1px solid #999;
+  padding: 12px 16px;
+  margin: 12px 0;
+  max-width: 900px;
+}
+.message-box h2 { margin: 0 0 4px; font-size: 18px; }
+.message-body { margin: 12px 0; overflow-x: auto; }
+.message-body img { max-width: 100%; }
+
+form.board-form { max-width: 640px; margin: 12px 0; }
+form.board-form label { display: block; margin-top: 10px; font-weight: bold; }
+form.board-form input[type=text],
+form.board-form input[type=password],
+form.board-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 3px;
+}
+form.board-form textarea { height: 160px; }
+form.board-form button {
+  margin-top: 12px;
+  font-size: 13px;
+  padding: 4px 14px;
+}
+.hint { font-size: 11px; color: #555; font-weight: normal; }
+
+table.admin-table { border-collapse: collapse; }
+table.admin-table td, table.admin-table th {
+  border: 1px solid #bbb;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.inline-form { display: inline; }
+.inline-form button { font-size: 11px; }
+
+.footer {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 11px;
+  color: #777;
+}
+.legacy-tag { font-size: 10px; color: #999; }

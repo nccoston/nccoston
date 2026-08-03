@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{{ site_title }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="header-block">{{ header_html | safe }}</div>
+
+<h1 class="board-title">{{ site_title }}</h1>
+
+<p class="links-row">{{ links_html | safe }}</p>
+
+<p class="nav-row">
+  <a href="{{ url_for('post') }}">Post a New Message</a> |
+  <a href="{{ url_for('search') }}">Search</a> |
+  {% if user %}
+    <a href="{{ url_for('logout') }}">Logout</a> [ {{ user['handle'] }} ]
+    {% if user['is_admin'] %} | <a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+  {% else %}
+    <a href="{{ url_for('login') }}">Login</a> |
+    <a href="{{ url_for('register') }}">Register</a>
+  {% endif %}
+</p>
+
+{% with msgs = get_flashed_messages() %}
+  {% if msgs %}
+    <div class="flash">{% for m in msgs %}<p>{{ m }}</p>{% endfor %}</div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+<p class="footer">Self-hosted by the community &middot; formerly on Boards2Go</p>
+</body>
+</html>

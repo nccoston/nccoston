@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Admin - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Admin</h2>
+  <p>{{ counts['total'] or 0 }} messages on the board
+     ({{ counts['legacy'] or 0 }} imported from Boards2Go).</p>
+
+  <h3>Board settings</h3>
+  <form class="board-form" method="post">
+    <input type="hidden" name="action" value="settings">
+    <label>Board title
+      <input type="text" name="site_title" value="{{ site_title }}">
+    </label>
+    <label>Header HTML <span class="hint">(rules, admin list — raw HTML)</span>
+      <textarea name="header_html">{{ header_html }}</textarea>
+    </label>
+    <label>Links row HTML
+      <textarea name="links_html" style="height:60px">{{ links_html }}</textarea>
+    </label>
+    <label>
+      <input type="checkbox" name="registration_open" {% if registration_open %}checked{% endif %}>
+      Registration open
+    </label>
+    <button type="submit">Save settings</button>
+  </form>
+
+  <h3>Users</h3>
+  <table class="admin-table">
+    <tr><th>Handle</th><th>Joined</th><th>Flags</th><th>Actions</th></tr>
+    {% for u in users %}
+    <tr>
+      <td>{{ u['handle'] }}</td>
+      <td>{{ u['created_at'] | boardtime }}</td>
+      <td>
+        {% if u['is_admin'] %}admin{% endif %}
+        {% if u['is_banned'] %}banned{% endif %}
+      </td>
+      <td>
+        {% if u['is_banned'] %}
+        <form class="inline-form" method="post">
+          <input type="hidden" name="action" value="unban">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Unban</button>
+        </form>
+        {% else %}
+        <form class="inline-form" method="post"
+              onsubmit="return confirm('Ban {{ u['handle'] }}?')">
+          <input type="hidden" name="action" value="ban">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Ban</button>
+        </form>
+        {% endif %}
+        {% if not u['is_admin'] %}
+        <form class="inline-form" method="post"
+              onsubmit="return confirm('Make {{ u['handle'] }} an admin?')">
+          <input type="hidden" name="action" value="make_admin">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Make admin</button>
+        </form>
+        {% endif %}
+        <form class="inline-form" method="post"
+              onsubmit="return confirm('Reset password for {{ u['handle'] }}?')">
+          <input type="hidden" name="action" value="reset_password">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Reset password</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="hint">To delete a message, open it and use the Delete button
+    (removes the message and all its replies).</p>
+</div>
+{% endblock %}

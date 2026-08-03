@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Login - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Login</h2>
+  <form class="board-form" method="post">
+    <label>Handle
+      <input type="text" name="handle" required autofocus>
+    </label>
+    <label>Password
+      <input type="password" name="password" required>
+    </label>
+    <button type="submit">Log in</button>
+  </form>
+  <p>No account? <a href="{{ url_for('register') }}">Register here.</a></p>
+</div>
+{% endblock %}

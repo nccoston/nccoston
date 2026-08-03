@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Register - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Register</h2>
+  {% if closed %}
+    <p>Registration is currently closed. Contact an admin to get an account.</p>
+  {% else %}
+    <form class="board-form" method="post">
+      <label>Desired handle
+        <input type="text" name="handle" maxlength="30" required autofocus>
+      </label>
+      <label>Password <span class="hint">(at least 6 characters)</span>
+        <input type="password" name="password" required>
+      </label>
+      <button type="submit">Create account</button>
+    </form>
+    <p class="hint">If you had a handle on the old board, register the same one to
+      keep posting under it.</p>
+  {% endif %}
+</div>
+{% endblock %}
