@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: vb
+    name: victards
     runtime: static
     buildCommand: ""
     staticPublishPath: victors-board/redirect
