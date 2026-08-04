@@ -16,7 +16,7 @@ import os
 import re
 import sqlite3
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
 
@@ -43,6 +43,7 @@ app = Flask(__name__)
 # behind Render's proxy: trust X-Forwarded-For so remote_addr is the real client
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # uploaded image cap
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)  # stay logged in
 if os.environ.get("SECRET_KEY"):
     app.secret_key = os.environ["SECRET_KEY"]
 else:
@@ -503,6 +504,7 @@ def register():
             db.commit()
             session.clear()
             session["user_id"] = cur.lastrowid
+            session.permanent = True
             if first_user:
                 flash("Welcome! As the first registered user you are an admin.")
             return redirect(url_for("index"))
@@ -521,6 +523,7 @@ def login():
             else:
                 session.clear()
                 session["user_id"] = row["id"]
+                session.permanent = True
                 target = request.args.get("next") or url_for("index")
                 if not target.startswith("/"):
                     target = url_for("index")
