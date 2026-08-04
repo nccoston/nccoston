@@ -16,9 +16,10 @@ import os
 import re
 import sqlite3
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from flask import (Flask, abort, flash, g, redirect, render_template, request,
                    send_from_directory, session, url_for)
@@ -34,6 +35,12 @@ SECRET_FILE = DATA_DIR / "secret_key"
 
 THREADS_PER_PAGE = 80
 BOARDS = ("main", "scores")
+BOARD_TZ = ZoneInfo(os.environ.get("BOARD_TZ", "America/Detroit"))
+
+
+def now_utc_iso():
+    """Timestamps are stored as naive UTC; displayed in the board timezone."""
+    return datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
 
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -167,13 +174,16 @@ from postmarkup import render_post
 
 @app.template_filter("boardtime")
 def boardtime(iso):
-    """ISO timestamp -> 'July 31, 2026 at 07:55:25 PM' (the old board's format)."""
+    """Stored UTC timestamp -> 'July 31, 2026 at 07:55:25 PM' in board time."""
     if not iso:
         return ""
     try:
         dt = datetime.fromisoformat(iso)
     except ValueError:
         return iso
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt = dt.astimezone(BOARD_TZ)
     out = dt.strftime("%B %d, %Y at %I:%M:%S %p")
     return re.sub(r" 0(\d,)", r" \1", out)  # strip leading zero on day
 
@@ -346,7 +356,7 @@ def post(reply_to=None):
             if uploaded:
                 image_url = uploaded
             user = current_user()
-            now = datetime.now().isoformat(timespec="seconds")
+            now = now_utc_iso()
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
                 " image_url, author_name, user_id, created_at, ip_address, board)"
@@ -396,7 +406,7 @@ def poll_vote(poll_id):
             " VALUES (?, ?, ?, ?)"
             " ON CONFLICT(poll_id, user_id) DO UPDATE SET option_id = excluded.option_id",
             (poll_id, option_id, current_user()["id"],
-             datetime.now().isoformat(timespec="seconds")))
+             now_utc_iso()))
         db.commit()
     return redirect(url_for("message", message_id=poll["message_id"]))
 
@@ -459,7 +469,7 @@ def edit(message_id):
                 "UPDATE messages SET subject = ?, body = ?, image_url = ?,"
                 " edited_at = ? WHERE id = ?",
                 (subject, body or None, image_url or None,
-                 datetime.now().isoformat(timespec="seconds"), message_id))
+                 now_utc_iso(), message_id))
             db.commit()
             return redirect(url_for("message", message_id=message_id))
     return render_template("edit.html", msg=msg)
@@ -500,7 +510,7 @@ def register():
                 "INSERT INTO users (handle, password_hash, is_admin, created_at)"
                 " VALUES (?, ?, ?, ?)",
                 (handle, generate_password_hash(password), int(first_user),
-                 datetime.now().isoformat(timespec="seconds")))
+                 now_utc_iso()))
             db.commit()
             session.clear()
             session["user_id"] = cur.lastrowid
@@ -565,7 +575,7 @@ def admin():
                 db.execute(
                     "INSERT INTO users (handle, password_hash, created_at) VALUES (?, ?, ?)",
                     (handle, generate_password_hash(new_pw),
-                     datetime.now().isoformat(timespec="seconds")))
+                     now_utc_iso()))
                 db.commit()
                 flash(f"Created {handle} with password: {new_pw} "
                       f"(share it with them privately; they can keep it or you can "
