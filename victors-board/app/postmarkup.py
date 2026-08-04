@@ -1,0 +1,83 @@
+"""Render post bodies: allow a safe subset of HTML, auto-link bare URLs,
+preserve newlines. Everything not on the allowlist is shown as plain text;
+scripts, event handlers, and javascript: URLs are stripped.
+"""
+
+import re
+from html import escape
+from html.parser import HTMLParser
+
+ALLOWED_TAGS = {
+    "b", "i", "u", "em", "strong", "s", "strike", "br", "p", "a", "img",
+    "ul", "ol", "li", "blockquote", "pre", "tt", "center", "font", "hr",
+    "big", "small", "sub", "sup",
+}
+VOID_TAGS = {"br", "img", "hr"}
+ALLOWED_ATTRS = {
+    "a": {"href", "title"},
+    "img": {"src", "alt", "width", "height"},
+    "font": {"color", "size", "face"},
+}
+URL_RE = re.compile(r"(https?://[^\s<>\"]+)")
+
+
+def _safe_url(value):
+    v = value.strip().lower()
+    return v.startswith(("http://", "https://", "/", "#", "mailto:"))
+
+
+class _Renderer(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out = []
+        self.open_stack = []
+        self.in_link = 0  # don't auto-link text that's already inside <a>
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in ALLOWED_TAGS:
+            return
+        kept = []
+        for name, value in attrs:
+            if value is None:
+                continue
+            if name in ALLOWED_ATTRS.get(tag, ()):
+                if name in ("href", "src") and not _safe_url(value):
+                    continue
+                kept.append(f'{name}="{escape(value, quote=True)}"')
+        attr_str = (" " + " ".join(kept)) if kept else ""
+        extra = ' rel="nofollow"' if tag == "a" else ""
+        self.out.append(f"<{tag}{attr_str}{extra}>")
+        if tag not in VOID_TAGS:
+            self.open_stack.append(tag)
+            if tag == "a":
+                self.in_link += 1
+
+    def handle_endtag(self, tag):
+        if tag in ALLOWED_TAGS and tag not in VOID_TAGS and tag in self.open_stack:
+            while self.open_stack:
+                top = self.open_stack.pop()
+                self.out.append(f"</{top}>")
+                if top == "a":
+                    self.in_link = max(0, self.in_link - 1)
+                if top == tag:
+                    break
+
+    def handle_data(self, data):
+        text = escape(data)
+        if not self.in_link:
+            text = URL_RE.sub(r'<a href="\1" rel="nofollow">\1</a>', text)
+        self.out.append(text.replace("\n", "<br>\n"))
+
+    def result(self):
+        while self.open_stack:
+            self.out.append(f"</{self.open_stack.pop()}>")
+        return "".join(self.out)
+
+
+def render_post(text):
+    if not text:
+        return ""
+    p = _Renderer()
+    p.feed(text)
+    p.close()
+    return p.result()

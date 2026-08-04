@@ -22,7 +22,7 @@ from pathlib import Path
 
 from flask import (Flask, abort, flash, g, redirect, render_template, request,
                    session, url_for)
-from markupsafe import Markup, escape
+from markupsafe import Markup
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -154,7 +154,7 @@ def admin_required(f):
 
 # ---------------------------------------------------------- template helpers
 
-URL_RE = re.compile(r"(https?://[^\s<>\"]+)")
+from postmarkup import render_post
 
 
 @app.template_filter("boardtime")
@@ -172,12 +172,8 @@ def boardtime(iso):
 
 @app.template_filter("rendertext")
 def rendertext(text):
-    """Escape a plain-text post body, linkify URLs, convert newlines to <br>."""
-    if not text:
-        return ""
-    escaped = str(escape(text))
-    linked = URL_RE.sub(r'<a href="\1" rel="nofollow">\1</a>', escaped)
-    return Markup(linked.replace("\n", "<br>\n"))
+    """Render a post body: safe-HTML subset, auto-linked URLs, newlines kept."""
+    return Markup(render_post(text))
 
 
 @app.context_processor
