@@ -15,11 +15,7 @@
 </li>
 {% endmacro %}
 
-{% block content %}
-{% if board_name == 'scores' %}
-<p class="page-row"><b>&mdash; Scores Only &mdash;</b> &middot;
-  <a href="{{ url_for('leaderboard') }}">Pick 'em Leaderboard</a></p>
-{% endif %}
+{% macro page_row() %}
 <p class="page-row">
   Page:
   {% for p in range(1, pages + 1) %}
@@ -27,11 +23,20 @@
   {% endfor %}
   {% if page < pages %}<a href="{{ url_for('index', board_name=board_name, page=page + 1) }}">Next&gt;&gt;</a>{% endif %}
 </p>
+{% endmacro %}
+
+{% block content %}
+{% if board_name == 'scores' %}
+<p class="page-row"><b>&mdash; Scores Only &mdash;</b> &middot;
+  <a href="{{ url_for('leaderboard') }}">Pick 'em Leaderboard</a></p>
+{% endif %}
+{{ page_row() }}
 
 {% if threads %}
 <ul class="thread-list">
   {% for thread in threads %}{{ render_node(thread) }}{% endfor %}
 </ul>
+{{ page_row() }}
 {% else %}
 <p style="text-align:center">No messages yet.
   {% if user %}<a href="{{ url_for('post', board='scores' if board_name == 'scores' else None) }}">Post the first one.</a>{% endif %}</p>
