@@ -22,7 +22,7 @@
 <body>
 <div class="header-block">{{ header_html | safe }}</div>
 
-<h1 class="board-title"><a href="{{ url_for('index') }}">{{ site_title }}</a></h1>
+<h1 class="board-title"><a href="{{ url_for('index', board_name='main') }}">{{ site_title }}</a></h1>
 
 <p class="links-row">{{ links_html | safe }}</p>
 

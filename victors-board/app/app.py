@@ -152,7 +152,7 @@ def login_required(f):
         if user["is_banned"]:
             session.clear()
             flash("This account is banned.")
-            return redirect(url_for("index"))
+            return redirect(url_for("index", board_name="main"))
         return f(*args, **kwargs)
     return wrapper
 
@@ -620,7 +620,7 @@ def register():
             session.permanent = True
             if first_user:
                 flash("Welcome! As the first registered user you are an admin.")
-            return redirect(url_for("index"))
+            return redirect(url_for("index", board_name="main"))
     return render_template("register.html", closed=False)
 
 
@@ -637,9 +637,9 @@ def login():
                 session.clear()
                 session["user_id"] = row["id"]
                 session.permanent = True
-                target = request.args.get("next") or url_for("index")
+                target = request.args.get("next") or url_for("index", board_name="main")
                 if not target.startswith("/"):
-                    target = url_for("index")
+                    target = url_for("index", board_name="main")
                 return redirect(target)
         else:
             flash("Wrong handle or password.")
@@ -649,7 +649,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("index"))
+    return redirect(url_for("index", board_name="main"))
 
 
 # -------------------------------------------------------------------- admin
@@ -758,7 +758,7 @@ def delete_message(message_id):
     flash(f"Deleted {len(ids)} message(s).")
     if msg["parent_id"]:
         return redirect(url_for("message", message_id=msg["parent_id"]))
-    return redirect(url_for("index"))
+    return redirect(url_for("index", board_name="main"))
 
 
 init_db()
