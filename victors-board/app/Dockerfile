@@ -10,4 +10,6 @@ ENV DATA_DIR=/data
 VOLUME /data
 EXPOSE 8080
 
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "--workers", "2", "app:app"]
+# Single worker: the ephemeral chat lives in process memory, so all requests
+# must share one process. Threads carry the concurrency instead.
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "--workers", "1", "--threads", "16", "app:app"]

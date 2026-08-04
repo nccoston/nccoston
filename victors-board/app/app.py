@@ -16,6 +16,9 @@ import os
 import re
 import sqlite3
 import secrets
+import threading
+import time
+from collections import deque
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
@@ -508,6 +511,65 @@ def leaderboard():
         key=lambda r: (-r["wins"], r["handle"].lower()))
     return render_template("leaderboard.html", rows=rows,
                            total_games=len(finished))
+
+
+# ------------------------------------------------------------------- chat
+#
+# Deliberately memory-only: messages live in this process and nowhere else.
+# No database writes, no logs, no search. The room holds the last 200
+# messages; older ones cease to exist. A server restart empties the room.
+# Requires a single worker process (see Dockerfile: --workers 1 --threads).
+
+CHAT_MAX_MESSAGES = 200
+CHAT_LOCK = threading.Lock()
+CHAT_MESSAGES = deque(maxlen=CHAT_MAX_MESSAGES)
+CHAT_NEXT_ID = [1]
+CHAT_LAST_SEND = {}   # user_id -> monotonic time of last message (rate limit)
+CHAT_PRESENCE = {}    # user_id -> monotonic time of last poll
+
+
+@app.route("/chat")
+@login_required
+def chat():
+    return render_template("chat.html")
+
+
+@app.route("/chat/messages")
+@login_required
+def chat_messages():
+    since = request.args.get("since", 0, type=int)
+    user = current_user()
+    now = time.monotonic()
+    with CHAT_LOCK:
+        CHAT_PRESENCE[user["id"]] = now
+        for uid in [u for u, t in CHAT_PRESENCE.items() if now - t > 120]:
+            del CHAT_PRESENCE[uid]
+        online = sum(1 for t in CHAT_PRESENCE.values() if now - t < 30)
+        msgs = [m for m in CHAT_MESSAGES if m["id"] > since]
+    return {"messages": msgs, "online": online}
+
+
+@app.route("/chat/send", methods=["POST"])
+@login_required
+def chat_send():
+    text = (request.form.get("text") or "").strip()[:500]
+    if not text:
+        return {"ok": False}
+    user = current_user()
+    now = time.monotonic()
+    with CHAT_LOCK:
+        if now - CHAT_LAST_SEND.get(user["id"], -10) < 1.0:
+            return {"ok": False, "error": "slow down"}
+        CHAT_LAST_SEND[user["id"]] = now
+        CHAT_MESSAGES.append({
+            "id": CHAT_NEXT_ID[0],
+            "handle": user["handle"],
+            "text": text,
+            "time": datetime.now(timezone.utc).astimezone(BOARD_TZ)
+                    .strftime("%I:%M %p").lstrip("0"),
+        })
+        CHAT_NEXT_ID[0] += 1
+    return {"ok": True}
 
 
 @app.route("/rss.xml")

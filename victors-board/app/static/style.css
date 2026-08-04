@@ -155,6 +155,27 @@ table.admin-table td, table.admin-table th {
   padding: 3px;
 }
 
+.chat-wrap { max-width: 900px; }
+#chat-messages {
+  height: 65vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.chat-msg { margin: 3px 0; word-wrap: break-word; }
+.chat-time { font-size: 10px; color: var(--faint); }
+#chat-form { display: flex; gap: 6px; }
+#chat-text {
+  flex: 1;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--border);
+}
+
 .yt-embed iframe {
   width: 560px;
   max-width: 100%;

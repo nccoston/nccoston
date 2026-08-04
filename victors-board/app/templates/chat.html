@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Chat - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="chat-wrap">
+  <p class="byline"><b>Chat</b> &mdash; nothing here is saved. Messages scroll
+    off and die; a restart empties the room. <span id="chat-online"></span></p>
+  <div id="chat-messages"></div>
+  <form id="chat-form" autocomplete="off">
+    <input type="text" id="chat-text" maxlength="500"
+           placeholder="say it &mdash; it disappears" autofocus>
+    <button type="submit">Send</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var box = document.getElementById("chat-messages");
+  var form = document.getElementById("chat-form");
+  var input = document.getElementById("chat-text");
+  var onlineEl = document.getElementById("chat-online");
+  var lastId = 0;
+  var URL_RE = /(https?:\/\/[^\s<>"]+)/g;
+
+  function nearBottom() {
+    return box.scrollTop + box.clientHeight >= box.scrollHeight - 80;
+  }
+
+  function renderText(target, text) {
+    var parts = text.split(URL_RE);
+    for (var i = 0; i < parts.length; i++) {
+      if (/^https?:\/\//.test(parts[i])) {
+        var a = document.createElement("a");
+        a.href = parts[i];
+        a.textContent = parts[i];
+        a.rel = "nofollow";
+        a.target = "_blank";
+        target.appendChild(a);
+      } else if (parts[i]) {
+        target.appendChild(document.createTextNode(parts[i]));
+      }
+    }
+  }
+
+  function addMessage(m) {
+    var div = document.createElement("div");
+    div.className = "chat-msg";
+    var handle = document.createElement("b");
+    handle.textContent = m.handle + ": ";
+    var text = document.createElement("span");
+    renderText(text, m.text);
+    var time = document.createElement("span");
+    time.className = "chat-time";
+    time.textContent = " " + m.time;
+    div.appendChild(handle);
+    div.appendChild(text);
+    div.appendChild(time);
+    box.appendChild(div);
+    while (box.children.length > 250) box.removeChild(box.firstChild);
+  }
+
+  function poll() {
+    fetch("/chat/messages?since=" + lastId)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var stick = nearBottom();
+        (d.messages || []).forEach(function (m) {
+          addMessage(m);
+          lastId = Math.max(lastId, m.id);
+        });
+        if (d.messages && d.messages.length && stick) {
+          box.scrollTop = box.scrollHeight;
+        }
+        onlineEl.textContent = "🟢 " + d.online + " in the room";
+      })
+      .catch(function () {});
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) return;
+    var body = new FormData();
+    body.append("text", text);
+    fetch("/chat/send", { method: "POST", body: body })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.ok) { input.value = ""; }
+        poll();
+      });
+  });
+
+  poll();
+  setInterval(poll, 2000);
+  box.scrollTop = box.scrollHeight;
+})();
+</script>
+{% endblock %}
