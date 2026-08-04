@@ -64,20 +64,16 @@ DEFAULT_SETTINGS = {
     "header_html": (
         "<b>Rules:</b>"
         "<ol>"
-        "<li><b>DON'T POST ANY PORN, YOU WILL BE BANNED.</b></li>"
+        "<li><b>No porno.</b></li>"
         "<li><b>Please use a \"*\" or \"nm\" in the subject line to denote "
         "topic only posts.</b></li>"
         "<li><b>Any post or attempt to take things \"off the board\" will result "
         "in a ban. Do not use other poster's real names or personal info.</b></li>"
-        "<li><b>Don't be a jerk.</b></li>"
-        "<li><b>Please learn how to copy the URL of pictures and use the image "
-        "embedding field to post pictures of celebrities.</b></li>"
+        "<li><b>Don't be a Tom Izzo.</b></li>"
         "</ol>"
-        "<p><b>Admins</b> - Beave, Yosterizer.<br>"
-        "<b>Moderators</b> - Ed, Rich, bh, DetroitBry, BBA<br>"
-        "<b>Ceremonial Moderator</b> - wino<br>"
+        "<p><b>Admins</b> - Rich, BBA, Nikos<br>"
+        "<b>Ceremonial Moderator</b> - the wino<br>"
         "<b>Honorary Moderators</b> - BigLake, Blue Man</p>"
-        "<p><b>POTY</b> - Craig</p>"
     ),
     "links_html": (
         '<a href="https://www.mgoblog.com">MGoBlog</a> || '
