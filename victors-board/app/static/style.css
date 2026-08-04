@@ -1,12 +1,43 @@
+:root {
+  --bg: #fff;
+  --text: #000;
+  --link: #00e;
+  --link-visited: #551a8b;
+  --muted: #333;
+  --hint: #555;
+  --faint: #777;
+  --border: #999;
+  --table-border: #bbb;
+  --flash-bg: #ffeaea;
+  --flash-border: #c00;
+  --input-bg: #fff;
+  --input-text: #000;
+}
+:root[data-theme="dark"] {
+  --bg: #1a1a1b;
+  --text: #d7d7d7;
+  --link: #8ab4f8;
+  --link-visited: #c58af9;
+  --muted: #aaa;
+  --hint: #999;
+  --faint: #888;
+  --border: #555;
+  --table-border: #444;
+  --flash-bg: #3a1f1f;
+  --flash-border: #c66;
+  --input-bg: #2a2a2b;
+  --input-text: #ddd;
+}
+
 body {
   font-family: Verdana, Geneva, sans-serif;
   font-size: 13px;
-  background: #fff;
-  color: #000;
+  background: var(--bg);
+  color: var(--text);
   margin: 12px 16px;
 }
-a { color: #00e; }
-a:visited { color: #551a8b; }
+a { color: var(--link); }
+a:visited { color: var(--link-visited); }
 
 .header-block { font-size: 12px; }
 .header-block ol { margin: 4px 0 8px 24px; padding: 0; }
@@ -23,8 +54,8 @@ a:visited { color: #551a8b; }
 .links-row, .nav-row, .page-row { text-align: center; }
 
 .flash {
-  border: 1px solid #c00;
-  background: #ffeaea;
+  border: 1px solid var(--flash-border);
+  background: var(--flash-bg);
   padding: 4px 10px;
   margin: 10px auto;
   max-width: 600px;
@@ -41,7 +72,7 @@ ul.thread-list ul ul { list-style-type: square; }
 ul.thread-list li { margin: 5px 0; }
 .byline { font-size: 11px; }
 .byline b { font-size: 12px; }
-.byline i { color: #333; }
+.byline i { color: var(--muted); }
 
 .message-box {
   margin: 12px 0;
@@ -61,6 +92,9 @@ form.board-form textarea {
   font-family: inherit;
   font-size: 13px;
   padding: 3px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--border);
 }
 form.board-form textarea { height: 160px; }
 form.board-form button {
@@ -68,11 +102,11 @@ form.board-form button {
   font-size: 13px;
   padding: 4px 14px;
 }
-.hint { font-size: 11px; color: #555; font-weight: normal; }
+.hint { font-size: 11px; color: var(--hint); font-weight: normal; }
 
 table.admin-table { border-collapse: collapse; }
 table.admin-table td, table.admin-table th {
-  border: 1px solid #bbb;
+  border: 1px solid var(--table-border);
   padding: 3px 8px;
   font-size: 12px;
 }
@@ -83,6 +117,6 @@ table.admin-table td, table.admin-table th {
   margin-top: 40px;
   text-align: center;
   font-size: 11px;
-  color: #777;
+  color: var(--faint);
 }
-.legacy-tag { font-size: 10px; color: #999; }
+.legacy-tag { font-size: 10px; color: var(--faint); }

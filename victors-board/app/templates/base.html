@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}{{ site_title }}{% endblock %}</title>
+<script>
+(function () {
+  var saved = localStorage.getItem("theme");
+  if (!saved && window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    saved = "dark";
+  }
+  if (saved === "dark") document.documentElement.dataset.theme = "dark";
+})();
+</script>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -25,7 +35,30 @@
     <a href="{{ url_for('login') }}">Login</a> |
     <a href="{{ url_for('register') }}">Register</a>
   {% endif %}
+  | <a href="#" id="theme-toggle">Dark Mode</a>
 </p>
+<script>
+(function () {
+  var link = document.getElementById("theme-toggle");
+  function label() {
+    link.textContent =
+      document.documentElement.dataset.theme === "dark" ? "Light Mode" : "Dark Mode";
+  }
+  link.addEventListener("click", function (e) {
+    e.preventDefault();
+    var dark = document.documentElement.dataset.theme === "dark";
+    if (dark) {
+      delete document.documentElement.dataset.theme;
+      localStorage.setItem("theme", "light");
+    } else {
+      document.documentElement.dataset.theme = "dark";
+      localStorage.setItem("theme", "dark");
+    }
+    label();
+  });
+  label();
+})();
+</script>
 
 {% with msgs = get_flashed_messages() %}
   {% if msgs %}
