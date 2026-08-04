@@ -326,7 +326,12 @@ def message(message_id):
 
 
 def save_uploaded_image():
-    """Store an uploaded picture on the data disk; return its serving path."""
+    """Store an uploaded picture on the data disk; return its serving path.
+
+    Non-GIF images are downscaled to 1600px max and recompressed, which
+    turns multi-MB phone photos into a few hundred KB. GIFs pass through
+    untouched to preserve animation.
+    """
     f = request.files.get("image_file")
     if not f or not f.filename:
         return None
@@ -335,7 +340,23 @@ def save_uploaded_image():
         flash("Image uploads must be jpg, png, gif, or webp.")
         return None
     name = secrets.token_hex(8) + ext
-    f.save(UPLOAD_DIR / name)
+    path = UPLOAD_DIR / name
+    f.save(path)
+    if ext != ".gif":
+        try:
+            from PIL import Image
+            img = Image.open(path)
+            img.thumbnail((1600, 1600))
+            if img.mode in ("RGBA", "LA", "P"):
+                img.save(path)  # keep transparency in original format
+            else:
+                jpg_path = path.with_suffix(".jpg")
+                img.convert("RGB").save(jpg_path, "JPEG", quality=85)
+                if jpg_path != path:
+                    path.unlink()
+                    path, name = jpg_path, jpg_path.name
+        except Exception:
+            pass  # unreadable as an image? keep the file as uploaded
     return url_for("uploads", filename=name)
 
 
@@ -782,7 +803,13 @@ def admin():
         return redirect(url_for("admin"))
     users = db.execute("SELECT * FROM users ORDER BY handle COLLATE NOCASE").fetchall()
     counts = db.execute("SELECT COUNT(*) total FROM messages").fetchone()
-    return render_template("admin.html", users=users, counts=counts,
+    upload_files = [p for p in UPLOAD_DIR.glob("*") if p.is_file()]
+    disk = {
+        "db_mb": round(DB_PATH.stat().st_size / 1e6, 1) if DB_PATH.exists() else 0,
+        "uploads_mb": round(sum(p.stat().st_size for p in upload_files) / 1e6, 1),
+        "upload_count": len(upload_files),
+    }
+    return render_template("admin.html", users=users, counts=counts, disk=disk,
                            registration_open=get_setting("registration_open") == "1")
 
 

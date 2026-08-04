@@ -1,3 +1,4 @@
 flask>=3.0
 gunicorn>=21.2
 tzdata>=2024.1
+pillow>=10.0

@@ -5,6 +5,10 @@
 <div class="message-box">
   <h2>Admin</h2>
   <p>{{ counts['total'] or 0 }} messages on the board.</p>
+  <p class="hint">Disk: database {{ disk['db_mb'] }} MB &middot;
+    uploads {{ disk['uploads_mb'] }} MB ({{ disk['upload_count'] }} pictures).
+    The disk holds 1000 MB and can be enlarged anytime in Render
+    (service &rarr; Disk).</p>
 
   <h3>Board settings</h3>
   <form class="board-form" method="post">
