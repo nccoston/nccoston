@@ -19,6 +19,26 @@ ALLOWED_ATTRS = {
     "font": {"color", "size", "face"},
 }
 URL_RE = re.compile(r"(https?://[^\s<>\"]+)")
+YOUTUBE_RE = re.compile(
+    r"https?://(?:www\.)?(?:youtube\.com/watch\?\S*?v=|youtu\.be/|"
+    r"youtube\.com/shorts/)([A-Za-z0-9_-]{6,20})")
+TWEET_RE = re.compile(
+    r"https?://(?:www\.)?(?:twitter\.com|x\.com)/[A-Za-z0-9_]+/status/\d+\S*")
+
+
+def _linkify(url):
+    """Turn a bare URL into a link — or a player/embed for YouTube and tweets."""
+    esc = escape(url, quote=True)
+    m = YOUTUBE_RE.match(url)
+    if m:
+        return (f'<div class="yt-embed"><iframe '
+                f'src="https://www.youtube-nocookie.com/embed/{m.group(1)}" '
+                f'loading="lazy" allowfullscreen></iframe></div>'
+                f'<a href="{esc}" rel="nofollow">{escape(url)}</a>')
+    if TWEET_RE.match(url):
+        return (f'<blockquote class="twitter-tweet">'
+                f'<a href="{esc}" rel="nofollow">{escape(url)}</a></blockquote>')
+    return f'<a href="{esc}" rel="nofollow">{escape(url)}</a>'
 
 
 def _safe_url(value):
@@ -63,10 +83,18 @@ class _Renderer(HTMLParser):
                     break
 
     def handle_data(self, data):
-        text = escape(data)
-        if not self.in_link:
-            text = URL_RE.sub(r'<a href="\1" rel="nofollow">\1</a>', text)
-        self.out.append(text.replace("\n", "<br>\n"))
+        if self.in_link:
+            self.out.append(escape(data).replace("\n", "<br>\n"))
+            return
+        # split on URLs so embeds are built from the raw URL, not escaped text
+        pieces = []
+        last = 0
+        for m in URL_RE.finditer(data):
+            pieces.append(escape(data[last:m.start()]))
+            pieces.append(_linkify(m.group(1)))
+            last = m.end()
+        pieces.append(escape(data[last:]))
+        self.out.append("".join(pieces).replace("\n", "<br>\n"))
 
     def result(self):
         while self.open_stack:

@@ -14,19 +14,34 @@
     <h2>Post a New Message</h2>
   {% endif %}
 
-  <form class="board-form" method="post">
+  <form class="board-form" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="board" value="{{ board }}">
+    {% if board == 'scores' and not parent %}
+    <p class="hint">Posting to the <b>Scores Only</b> board.</p>
+    {% endif %}
     <label>Subject
       <span class="hint">(use "*" or "nm" for subject-only posts)</span>
       <input type="text" name="subject" maxlength="300" required
              value="{{ request.form.get('subject', subject_prefill) }}">
     </label>
     <label>Message <span class="hint">(optional — leave blank for subject-only.
-      Basic HTML works: &lt;b&gt;, &lt;i&gt;, &lt;a href&gt;, &lt;img src&gt;)</span>
+      Basic HTML works: &lt;b&gt;, &lt;i&gt;, &lt;a href&gt;, &lt;img src&gt;.
+      YouTube and Twitter/X links embed automatically)</span>
       <textarea name="body">{{ request.form.get('body', '') }}</textarea>
     </label>
-    <label>Image URL <span class="hint">(optional — paste the URL of a picture to embed it)</span>
+    <label>Image URL <span class="hint">(optional — paste the URL of a picture)</span>
       <input type="text" name="image_url" value="{{ request.form.get('image_url', '') }}">
     </label>
+    <label>Or upload a picture <span class="hint">(jpg, png, gif, webp)</span>
+      <input type="file" name="image_file" accept="image/*">
+    </label>
+    {% if not parent %}
+    <label>Poll <span class="hint">(optional — one option per line, 2-10 options,
+      turns this thread into a poll)</span>
+      <textarea name="poll_options" style="height:70px"
+        placeholder="Yes&#10;No">{{ request.form.get('poll_options', '') }}</textarea>
+    </label>
+    {% endif %}
     <button type="submit">Post Message</button>
   </form>
 </div>

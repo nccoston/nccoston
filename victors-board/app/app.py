@@ -21,7 +21,7 @@ from functools import wraps
 from pathlib import Path
 
 from flask import (Flask, abort, flash, g, redirect, render_template, request,
-                   session, url_for)
+                   send_from_directory, session, url_for)
 from markupsafe import Markup
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -33,10 +33,16 @@ DB_PATH = DATA_DIR / "board.db"
 SECRET_FILE = DATA_DIR / "secret_key"
 
 THREADS_PER_PAGE = 80
+BOARDS = ("main", "scores")
+
+UPLOAD_DIR = DATA_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 app = Flask(__name__)
 # behind Render's proxy: trust X-Forwarded-For so remote_addr is the real client
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # uploaded image cap
 if os.environ.get("SECRET_KEY"):
     app.secret_key = os.environ["SECRET_KEY"]
 else:
@@ -94,7 +100,8 @@ def init_db():
     db.executescript((APP_DIR / "schema.sql").read_text())
     # migrations for databases created before a column existed
     for migration in ("ALTER TABLE messages ADD COLUMN edited_at TEXT",
-                      "ALTER TABLE messages ADD COLUMN ip_address TEXT"):
+                      "ALTER TABLE messages ADD COLUMN ip_address TEXT",
+                      "ALTER TABLE messages ADD COLUMN board TEXT NOT NULL DEFAULT 'main'"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -204,18 +211,20 @@ def build_tree(rows):
 
 # -------------------------------------------------------------------- pages
 
-@app.route("/")
-def index():
+@app.route("/", defaults={"board_name": "main"})
+@app.route("/scores", defaults={"board_name": "scores"})
+def index(board_name):
     page = max(1, request.args.get("page", 1, type=int))
     db = get_db()
     total_roots = db.execute(
-        "SELECT COUNT(*) c FROM messages WHERE parent_id IS NULL").fetchone()["c"]
+        "SELECT COUNT(*) c FROM messages WHERE parent_id IS NULL AND board = ?",
+        (board_name,)).fetchone()["c"]
     pages = max(1, -(-total_roots // THREADS_PER_PAGE))
     offset = (page - 1) * THREADS_PER_PAGE
     root_ids = [r["id"] for r in db.execute(
-        "SELECT id FROM messages WHERE parent_id IS NULL "
+        "SELECT id FROM messages WHERE parent_id IS NULL AND board = ? "
         "ORDER BY created_at DESC LIMIT ? OFFSET ?",
-        (THREADS_PER_PAGE, offset))]
+        (board_name, THREADS_PER_PAGE, offset))]
     threads = []
     if root_ids:
         marks = ",".join("?" * len(root_ids))
@@ -225,7 +234,12 @@ def index():
         for root in build_tree(rows):
             by_thread[root["id"]] = root
         threads = [by_thread[rid] for rid in root_ids if rid in by_thread]
-    return render_template("index.html", threads=threads, page=page, pages=pages)
+        poll_ids = {r["message_id"] for r in db.execute(
+            f"SELECT message_id FROM polls WHERE message_id IN ({marks})", root_ids)}
+        for t in threads:
+            t["has_poll"] = t["id"] in poll_ids
+    return render_template("index.html", threads=threads, page=page, pages=pages,
+                           board_name=board_name)
 
 
 @app.route("/message/<int:message_id>")
@@ -256,9 +270,47 @@ def message(message_id):
     reply_subject = msg["subject"]
     if not reply_subject.lower().startswith("re"):
         reply_subject = "Re: " + reply_subject
+
+    poll = db.execute("SELECT * FROM polls WHERE message_id = ?",
+                      (message_id,)).fetchone()
+    poll_options, my_vote, total_votes = [], None, 0
+    if poll:
+        poll_options = db.execute(
+            "SELECT o.id, o.text, COUNT(v.id) votes FROM poll_options o"
+            " LEFT JOIN poll_votes v ON v.option_id = o.id"
+            " WHERE o.poll_id = ? GROUP BY o.id, o.text ORDER BY o.id",
+            (poll["id"],)).fetchall()
+        total_votes = sum(r["votes"] for r in poll_options)
+        u = current_user()
+        if u:
+            row = db.execute(
+                "SELECT option_id FROM poll_votes WHERE poll_id = ? AND user_id = ?",
+                (poll["id"], u["id"])).fetchone()
+            my_vote = row["option_id"] if row else None
     return render_template("message.html", msg=msg, parent=parent,
                            children=node["children"] if node else [],
-                           reply_subject=reply_subject)
+                           reply_subject=reply_subject, poll=poll,
+                           poll_options=poll_options, my_vote=my_vote,
+                           total_votes=total_votes)
+
+
+def save_uploaded_image():
+    """Store an uploaded picture on the data disk; return its serving path."""
+    f = request.files.get("image_file")
+    if not f or not f.filename:
+        return None
+    ext = Path(f.filename).suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXT:
+        flash("Image uploads must be jpg, png, gif, or webp.")
+        return None
+    name = secrets.token_hex(8) + ext
+    f.save(UPLOAD_DIR / name)
+    return url_for("uploads", filename=name)
+
+
+@app.route("/uploads/<path:filename>")
+def uploads(filename):
+    return send_from_directory(UPLOAD_DIR, filename)
 
 
 @app.route("/post", methods=["GET", "POST"])
@@ -271,29 +323,49 @@ def post(reply_to=None):
         parent = db.execute("SELECT * FROM messages WHERE id = ?", (reply_to,)).fetchone()
         if parent is None:
             abort(404)
+    board = request.form.get("board") or request.args.get("board") or "main"
+    if board not in BOARDS:
+        board = "main"
+    if parent is not None:
+        board = parent["board"]
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
         body = request.form.get("body", "").strip()
         image_url = request.form.get("image_url", "").strip()
+        poll_lines = [ln.strip() for ln in
+                      request.form.get("poll_options", "").splitlines() if ln.strip()][:10]
         if not subject:
             flash("A subject is required.")
+        elif parent is None and len(poll_lines) == 1:
+            flash("A poll needs at least two options (one per line).")
         else:
             if image_url and not image_url.lower().startswith(("http://", "https://")):
                 image_url = ""
+            uploaded = save_uploaded_image()
+            if uploaded:
+                image_url = uploaded
             user = current_user()
             now = datetime.now().isoformat(timespec="seconds")
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
-                " image_url, author_name, user_id, created_at, ip_address)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " image_url, author_name, user_id, created_at, ip_address, board)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (parent["thread_id"] if parent else None,
                  parent["id"] if parent else None,
                  subject, body or None, image_url or None,
-                 user["handle"], user["id"], now, request.remote_addr))
+                 user["handle"], user["id"], now, request.remote_addr, board))
             new_id = cur.lastrowid
             if parent is None:
                 db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
                            (new_id, new_id))
+                if len(poll_lines) >= 2:
+                    pcur = db.execute(
+                        "INSERT INTO polls (message_id, created_at) VALUES (?, ?)",
+                        (new_id, now))
+                    for line in poll_lines:
+                        db.execute(
+                            "INSERT INTO poll_options (poll_id, text) VALUES (?, ?)",
+                            (pcur.lastrowid, line[:200]))
             db.commit()
             return redirect(url_for("message", message_id=new_id))
     subject_prefill = ""
@@ -301,7 +373,62 @@ def post(reply_to=None):
         subject_prefill = parent["subject"]
         if not subject_prefill.lower().startswith("re:"):
             subject_prefill = "Re: " + subject_prefill
-    return render_template("post.html", parent=parent, subject_prefill=subject_prefill)
+    return render_template("post.html", parent=parent, subject_prefill=subject_prefill,
+                           board=board)
+
+
+@app.route("/poll/<int:poll_id>/vote", methods=["POST"])
+@login_required
+def poll_vote(poll_id):
+    db = get_db()
+    poll = db.execute("SELECT * FROM polls WHERE id = ?", (poll_id,)).fetchone()
+    if poll is None:
+        abort(404)
+    option_id = request.form.get("option_id", type=int)
+    valid = db.execute("SELECT 1 FROM poll_options WHERE id = ? AND poll_id = ?",
+                       (option_id, poll_id)).fetchone()
+    if valid is None:
+        flash("Pick an option to vote.")
+    else:
+        db.execute(
+            "INSERT INTO poll_votes (poll_id, option_id, user_id, created_at)"
+            " VALUES (?, ?, ?, ?)"
+            " ON CONFLICT(poll_id, user_id) DO UPDATE SET option_id = excluded.option_id",
+            (poll_id, option_id, current_user()["id"],
+             datetime.now().isoformat(timespec="seconds")))
+        db.commit()
+    return redirect(url_for("message", message_id=poll["message_id"]))
+
+
+@app.route("/rss.xml")
+def rss():
+    from xml.sax.saxutils import escape as xesc
+    rows = get_db().execute(
+        "SELECT * FROM messages ORDER BY id DESC LIMIT 50").fetchall()
+    root_url = request.url_root.rstrip("/")
+    items = []
+    for r in rows:
+        link = root_url + url_for("message", message_id=r["id"])
+        try:
+            pub = datetime.fromisoformat(r["created_at"]).strftime(
+                "%a, %d %b %Y %H:%M:%S +0000")
+        except ValueError:
+            pub = ""
+        title = ("[Scores] " if r["board"] == "scores" else "") + r["subject"]
+        desc = f"By {r['author_name']}."
+        if r["body"]:
+            desc += " " + render_post(r["body"])
+        items.append(
+            f"<item><title>{xesc(title)}</title><link>{xesc(link)}</link>"
+            f"<guid>{xesc(link)}</guid><pubDate>{pub}</pubDate>"
+            f"<description>{xesc(desc)}</description></item>")
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>'
+           '<rss version="2.0"><channel>'
+           f"<title>{xesc(get_setting('site_title'))}</title>"
+           f"<link>{xesc(root_url)}</link>"
+           "<description>Latest posts</description>"
+           + "".join(items) + "</channel></rss>")
+    return app.response_class(xml, mimetype="application/rss+xml")
 
 
 @app.route("/edit/<int:message_id>", methods=["GET", "POST"])
@@ -321,8 +448,12 @@ def edit(message_id):
         if not subject:
             flash("A subject is required.")
         else:
-            if image_url and not image_url.lower().startswith(("http://", "https://")):
+            if image_url and not image_url.lower().startswith(
+                    ("http://", "https://", "/uploads/")):
                 image_url = ""
+            uploaded = save_uploaded_image()
+            if uploaded:
+                image_url = uploaded
             db.execute(
                 "UPDATE messages SET subject = ?, body = ?, image_url = ?,"
                 " edited_at = ? WHERE id = ?",
@@ -498,6 +629,11 @@ def delete_message(message_id):
         ids.extend(children)
         frontier = children
     marks = ",".join("?" * len(ids))
+    db.execute(f"DELETE FROM poll_votes WHERE poll_id IN "
+               f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
+    db.execute(f"DELETE FROM poll_options WHERE poll_id IN "
+               f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
+    db.execute(f"DELETE FROM polls WHERE message_id IN ({marks})", ids)
     db.execute(f"DELETE FROM messages WHERE id IN ({marks})", ids)
     db.commit()
     flash(f"Deleted {len(ids)} message(s).")

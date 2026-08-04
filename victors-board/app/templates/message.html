@@ -33,11 +33,47 @@
     {% endif %}
   </div>
 
+  {% if poll %}
+  <div class="poll-box">
+    <p><b>Poll</b> &mdash; {{ total_votes }} vote{{ '' if total_votes == 1 else 's' }}</p>
+    {% if user and my_vote is none %}
+    <form method="post" action="{{ url_for('poll_vote', poll_id=poll['id']) }}">
+      {% for o in poll_options %}
+      <label class="poll-opt"><input type="radio" name="option_id" value="{{ o['id'] }}"> {{ o['text'] }}</label>
+      {% endfor %}
+      <button type="submit">Vote</button>
+    </form>
+    {% else %}
+      {% for o in poll_options %}
+      <div class="poll-result">
+        {{ o['text'] }}{% if my_vote == o['id'] %} <b>&#10003; your vote</b>{% endif %}
+        &mdash; {{ o['votes'] }} ({{ ((100 * o['votes'] / total_votes) | round | int) if total_votes else 0 }}%)
+        <div class="poll-bar" style="width: {{ (100 * o['votes'] / total_votes) if total_votes else 0 }}%"></div>
+      </div>
+      {% endfor %}
+      {% if user %}
+      <details class="poll-change">
+        <summary class="hint">Change your vote</summary>
+        <form method="post" action="{{ url_for('poll_vote', poll_id=poll['id']) }}">
+          {% for o in poll_options %}
+          <label class="poll-opt"><input type="radio" name="option_id" value="{{ o['id'] }}"
+            {% if my_vote == o['id'] %}checked{% endif %}> {{ o['text'] }}</label>
+          {% endfor %}
+          <button type="submit">Change vote</button>
+        </form>
+      </details>
+      {% else %}
+      <p class="hint"><a href="{{ url_for('login') }}">Log in</a> to vote.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+
   <p>
     {% if user and (user['id'] == msg['user_id'] or user['is_admin']) %}
     <a href="{{ url_for('edit', message_id=msg['id']) }}">Edit Post</a> |
     {% endif %}
-    <a href="{{ url_for('index') }}">Back to the board</a>
+    <a href="{{ url_for('index', board_name=msg['board']) }}">Back to the board</a>
     {% if user and user['is_admin'] %}
     <form class="inline-form" method="post"
           action="{{ url_for('delete_message', message_id=msg['id']) }}"
@@ -56,17 +92,22 @@
 
   {% if user %}
   <p><b>Post a reply:</b></p>
-  <form class="board-form" method="post" action="{{ url_for('post', reply_to=msg['id']) }}">
+  <form class="board-form" method="post" enctype="multipart/form-data"
+        action="{{ url_for('post', reply_to=msg['id']) }}">
     <label>Subject
       <input type="text" name="subject" maxlength="300" required
              value="{{ reply_subject }}">
     </label>
     <label>Message <span class="hint">(optional — leave blank for subject-only.
-      Basic HTML works: &lt;b&gt;, &lt;i&gt;, &lt;a href&gt;, &lt;img src&gt;)</span>
+      Basic HTML works: &lt;b&gt;, &lt;i&gt;, &lt;a href&gt;, &lt;img src&gt;.
+      YouTube and Twitter/X links embed automatically)</span>
       <textarea name="body"></textarea>
     </label>
-    <label>Image URL <span class="hint">(optional — paste the URL of a picture to embed it)</span>
+    <label>Image URL <span class="hint">(optional — paste the URL of a picture)</span>
       <input type="text" name="image_url">
+    </label>
+    <label>Or upload a picture <span class="hint">(jpg, png, gif, webp)</span>
+      <input type="file" name="image_file" accept="image/*">
     </label>
     <button type="submit">Post Reply</button>
   </form>

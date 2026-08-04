@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS messages (
     user_id     INTEGER REFERENCES users(id),
     created_at  TEXT NOT NULL,  -- ISO 8601
     edited_at   TEXT,
-    ip_address  TEXT            -- shown to admins only
+    ip_address  TEXT,           -- shown to admins only
+    board       TEXT NOT NULL DEFAULT 'main'   -- 'main' or 'scores'
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id, created_at);
@@ -29,4 +30,25 @@ CREATE INDEX IF NOT EXISTS idx_messages_root
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS polls (
+    id         INTEGER PRIMARY KEY,
+    message_id INTEGER NOT NULL UNIQUE REFERENCES messages(id),
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS poll_options (
+    id      INTEGER PRIMARY KEY,
+    poll_id INTEGER NOT NULL REFERENCES polls(id),
+    text    TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS poll_votes (
+    id         INTEGER PRIMARY KEY,
+    poll_id    INTEGER NOT NULL REFERENCES polls(id),
+    option_id  INTEGER NOT NULL REFERENCES poll_options(id),
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL,
+    UNIQUE(poll_id, user_id)   -- one vote per member, changeable
 );
