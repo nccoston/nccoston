@@ -121,7 +121,8 @@
     {% if user and (user['id'] == msg['user_id'] or user['is_admin']) %}
     <a href="{{ url_for('edit', message_id=msg['id']) }}">Edit Post</a> |
     {% endif %}
-    <a href="{{ url_for('index', board_name=msg['board']) }}">Back to the board</a>
+    <a href="{{ url_for('index', board_name=msg['board']) }}"
+       onclick="if (history.length > 1 && document.referrer.indexOf(location.host) !== -1) { history.back(); return false; }">Back to the board</a>
     {% if user and user['is_admin'] %}
     <form class="inline-form" method="post"
           action="{{ url_for('delete_message', message_id=msg['id']) }}"

@@ -44,8 +44,8 @@ a:visited { color: var(--link-visited); }
 
 .board-title {
   text-align: center;
-  font-size: 34px;
-  margin: 24px 0 16px;
+  font-size: 22px;
+  margin: 14px 0 10px;
 }
 .board-title a, .board-title a:visited {
   color: inherit;
