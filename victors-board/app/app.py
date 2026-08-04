@@ -265,10 +265,6 @@ def message(message_id):
         "SELECT * FROM messages WHERE thread_id = ?", (msg["thread_id"],)).fetchall()
     roots = build_tree(thread_rows)
     thread = roots[0] if roots else None
-    parent = None
-    if msg["parent_id"]:
-        parent = db.execute("SELECT * FROM messages WHERE id = ?",
-                            (msg["parent_id"],)).fetchone()
     reply_subject = msg["subject"]
     if not reply_subject.lower().startswith("re"):
         reply_subject = "Re: " + reply_subject
@@ -305,8 +301,7 @@ def message(message_id):
                         + abs(p["pick_b"] - game["final_b"]))
             best = min(miss(p) for p in game_picks)
             game_winners = [p["h"] for p in game_picks if miss(p) == best]
-    return render_template("message.html", msg=msg, parent=parent,
-                           thread=thread,
+    return render_template("message.html", msg=msg, thread=thread,
                            reply_subject=reply_subject, poll=poll,
                            poll_options=poll_options, my_vote=my_vote,
                            total_votes=total_votes, game=game,

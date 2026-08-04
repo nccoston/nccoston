@@ -24,12 +24,6 @@
   <p class="byline">Posted on {{ msg['created_at'] | boardtime }} by <b>{{ msg['author_name'] }}</b>
     {% if msg['edited_at'] %}<span class="legacy-tag">(edited {{ msg['edited_at'] | boardtime }})</span>{% endif %}
     {% if user and user['is_admin'] and msg['ip_address'] %}<span class="legacy-tag">[IP: {{ msg['ip_address'] }}]</span>{% endif %}</p>
-  {% if parent %}
-  <p class="byline">In response to:
-    <a href="{{ url_for('message', message_id=parent['id']) }}">{{ parent['subject'] }}</a>
-    (<b>{{ parent['author_name'] }}</b>)</p>
-  {% endif %}
-
   <div class="message-body">
     {{ msg['body'] | rendertext if msg['body'] }}
     {% if msg['image_url'] %}
