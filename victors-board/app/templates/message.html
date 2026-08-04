@@ -33,6 +33,54 @@
     {% endif %}
   </div>
 
+  {% if game %}
+  <div class="poll-box">
+    <p><b>Pick 'em:</b> {{ game['team_a'] }} vs {{ game['team_b'] }}</p>
+    {% if game['final_a'] is not none %}
+      <p><b>FINAL:</b> {{ game['team_a'] }} {{ game['final_a'] }} &mdash;
+         {{ game['team_b'] }} {{ game['final_b'] }}</p>
+      {% if game_winners %}
+      <p>&#127942; Winner{{ 's' if game_winners | length > 1 }}:
+        <b>{{ game_winners | join(', ') }}</b></p>
+      {% endif %}
+    {% elif user %}
+    <form class="game-form" method="post"
+          action="{{ url_for('game_pick', game_id=game['id']) }}">
+      {{ game['team_a'] }}
+      <input type="number" name="pick_a" min="0" max="999" required
+             value="{{ my_pick['pick_a'] if my_pick }}">
+      {{ game['team_b'] }}
+      <input type="number" name="pick_b" min="0" max="999" required
+             value="{{ my_pick['pick_b'] if my_pick }}">
+      <button type="submit">{{ 'Update pick' if my_pick else 'Lock it in' }}</button>
+    </form>
+    {% else %}
+    <p class="hint"><a href="{{ url_for('login') }}">Log in</a> to make a pick.</p>
+    {% endif %}
+    {% if game_picks %}
+    <table class="admin-table">
+      <tr><th>Poster</th><th>{{ game['team_a'] }}</th><th>{{ game['team_b'] }}</th></tr>
+      {% for p in game_picks %}
+      <tr><td>{{ p['h'] }}</td><td>{{ p['pick_a'] }}</td><td>{{ p['pick_b'] }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    {% if user and (user['id'] == msg['user_id'] or user['is_admin'])
+          and game['final_a'] is none %}
+    <details class="poll-change">
+      <summary class="hint">Enter the final score (locks picks, crowns the winner)</summary>
+      <form class="game-form" method="post"
+            action="{{ url_for('game_final', game_id=game['id']) }}">
+        {{ game['team_a'] }} <input type="number" name="final_a" min="0" max="999" required>
+        {{ game['team_b'] }} <input type="number" name="final_b" min="0" max="999" required>
+        <button type="submit">Post final</button>
+      </form>
+    </details>
+    {% endif %}
+    <p class="hint"><a href="{{ url_for('leaderboard') }}">Pick 'em leaderboard</a></p>
+  </div>
+  {% endif %}
+
   {% if poll %}
   <div class="poll-box">
     <p><b>Poll</b> &mdash; {{ total_votes }} vote{{ '' if total_votes == 1 else 's' }}</p>

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Pick 'em Leaderboard - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Pick 'em Leaderboard</h2>
+  <p class="byline">{{ total_games }} game{{ '' if total_games == 1 else 's' }} decided.
+    Closest combined score wins; ties share the crown.</p>
+  {% if rows %}
+  <table class="admin-table">
+    <tr><th></th><th>Poster</th><th>Wins</th><th>Games played</th></tr>
+    {% for r in rows %}
+    <tr>
+      <td>{% if loop.index == 1 and r['wins'] > 0 %}&#127942;{% else %}{{ loop.index }}{% endif %}</td>
+      <td><b>{{ r['handle'] }}</b></td>
+      <td>{{ r['wins'] }}</td>
+      <td>{{ r['played'] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>No games decided yet. Post one on the
+    <a href="{{ url_for('index', board_name='scores') }}">Scores Only board</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

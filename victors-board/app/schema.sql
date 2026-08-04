@@ -52,3 +52,24 @@ CREATE TABLE IF NOT EXISTS poll_votes (
     created_at TEXT NOT NULL,
     UNIQUE(poll_id, user_id)   -- one vote per member, changeable
 );
+
+-- Pick 'em: score-prediction games on the Scores board
+CREATE TABLE IF NOT EXISTS games (
+    id         INTEGER PRIMARY KEY,
+    message_id INTEGER NOT NULL UNIQUE REFERENCES messages(id),
+    team_a     TEXT NOT NULL,
+    team_b     TEXT NOT NULL,
+    final_a    INTEGER,       -- NULL until the final score is entered
+    final_b    INTEGER,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS game_picks (
+    id         INTEGER PRIMARY KEY,
+    game_id    INTEGER NOT NULL REFERENCES games(id),
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    pick_a     INTEGER NOT NULL,
+    pick_b     INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(game_id, user_id)   -- one pick per member, changeable until final
+);

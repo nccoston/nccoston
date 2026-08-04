@@ -42,6 +42,18 @@
         placeholder="Yes&#10;No">{{ request.form.get('poll_options', '') }}</textarea>
     </label>
     {% endif %}
+    {% if not parent and board == 'scores' %}
+    <label>Pick 'em game <span class="hint">(optional — name both teams and posters
+      predict the score; you enter the final later and the board crowns the winner)</span>
+    </label>
+    <div class="game-form">
+      <input type="text" name="team_a" maxlength="60" placeholder="Michigan"
+             value="{{ request.form.get('team_a', '') }}">
+      vs
+      <input type="text" name="team_b" maxlength="60" placeholder="osu"
+             value="{{ request.form.get('team_b', '') }}">
+    </div>
+    {% endif %}
     <button type="submit">Post Message</button>
   </form>
 </div>

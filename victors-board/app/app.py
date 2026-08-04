@@ -247,8 +247,11 @@ def index(board_name):
         threads = [by_thread[rid] for rid in root_ids if rid in by_thread]
         poll_ids = {r["message_id"] for r in db.execute(
             f"SELECT message_id FROM polls WHERE message_id IN ({marks})", root_ids)}
+        game_ids = {r["message_id"] for r in db.execute(
+            f"SELECT message_id FROM games WHERE message_id IN ({marks})", root_ids)}
         for t in threads:
             t["has_poll"] = t["id"] in poll_ids
+            t["has_game"] = t["id"] in game_ids
     return render_template("index.html", threads=threads, page=page, pages=pages,
                            board_name=board_name)
 
@@ -298,11 +301,29 @@ def message(message_id):
                 "SELECT option_id FROM poll_votes WHERE poll_id = ? AND user_id = ?",
                 (poll["id"], u["id"])).fetchone()
             my_vote = row["option_id"] if row else None
+    game = db.execute("SELECT * FROM games WHERE message_id = ?",
+                      (message_id,)).fetchone()
+    game_picks, my_pick, game_winners = [], None, []
+    if game:
+        game_picks = db.execute(
+            "SELECT p.*, u.handle h FROM game_picks p JOIN users u ON u.id = p.user_id"
+            " WHERE p.game_id = ? ORDER BY p.created_at", (game["id"],)).fetchall()
+        u = current_user()
+        if u:
+            my_pick = next((p for p in game_picks if p["user_id"] == u["id"]), None)
+        if game["final_a"] is not None and game_picks:
+            def miss(p):
+                return (abs(p["pick_a"] - game["final_a"])
+                        + abs(p["pick_b"] - game["final_b"]))
+            best = min(miss(p) for p in game_picks)
+            game_winners = [p["h"] for p in game_picks if miss(p) == best]
     return render_template("message.html", msg=msg, parent=parent,
                            children=node["children"] if node else [],
                            reply_subject=reply_subject, poll=poll,
                            poll_options=poll_options, my_vote=my_vote,
-                           total_votes=total_votes)
+                           total_votes=total_votes, game=game,
+                           game_picks=game_picks, my_pick=my_pick,
+                           game_winners=game_winners)
 
 
 def save_uploaded_image():
@@ -377,6 +398,12 @@ def post(reply_to=None):
                         db.execute(
                             "INSERT INTO poll_options (poll_id, text) VALUES (?, ?)",
                             (pcur.lastrowid, line[:200]))
+                team_a = request.form.get("team_a", "").strip()[:60]
+                team_b = request.form.get("team_b", "").strip()[:60]
+                if board == "scores" and team_a and team_b:
+                    db.execute(
+                        "INSERT INTO games (message_id, team_a, team_b, created_at)"
+                        " VALUES (?, ?, ?, ?)", (new_id, team_a, team_b, now))
             db.commit()
             return redirect(url_for("message", message_id=new_id))
     subject_prefill = ""
@@ -409,6 +436,82 @@ def poll_vote(poll_id):
              now_utc_iso()))
         db.commit()
     return redirect(url_for("message", message_id=poll["message_id"]))
+
+
+@app.route("/game/<int:game_id>/pick", methods=["POST"])
+@login_required
+def game_pick(game_id):
+    db = get_db()
+    game = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+    if game is None:
+        abort(404)
+    if game["final_a"] is not None:
+        flash("Picks are locked — the final score is in.")
+        return redirect(url_for("message", message_id=game["message_id"]))
+    pick_a = request.form.get("pick_a", type=int)
+    pick_b = request.form.get("pick_b", type=int)
+    if pick_a is None or pick_b is None or not (0 <= pick_a <= 999 and 0 <= pick_b <= 999):
+        flash("Enter a score for both teams.")
+    else:
+        db.execute(
+            "INSERT INTO game_picks (game_id, user_id, pick_a, pick_b, created_at)"
+            " VALUES (?, ?, ?, ?, ?)"
+            " ON CONFLICT(game_id, user_id) DO UPDATE SET"
+            " pick_a = excluded.pick_a, pick_b = excluded.pick_b,"
+            " created_at = excluded.created_at",
+            (game_id, current_user()["id"], pick_a, pick_b, now_utc_iso()))
+        db.commit()
+    return redirect(url_for("message", message_id=game["message_id"]))
+
+
+@app.route("/game/<int:game_id>/final", methods=["POST"])
+@login_required
+def game_final(game_id):
+    db = get_db()
+    game = db.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+    if game is None:
+        abort(404)
+    msg = db.execute("SELECT * FROM messages WHERE id = ?",
+                     (game["message_id"],)).fetchone()
+    user = current_user()
+    if msg["user_id"] != user["id"] and not user["is_admin"]:
+        abort(403)
+    final_a = request.form.get("final_a", type=int)
+    final_b = request.form.get("final_b", type=int)
+    if final_a is None or final_b is None or not (0 <= final_a <= 999 and 0 <= final_b <= 999):
+        flash("Enter the final score for both teams.")
+    else:
+        db.execute("UPDATE games SET final_a = ?, final_b = ? WHERE id = ?",
+                   (final_a, final_b, game_id))
+        db.commit()
+    return redirect(url_for("message", message_id=game["message_id"]))
+
+
+@app.route("/scores/leaderboard")
+def leaderboard():
+    db = get_db()
+    finished = db.execute(
+        "SELECT * FROM games WHERE final_a IS NOT NULL").fetchall()
+    wins, played = {}, {}
+    for gm in finished:
+        picks = db.execute(
+            "SELECT p.*, u.handle h FROM game_picks p JOIN users u ON u.id = p.user_id"
+            " WHERE p.game_id = ?", (gm["id"],)).fetchall()
+        if not picks:
+            continue
+        def miss(p):
+            return abs(p["pick_a"] - gm["final_a"]) + abs(p["pick_b"] - gm["final_b"])
+        best = min(miss(p) for p in picks)
+        for p in picks:
+            played[p["h"]] = played.get(p["h"], 0) + 1
+            if miss(p) == best:
+                wins[p["h"]] = wins.get(p["h"], 0) + 1
+    rows = sorted(
+        ({"handle": h, "wins": wins.get(h, 0), "played": c}
+         for h, c in played.items()),
+        key=lambda r: (-r["wins"], r["handle"].lower()))
+    return render_template("leaderboard.html", rows=rows,
+                           total_games=len(finished))
 
 
 @app.route("/rss.xml")
@@ -647,6 +750,9 @@ def delete_message(message_id):
     db.execute(f"DELETE FROM poll_options WHERE poll_id IN "
                f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
     db.execute(f"DELETE FROM polls WHERE message_id IN ({marks})", ids)
+    db.execute(f"DELETE FROM game_picks WHERE game_id IN "
+               f"(SELECT id FROM games WHERE message_id IN ({marks}))", ids)
+    db.execute(f"DELETE FROM games WHERE message_id IN ({marks})", ids)
     db.execute(f"DELETE FROM messages WHERE id IN ({marks})", ids)
     db.commit()
     flash(f"Deleted {len(ids)} message(s).")

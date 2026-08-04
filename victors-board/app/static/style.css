@@ -139,6 +139,22 @@ table.admin-table td, table.admin-table th {
 }
 .poll-change summary { cursor: pointer; margin-top: 8px; }
 
+.game-form { margin: 8px 0; }
+.game-form input[type=number] {
+  width: 60px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--border);
+  padding: 3px;
+}
+.game-form input[type=text] {
+  width: 140px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--border);
+  padding: 3px;
+}
+
 .yt-embed iframe {
   width: 560px;
   max-width: 100%;
