@@ -23,6 +23,7 @@ from pathlib import Path
 from flask import (Flask, abort, flash, g, redirect, render_template, request,
                    session, url_for)
 from markupsafe import Markup, escape
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 APP_DIR = Path(__file__).resolve().parent
@@ -34,6 +35,8 @@ SECRET_FILE = DATA_DIR / "secret_key"
 THREADS_PER_PAGE = 80
 
 app = Flask(__name__)
+# behind Render's proxy: trust X-Forwarded-For so remote_addr is the real client
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 if os.environ.get("SECRET_KEY"):
     app.secret_key = os.environ["SECRET_KEY"]
 else:
@@ -90,10 +93,12 @@ def init_db():
     db = sqlite3.connect(DB_PATH)
     db.executescript((APP_DIR / "schema.sql").read_text())
     # migrations for databases created before a column existed
-    try:
-        db.execute("ALTER TABLE messages ADD COLUMN edited_at TEXT")
-    except sqlite3.OperationalError:
-        pass  # column already there
+    for migration in ("ALTER TABLE messages ADD COLUMN edited_at TEXT",
+                      "ALTER TABLE messages ADD COLUMN ip_address TEXT"):
+        try:
+            db.execute(migration)
+        except sqlite3.OperationalError:
+            pass  # column already there
     for key, value in DEFAULT_SETTINGS.items():
         db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
                    (key, value))
@@ -283,12 +288,12 @@ def post(reply_to=None):
             now = datetime.now().isoformat(timespec="seconds")
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
-                " image_url, author_name, user_id, created_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                " image_url, author_name, user_id, created_at, ip_address)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (parent["thread_id"] if parent else None,
                  parent["id"] if parent else None,
                  subject, body or None, image_url or None,
-                 user["handle"], user["id"], now))
+                 user["handle"], user["id"], now, request.remote_addr))
             new_id = cur.lastrowid
             if parent is None:
                 db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
