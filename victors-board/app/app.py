@@ -264,18 +264,7 @@ def message(message_id):
     thread_rows = db.execute(
         "SELECT * FROM messages WHERE thread_id = ?", (msg["thread_id"],)).fetchall()
     roots = build_tree(thread_rows)
-
-    # find this message's node in the tree to list its replies
-    def find_node(nodes, target):
-        for n in nodes:
-            if n["id"] == target:
-                return n
-            hit = find_node(n["children"], target)
-            if hit:
-                return hit
-        return None
-
-    node = find_node(roots, message_id)
+    thread = roots[0] if roots else None
     parent = None
     if msg["parent_id"]:
         parent = db.execute("SELECT * FROM messages WHERE id = ?",
@@ -317,7 +306,7 @@ def message(message_id):
             best = min(miss(p) for p in game_picks)
             game_winners = [p["h"] for p in game_picks if miss(p) == best]
     return render_template("message.html", msg=msg, parent=parent,
-                           children=node["children"] if node else [],
+                           thread=thread,
                            reply_subject=reply_subject, poll=poll,
                            poll_options=poll_options, my_vote=my_vote,
                            total_votes=total_votes, game=game,

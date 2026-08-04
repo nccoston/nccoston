@@ -3,7 +3,11 @@
 
 {% macro render_node(node) %}
 <li>
-  <a href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
+  {% if node['id'] == msg['id'] %}
+    <b class="current-msg">{{ node['subject'] }}</b>
+  {% else %}
+    <a href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
+  {% endif %}
   <span class="byline">- By <b>{{ node['author_name'] }}</b>
     <i>{{ node['created_at'] | boardtime }}</i></span>
   {% if node['children'] %}
@@ -132,10 +136,10 @@
     {% endif %}
   </p>
 
-  {% if children %}
-  <p><b>Replies:</b></p>
+  {% if thread and (thread['children'] or thread['id'] != msg['id']) %}
+  <p><b>Thread:</b></p>
   <ul class="thread-list">
-    {% for child in children %}{{ render_node(child) }}{% endfor %}
+    {{ render_node(thread) }}
   </ul>
   {% endif %}
 
