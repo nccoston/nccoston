@@ -29,8 +29,10 @@
   <a href="{{ url_for('chat') }}">Chat</a></p>
 
 {% set on_scores = request.path.startswith('/scores') %}
+<p class="nav-row post-row">
+  <b><a href="{{ url_for('post', board='scores' if on_scores else None) }}">Post a New Message</a></b>
+</p>
 <p class="nav-row">
-  <b><a href="{{ url_for('post', board='scores' if on_scores else None) }}">Post a New Message</a></b> |
   <a href="{{ url_for('index', board_name='main') }}">Home</a> |
   <a href="{{ url_for('search') }}">Search</a> |
   {% if user %}
