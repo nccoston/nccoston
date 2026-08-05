@@ -32,7 +32,8 @@
     <label>Image URL <span class="hint">(optional — paste the URL of a picture)</span>
       <input type="text" name="image_url" value="{{ request.form.get('image_url', '') }}">
     </label>
-    <label>Or upload a picture <span class="hint">(jpg, png, gif, webp)</span>
+    <label>Or upload a picture <span class="hint">(jpg, png, gif, webp — or just
+      paste a screenshot anywhere on this page)</span>
       <input type="file" name="image_file" accept="image/*">
     </label>
     {% if not parent %}

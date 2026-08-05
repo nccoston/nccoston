@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Board Stats - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Board Stats</h2>
+  <p class="byline">{{ total }} posts by {{ members }} members.
+    Board rush hour: <b>{{ rush_label }}</b> ({{ rush_count }} posts).</p>
+
+  <h3>Volume Leaders</h3>
+  <table class="admin-table">
+    <tr><th></th><th>Poster</th><th>Posts</th></tr>
+    {% for p in top_posters %}
+    <tr><td>{{ loop.index }}</td><td><b>{{ p['author_name'] }}</b></td>
+        <td>{{ p['c'] }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <h3>Most-Replied Threads</h3>
+  <table class="admin-table">
+    <tr><th></th><th>Thread</th><th>By</th><th>Replies</th></tr>
+    {% for t in top_threads %}
+    <tr>
+      <td>{% if loop.index == 1 %}&#128172;{% else %}{{ loop.index }}{% endif %}</td>
+      <td><a href="{{ url_for('message', message_id=t['id']) }}">{{ t['subject'][:80] }}</a></td>
+      <td><b>{{ t['author_name'] }}</b></td>
+      <td>{{ t['replies'] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  {% if night_owls %}
+  <h3>The 3 AM Club</h3>
+  <p class="hint">Posts between midnight and 5 AM Eastern. No judgment.</p>
+  <table class="admin-table">
+    <tr><th></th><th>Poster</th><th>Night posts</th></tr>
+    {% for handle, c in night_owls %}
+    <tr><td>{% if loop.index == 1 %}&#129415;{% else %}{{ loop.index }}{% endif %}</td>
+        <td><b>{{ handle }}</b></td><td>{{ c }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

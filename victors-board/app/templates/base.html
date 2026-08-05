@@ -79,7 +79,38 @@
 {% block content %}{% endblock %}
 
 <p class="footer">Self-hosted by Nick Coston &middot;
-  <a href="{{ url_for('rss') }}">RSS</a></p>
+  <a href="{{ url_for('rss') }}">RSS</a> &middot;
+  <a href="{{ url_for('stats') }}">Stats</a></p>
 <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+<script>
+// paste a screenshot anywhere on a page with a post form and it attaches
+(function () {
+  var input = document.querySelector('input[name="image_file"]');
+  if (!input) return;
+  document.addEventListener("paste", function (e) {
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image/") === 0) {
+        var blob = items[i].getAsFile();
+        if (!blob) continue;
+        var ext = (blob.type.split("/")[1] || "png").replace("jpeg", "jpg");
+        var dt = new DataTransfer();
+        dt.items.add(new File([blob], "pasted." + ext, { type: blob.type }));
+        input.files = dt.files;
+        var note = document.getElementById("paste-note");
+        if (!note) {
+          note = document.createElement("span");
+          note.id = "paste-note";
+          note.className = "hint";
+          input.parentNode.appendChild(note);
+        }
+        note.textContent = " 📎 pasted image attached — it will upload when you post";
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+})();
+</script>
 </body>
 </html>
