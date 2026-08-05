@@ -349,6 +349,18 @@ def uploads(filename):
     return send_from_directory(UPLOAD_DIR, filename)
 
 
+# iOS and some browsers request these fixed root paths directly
+@app.route("/favicon.ico")
+def favicon_ico():
+    return send_from_directory(APP_DIR / "static", "favicon.ico")
+
+
+@app.route("/apple-touch-icon.png")
+@app.route("/apple-touch-icon-precomposed.png")
+def apple_touch_icon():
+    return send_from_directory(APP_DIR / "static", "apple-touch-icon.png")
+
+
 @app.route("/post", methods=["GET", "POST"])
 @app.route("/post/<int:reply_to>", methods=["GET", "POST"])
 @login_required
