@@ -394,6 +394,20 @@ def post(reply_to=None):
                 image_url = uploaded
             user = current_user()
             now = now_utc_iso()
+            # double-post guard: identical post by the same user in the last
+            # two minutes (double-clicked button, back-button resubmit) just
+            # lands on the existing message instead of inserting again
+            cutoff = (datetime.now(timezone.utc) - timedelta(minutes=2)) \
+                .replace(tzinfo=None).isoformat(timespec="seconds")
+            dupe = db.execute(
+                "SELECT id FROM messages WHERE user_id = ? AND subject = ?"
+                " AND COALESCE(body, '') = COALESCE(?, '')"
+                " AND COALESCE(parent_id, 0) = COALESCE(?, 0)"
+                " AND created_at >= ?",
+                (user["id"], subject, body or None,
+                 parent["id"] if parent else None, cutoff)).fetchone()
+            if dupe:
+                return redirect(url_for("message", message_id=dupe["id"]))
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
                 " image_url, author_name, user_id, created_at, ip_address, board)"

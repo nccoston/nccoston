@@ -83,6 +83,21 @@
   <a href="{{ url_for('stats') }}">Stats</a></p>
 <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 <script>
+// one click per post: disable submit buttons once a post form is sent
+(function () {
+  var forms = document.querySelectorAll("form.board-form");
+  for (var i = 0; i < forms.length; i++) {
+    forms[i].addEventListener("submit", function (e) {
+      var btn = e.target.querySelector("button");
+      if (btn) {
+        if (btn.disabled) { e.preventDefault(); return; }
+        setTimeout(function () { btn.disabled = true; btn.textContent = "Posting..."; }, 0);
+      }
+    });
+  }
+})();
+</script>
+<script>
 // paste a screenshot anywhere on a page with a post form and it attaches
 (function () {
   var input = document.querySelector('input[name="image_file"]');
