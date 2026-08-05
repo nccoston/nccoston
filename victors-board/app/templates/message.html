@@ -122,6 +122,12 @@
     <a href="{{ url_for('index', board_name=msg['board']) }}"
        onclick="if (history.length > 1 && document.referrer.indexOf(location.host) !== -1) { history.back(); return false; }">Back to the board</a>
     {% if user and user['is_admin'] %}
+    {% if not msg['parent_id'] %}
+    <form class="inline-form" method="post"
+          action="{{ url_for('pin_message', message_id=msg['id']) }}">
+      <button type="submit">{{ 'Unpin' if msg['pinned'] else 'Pin to top' }}</button>
+    </form>
+    {% endif %}
     <form class="inline-form" method="post"
           action="{{ url_for('delete_message', message_id=msg['id']) }}"
           onsubmit="return confirm('Delete this message and all its replies?')">

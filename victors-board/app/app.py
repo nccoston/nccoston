@@ -108,7 +108,8 @@ def init_db():
     # migrations for databases created before a column existed
     for migration in ("ALTER TABLE messages ADD COLUMN edited_at TEXT",
                       "ALTER TABLE messages ADD COLUMN ip_address TEXT",
-                      "ALTER TABLE messages ADD COLUMN board TEXT NOT NULL DEFAULT 'main'"):
+                      "ALTER TABLE messages ADD COLUMN board TEXT NOT NULL DEFAULT 'main'",
+                      "ALTER TABLE messages ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -233,7 +234,7 @@ def index(board_name):
     offset = (page - 1) * THREADS_PER_PAGE
     root_ids = [r["id"] for r in db.execute(
         "SELECT id FROM messages WHERE parent_id IS NULL AND board = ? "
-        "ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        "ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?",
         (board_name, THREADS_PER_PAGE, offset))]
     threads = []
     if root_ids:
@@ -852,6 +853,21 @@ def admin():
     }
     return render_template("admin.html", users=users, counts=counts, disk=disk,
                            registration_open=get_setting("registration_open") == "1")
+
+
+@app.route("/admin/pin/<int:message_id>", methods=["POST"])
+@admin_required
+def pin_message(message_id):
+    db = get_db()
+    msg = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if msg is None or msg["parent_id"] is not None:
+        abort(404)
+    db.execute("UPDATE messages SET pinned = ? WHERE id = ?",
+               (0 if msg["pinned"] else 1, message_id))
+    db.commit()
+    flash("Thread unpinned." if msg["pinned"] else
+          "Thread pinned to the top of the board.")
+    return redirect(url_for("message", message_id=message_id))
 
 
 @app.route("/admin/delete/<int:message_id>", methods=["POST"])

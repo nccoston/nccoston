@@ -2,6 +2,7 @@
 
 {% macro render_node(node) %}
 <li>
+  {%- if node.get('pinned') %}&#128204; {% endif -%}
   <a href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
   {%- if node.get('has_poll') %} <span class="poll-tag">[POLL]</span>{% endif %}
   {%- if node.get('has_game') %} <span class="poll-tag">[PICK 'EM]</span>{% endif %}
