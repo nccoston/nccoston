@@ -29,16 +29,5 @@
     {% endfor %}
   </table>
 
-  {% if night_owls %}
-  <h3>The 3 AM Club</h3>
-  <p class="hint">Posts between midnight and 5 AM Eastern. No judgment.</p>
-  <table class="admin-table">
-    <tr><th></th><th>Poster</th><th>Night posts</th></tr>
-    {% for handle, c in night_owls %}
-    <tr><td>{% if loop.index == 1 %}&#129415;{% else %}{{ loop.index }}{% endif %}</td>
-        <td><b>{{ handle }}</b></td><td>{{ c }}</td></tr>
-    {% endfor %}
-  </table>
-  {% endif %}
 </div>
 {% endblock %}

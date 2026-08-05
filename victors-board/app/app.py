@@ -603,27 +603,21 @@ def stats():
         " WHERE m.parent_id IS NULL GROUP BY m.id"
         " ORDER BY replies DESC LIMIT 10").fetchall()
 
-    # night owls and rush hour need board-timezone hours; compute in Python
-    night_owls = {}
+    # rush hour needs board-timezone hours; compute in Python
     hour_counts = [0] * 24
-    for row in db.execute("SELECT author_name, created_at FROM messages"):
+    for row in db.execute("SELECT created_at FROM messages"):
         try:
             dt = datetime.fromisoformat(row["created_at"])
         except ValueError:
             continue
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        hour = dt.astimezone(BOARD_TZ).hour
-        hour_counts[hour] += 1
-        if hour < 5:  # midnight to 4:59 AM
-            night_owls[row["author_name"]] = night_owls.get(row["author_name"], 0) + 1
-    night_owls = sorted(night_owls.items(), key=lambda kv: -kv[1])[:10]
+        hour_counts[dt.astimezone(BOARD_TZ).hour] += 1
     rush_hour = max(range(24), key=lambda h: hour_counts[h]) if total else 0
     rush_label = datetime(2000, 1, 1, rush_hour).strftime("%I %p").lstrip("0")
     return render_template("stats.html", total=total, members=members,
                            top_posters=top_posters, top_threads=top_threads,
-                           night_owls=night_owls, rush_label=rush_label,
-                           rush_count=hour_counts[rush_hour])
+                           rush_label=rush_label, rush_count=hour_counts[rush_hour])
 
 
 @app.route("/rss.xml")
