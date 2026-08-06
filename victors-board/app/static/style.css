@@ -10,6 +10,8 @@
   --table-border: #bbb;
   --flash-bg: #ffeaea;
   --flash-border: #c00;
+  --success-bg: #e8f7e8;
+  --success-border: #2a7d2a;
   --input-bg: #fff;
   --input-text: #000;
 }
@@ -25,6 +27,8 @@
   --table-border: #444;
   --flash-bg: #3a1f1f;
   --flash-border: #c66;
+  --success-bg: #1e3320;
+  --success-border: #5cb85c;
   --input-bg: #2a2a2b;
   --input-text: #ddd;
 }
@@ -63,6 +67,11 @@ a:visited { color: var(--link-visited); }
   margin: 10px auto;
   max-width: 600px;
   text-align: center;
+}
+.flash-success {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  font-weight: bold;
 }
 
 ul.thread-list, ul.thread-list ul {

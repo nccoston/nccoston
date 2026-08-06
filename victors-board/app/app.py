@@ -408,6 +408,8 @@ def post(reply_to=None):
                 (user["id"], subject, body or None,
                  parent["id"] if parent else None, cutoff)).fetchone()
             if dupe:
+                flash("✅ Already posted — this is your message. (Caught a "
+                      "double-click for you.)", "success")
                 return redirect(url_for("message", message_id=dupe["id"]))
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
@@ -418,6 +420,8 @@ def post(reply_to=None):
                  subject, body or None, image_url or None,
                  user["handle"], user["id"], now, request.remote_addr, board))
             new_id = cur.lastrowid
+            flash("✅ Posted! You're looking at your new message now — no need "
+                  "to post again.", "success")
             if parent is None:
                 db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
                            (new_id, new_id))
