@@ -69,8 +69,10 @@ a:visited { color: var(--link-visited); }
   text-align: center;
 }
 .flash-success {
-  border-color: var(--success-border);
-  background: var(--success-bg);
+  /* maize and blue in every theme */
+  border: 2px solid #FFCB05;
+  background: #00274C;
+  color: #FFCB05;
   font-weight: bold;
 }
 
