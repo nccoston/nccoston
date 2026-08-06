@@ -23,7 +23,15 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div class="header-block">{{ header_html | safe }}</div>
+<div class="header-block">{{ header_html | safe }}
+{% if pinned_threads %}
+<p class="pinned-row">
+  {% for p in pinned_threads %}
+  &#128204; <a href="{{ url_for('message', message_id=p['id']) }}">{{ p['subject'] }}</a>{% if not loop.last %}<br>{% endif %}
+  {% endfor %}
+</p>
+{% endif %}
+</div>
 
 <h1 class="board-title"><a href="{{ url_for('index', board_name='main') }}">{{ site_title }}</a></h1>
 

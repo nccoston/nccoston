@@ -196,11 +196,15 @@ def rendertext(text):
 
 @app.context_processor
 def inject_globals():
+    pinned = get_db().execute(
+        "SELECT id, subject FROM messages WHERE pinned = 1 AND parent_id IS NULL"
+        " ORDER BY created_at DESC").fetchall()
     return {
         "user": current_user(),
         "site_title": get_setting("site_title"),
         "header_html": get_setting("header_html"),
         "links_html": get_setting("links_html"),
+        "pinned_threads": pinned,
     }
 
 
@@ -234,7 +238,7 @@ def index(board_name):
     offset = (page - 1) * THREADS_PER_PAGE
     root_ids = [r["id"] for r in db.execute(
         "SELECT id FROM messages WHERE parent_id IS NULL AND board = ? "
-        "ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?",
+        "ORDER BY created_at DESC LIMIT ? OFFSET ?",
         (board_name, THREADS_PER_PAGE, offset))]
     threads = []
     if root_ids:

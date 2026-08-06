@@ -45,6 +45,7 @@ a:visited { color: var(--link-visited); }
 
 .header-block { font-size: 12px; }
 .header-block ol { margin: 4px 0 8px 24px; padding: 0; }
+.pinned-row { margin: 10px 0 0; font-size: 12px; }
 
 .board-title {
   text-align: center;
