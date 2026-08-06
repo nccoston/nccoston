@@ -102,15 +102,6 @@
         setTimeout(function () { btn.disabled = true; btn.textContent = "Posting..."; }, 0);
       }
     });
-    // posting requires clicking the button: a stray Enter in the subject or
-    // URL field of a post form must not fire off an accidental reply
-    if (forms[i].querySelector('input[name="image_file"]')) {
-      forms[i].addEventListener("keydown", function (e) {
-        if (e.key === "Enter" && e.target.tagName === "INPUT") {
-          e.preventDefault();
-        }
-      });
-    }
   }
 })();
 </script>
