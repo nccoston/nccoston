@@ -12,6 +12,7 @@ Data lives in $DATA_DIR/board.db (default ./data/board.db).
 The FIRST account registered automatically becomes an admin.
 """
 
+import hashlib
 import os
 import re
 import sqlite3
@@ -222,6 +223,35 @@ def build_tree(rows):
     for node in nodes.values():
         node["children"].sort(key=lambda n: n["created_at"], reverse=True)
     return roots
+
+
+# ----------------------------------------------------------- traffic counts
+
+UNCOUNTED_PATHS = ("/static", "/uploads", "/chat/messages", "/favicon",
+                   "/apple-touch", "/rss")
+
+
+@app.before_request
+def count_traffic():
+    """Counts only. The visitor hash is salted with the day and the app
+    secret, so it can't be reversed to an address or linked across days,
+    and it's pruned as each day rolls over. No connection to accounts."""
+    if request.method != "GET" or request.path.startswith(UNCOUNTED_PATHS):
+        return
+    day = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%Y-%m-%d")
+    visitor = hashlib.sha256(
+        f"{day}|{app.secret_key}|{request.remote_addr}|"
+        f"{request.user_agent.string}".encode()).hexdigest()[:16]
+    db = get_db()
+    db.execute("INSERT OR IGNORE INTO traffic (day) VALUES (?)", (day,))
+    db.execute("UPDATE traffic SET pageviews = pageviews + 1 WHERE day = ?", (day,))
+    cur = db.execute(
+        "INSERT OR IGNORE INTO traffic_visitors (day, visitor) VALUES (?, ?)",
+        (day, visitor))
+    if cur.rowcount:
+        db.execute("UPDATE traffic SET uniques = uniques + 1 WHERE day = ?", (day,))
+        db.execute("DELETE FROM traffic_visitors WHERE day != ?", (day,))
+    db.commit()
 
 
 # -------------------------------------------------------------------- pages
@@ -636,9 +666,19 @@ def stats():
         hour_counts[dt.astimezone(BOARD_TZ).hour] += 1
     rush_hour = max(range(24), key=lambda h: hour_counts[h]) if total else 0
     rush_label = datetime(2000, 1, 1, rush_hour).strftime("%I %p").lstrip("0")
+
+    traffic_days = db.execute(
+        "SELECT * FROM traffic ORDER BY day DESC LIMIT 14").fetchall()
+    month_prefix = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%Y-%m")
+    month = db.execute(
+        "SELECT COALESCE(SUM(pageviews), 0) pv, COALESCE(SUM(uniques), 0) uv"
+        " FROM traffic WHERE day LIKE ?", (month_prefix + "%",)).fetchone()
     return render_template("stats.html", total=total, members=members,
                            top_posters=top_posters, top_threads=top_threads,
-                           rush_label=rush_label, rush_count=hour_counts[rush_hour])
+                           rush_label=rush_label, rush_count=hour_counts[rush_hour],
+                           traffic_days=traffic_days, month=month,
+                           month_name=datetime.now(timezone.utc)
+                               .astimezone(BOARD_TZ).strftime("%B"))
 
 
 @app.route("/rss.xml")

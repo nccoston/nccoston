@@ -7,6 +7,19 @@
   <p class="byline">{{ total }} posts by {{ members }} members.
     Board rush hour: <b>{{ rush_label }}</b> ({{ rush_count }} posts).</p>
 
+  {% if traffic_days %}
+  <h3>Traffic</h3>
+  <p class="hint">Counts only — no individual tracking, nothing tied to handles.
+    {{ month_name }} so far: <b>{{ month['uv'] }}</b> daily visitors,
+    <b>{{ month['pv'] }}</b> pageviews.</p>
+  <table class="admin-table">
+    <tr><th>Day</th><th>Visitors</th><th>Pageviews</th></tr>
+    {% for d in traffic_days %}
+    <tr><td>{{ d['day'] }}</td><td>{{ d['uniques'] }}</td><td>{{ d['pageviews'] }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
   <h3>Volume Leaders</h3>
   <table class="admin-table">
     <tr><th></th><th>Poster</th><th>Posts</th></tr>

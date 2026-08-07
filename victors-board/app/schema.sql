@@ -53,6 +53,21 @@ CREATE TABLE IF NOT EXISTS poll_votes (
     UNIQUE(poll_id, user_id)   -- one vote per member, changeable
 );
 
+-- Daily traffic counters. Counts only: the visitor table holds a salted
+-- daily hash used solely to count uniques, is unlinkable across days,
+-- and is pruned as each new day begins. Nothing ties to accounts.
+CREATE TABLE IF NOT EXISTS traffic (
+    day       TEXT PRIMARY KEY,   -- YYYY-MM-DD board time
+    pageviews INTEGER NOT NULL DEFAULT 0,
+    uniques   INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS traffic_visitors (
+    day     TEXT NOT NULL,
+    visitor TEXT NOT NULL,
+    UNIQUE(day, visitor)
+);
+
 -- Pick 'em: score-prediction games on the Scores board
 CREATE TABLE IF NOT EXISTS games (
     id         INTEGER PRIMARY KEY,
