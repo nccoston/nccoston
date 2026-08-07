@@ -453,7 +453,7 @@ def post(reply_to=None):
                  subject, body or None, image_url or None,
                  user["handle"], user["id"], now, request.remote_addr, board))
             new_id = cur.lastrowid
-            flash("✅ Posted! Go Blue! 〽️", "success")
+            flash("Posted! Go Blue!", "goblue")
             if parent is None:
                 db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
                            (new_id, new_id))

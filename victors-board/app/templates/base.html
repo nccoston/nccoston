@@ -80,7 +80,11 @@
 
 {% with msgs = get_flashed_messages(with_categories=true) %}
   {% for category, m in msgs %}
-    <div class="flash {{ 'flash-success' if category == 'success' }}"><p>{{ m }}</p></div>
+    <div class="flash {{ 'flash-success' if category in ('success', 'goblue') }}"><p>
+      {%- if category == 'goblue' %}<img class="flash-m" src="{{ url_for('static', filename='blockm-inline.png') }}" alt="M"> {% endif -%}
+      {{ m }}
+      {%- if category == 'goblue' %} <img class="flash-m" src="{{ url_for('static', filename='blockm-inline.png') }}" alt="M">{% endif -%}
+    </p></div>
   {% endfor %}
 {% endwith %}
 

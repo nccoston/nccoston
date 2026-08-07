@@ -76,6 +76,11 @@ a:visited { color: var(--link-visited); }
   color: #FFCB05;
   font-weight: bold;
 }
+.flash-m {
+  height: 16px;
+  vertical-align: -3px;
+  margin: 0 5px;
+}
 
 ul.thread-list, ul.thread-list ul {
   list-style-type: disc;
