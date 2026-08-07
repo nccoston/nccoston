@@ -175,6 +175,18 @@ table.admin-table td, table.admin-table th {
   padding: 3px;
 }
 
+body.seal-bg::before {
+  /* university seal watermark (chat page) */
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("/static/U-M-seal.svg") center / 65vmin no-repeat;
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: -1;
+}
+:root[data-theme="dark"] body.seal-bg::before { opacity: 0.04; }
+
 .chat-wrap { max-width: 900px; }
 #chat-messages {
   height: 65vh;
