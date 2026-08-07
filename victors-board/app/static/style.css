@@ -195,6 +195,7 @@ body.seal-bg::before {
   overflow-y: auto;
   border: 1px solid var(--border);
   padding: 8px 10px;
+  box-sizing: border-box;
 }
 #chat-roster {
   width: 130px;
