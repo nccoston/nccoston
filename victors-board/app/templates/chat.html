@@ -5,7 +5,10 @@
 <div class="chat-wrap">
   <p class="byline"><b>Chat</b> &mdash; nothing here is saved. Messages scroll
     off and die; a restart empties the room. <span id="chat-online"></span></p>
-  <div id="chat-messages"></div>
+  <div class="chat-flex">
+    <div id="chat-messages"></div>
+    <div id="chat-roster"><b>In the room</b><div id="chat-roster-names"></div></div>
+  </div>
   <form id="chat-form" autocomplete="off">
     <input type="text" id="chat-text" maxlength="500"
            placeholder="say it &mdash; it disappears" autofocus>
@@ -72,6 +75,13 @@
           box.scrollTop = box.scrollHeight;
         }
         onlineEl.textContent = "🟢 " + d.online + " in the room";
+        var rn = document.getElementById("chat-roster-names");
+        rn.textContent = "";
+        (d.names || []).forEach(function (n) {
+          var div = document.createElement("div");
+          div.textContent = n;
+          rn.appendChild(div);
+        });
       })
       .catch(function () {});
   }

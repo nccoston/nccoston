@@ -593,7 +593,7 @@ CHAT_LOCK = threading.Lock()
 CHAT_MESSAGES = deque(maxlen=CHAT_MAX_MESSAGES)
 CHAT_NEXT_ID = [1]
 CHAT_LAST_SEND = {}   # user_id -> monotonic time of last message (rate limit)
-CHAT_PRESENCE = {}    # user_id -> monotonic time of last poll
+CHAT_PRESENCE = {}    # user_id -> (handle, monotonic time of last poll)
 
 
 @app.route("/chat")
@@ -609,12 +609,13 @@ def chat_messages():
     user = current_user()
     now = time.monotonic()
     with CHAT_LOCK:
-        CHAT_PRESENCE[user["id"]] = now
-        for uid in [u for u, t in CHAT_PRESENCE.items() if now - t > 120]:
+        CHAT_PRESENCE[user["id"]] = (user["handle"], now)
+        for uid in [u for u, (_, t) in CHAT_PRESENCE.items() if now - t > 120]:
             del CHAT_PRESENCE[uid]
-        online = sum(1 for t in CHAT_PRESENCE.values() if now - t < 30)
+        names = sorted((h for h, t in CHAT_PRESENCE.values() if now - t < 30),
+                       key=str.lower)
         msgs = [m for m in CHAT_MESSAGES if m["id"] > since]
-    return {"messages": msgs, "online": online}
+    return {"messages": msgs, "online": len(names), "names": names}
 
 
 @app.route("/chat/send", methods=["POST"])

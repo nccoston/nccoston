@@ -187,13 +187,28 @@ body.seal-bg::before {
 }
 :root[data-theme="dark"] body.seal-bg::before { opacity: 0.04; }
 
-.chat-wrap { max-width: 900px; }
+.chat-wrap { max-width: 1050px; }
+.chat-flex { display: flex; gap: 8px; margin-bottom: 8px; }
 #chat-messages {
+  flex: 1;
   height: 65vh;
   overflow-y: auto;
   border: 1px solid var(--border);
   padding: 8px 10px;
-  margin-bottom: 8px;
+}
+#chat-roster {
+  width: 130px;
+  height: 65vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+#chat-roster-names div { margin: 3px 0; }
+@media (max-width: 700px) {
+  .chat-flex { flex-direction: column; }
+  #chat-roster { width: auto; height: auto; max-height: 12vh; }
 }
 .chat-msg { margin: 3px 0; word-wrap: break-word; }
 .chat-time { font-size: 10px; color: var(--faint); }
