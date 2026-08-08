@@ -42,6 +42,7 @@ body {
 }
 a { color: var(--link); }
 a:visited { color: var(--link-visited); }
+a.read { color: var(--link-visited); }  /* read on another device */
 
 .header-block { font-size: 12px; }
 .header-block ol { margin: 4px 0 8px 24px; padding: 0; }
@@ -170,8 +171,10 @@ table.admin-table td, table.admin-table th {
   border: 1px solid var(--border);
   padding: 8px 14px;
   margin: 8px auto 12px;
-  max-width: 560px;
+  max-width: 760px;
   text-align: left;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 2px 16px;
 }
 .score-row { margin: 3px 0; font-size: 12px; }
 .score-tag { color: var(--faint); font-size: 10px; }

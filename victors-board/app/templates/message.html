@@ -6,7 +6,7 @@
   {% if node['id'] == msg['id'] %}
     <b class="current-msg">{{ node['subject'] }}</b>
   {% else %}
-    <a href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
+    <a{% if node['id'] in read_ids %} class="read"{% endif %} href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
   {% endif %}
   {%- if node.get('hof_at') %} &#127942;{% endif %}
   <span class="byline">- By <b>{{ node['author_name'] }}</b>

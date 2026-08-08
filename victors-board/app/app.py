@@ -248,6 +248,14 @@ def build_tree(rows):
     return roots
 
 
+def user_read_ids(db, u):
+    """Message ids this member has opened on any device (empty for guests)."""
+    if not u:
+        return set()
+    return {r["message_id"] for r in db.execute(
+        "SELECT message_id FROM message_reads WHERE user_id = ?", (u["id"],))}
+
+
 # ----------------------------------------------------------- traffic counts
 
 UNCOUNTED_PATHS = ("/static", "/uploads", "/chat/messages", "/favicon",
@@ -266,7 +274,14 @@ def count_traffic():
         f"{day}|{app.secret_key}|{client_ip()}|"
         f"{request.user_agent.string}".encode()).hexdigest()[:16]
     db = get_db()
-    db.execute("INSERT OR IGNORE INTO traffic (day) VALUES (?)", (day,))
+    new_day = db.execute(
+        "INSERT OR IGNORE INTO traffic (day) VALUES (?)", (day,)).rowcount
+    if new_day:
+        # daily housekeeping: read marks for old messages age out
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=60)) \
+            .replace(tzinfo=None).isoformat(timespec="seconds")
+        db.execute("DELETE FROM message_reads WHERE message_id IN"
+                   " (SELECT id FROM messages WHERE created_at < ?)", (cutoff,))
     db.execute("UPDATE traffic SET pageviews = pageviews + 1 WHERE day = ?", (day,))
     cur = db.execute(
         "INSERT OR IGNORE INTO traffic_visitors (day, visitor) VALUES (?, ?)",
@@ -311,7 +326,8 @@ def index(board_name):
             t["has_poll"] = t["id"] in poll_ids
             t["has_game"] = t["id"] in game_ids
     return render_template("index.html", threads=threads, page=page, pages=pages,
-                           board_name=board_name)
+                           board_name=board_name,
+                           read_ids=user_read_ids(db, current_user()))
 
 
 @app.route("/message/<int:message_id>")
@@ -366,7 +382,13 @@ def message(message_id):
     my_hof_vote = bool(u and db.execute(
         "SELECT 1 FROM hof_votes WHERE message_id = ? AND user_id = ?",
         (message_id, u["id"])).fetchone())
+    if u:
+        # cross-device read sync: this link shows as read on their other devices
+        db.execute("INSERT OR IGNORE INTO message_reads (user_id, message_id)"
+                   " VALUES (?, ?)", (u["id"], message_id))
+        db.commit()
     return render_template("message.html", msg=msg, thread=thread,
+                           read_ids=user_read_ids(db, u),
                            hof_votes=hof_votes, my_hof_vote=my_hof_vote,
                            hof_threshold=int(get_setting("hof_threshold") or 5),
                            reply_subject=reply_subject, poll=poll,
@@ -1000,6 +1022,7 @@ def admin():
             else:
                 # posts keep their author name; the handle becomes free again
                 db.execute("UPDATE messages SET user_id = NULL WHERE user_id = ?", (uid,))
+                db.execute("DELETE FROM message_reads WHERE user_id = ?", (uid,))
                 db.execute("DELETE FROM users WHERE id = ?", (uid,))
                 db.commit()
                 flash(f"Deleted account {target['handle']} (their posts remain, "
@@ -1145,6 +1168,7 @@ def delete_message(message_id):
                f"(SELECT id FROM games WHERE message_id IN ({marks}))", ids)
     db.execute(f"DELETE FROM games WHERE message_id IN ({marks})", ids)
     db.execute(f"DELETE FROM hof_votes WHERE message_id IN ({marks})", ids)
+    db.execute(f"DELETE FROM message_reads WHERE message_id IN ({marks})", ids)
     db.execute(f"DELETE FROM messages WHERE id IN ({marks})", ids)
     db.commit()
     flash(f"Deleted {len(ids)} message(s).")

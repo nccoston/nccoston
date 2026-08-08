@@ -68,6 +68,15 @@ CREATE TABLE IF NOT EXISTS traffic_visitors (
     UNIQUE(day, visitor)
 );
 
+-- Cross-device read sync: which message links a member has opened, so
+-- blue-vs-purple carries from phone to laptop. Rows for old messages are
+-- pruned daily; this is never displayed to anyone, admins included.
+CREATE TABLE IF NOT EXISTS message_reads (
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    message_id INTEGER NOT NULL REFERENCES messages(id),
+    PRIMARY KEY (user_id, message_id)
+) WITHOUT ROWID;
+
 -- Hall of Fame nominations: enough votes enshrines a post automatically
 CREATE TABLE IF NOT EXISTS hof_votes (
     id         INTEGER PRIMARY KEY,
