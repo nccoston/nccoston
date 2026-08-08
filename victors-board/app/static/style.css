@@ -166,6 +166,19 @@ table.admin-table td, table.admin-table th {
 }
 .poll-change summary { cursor: pointer; margin-top: 8px; }
 
+#live-scores {
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  margin: 8px auto 12px;
+  max-width: 560px;
+  text-align: left;
+}
+.score-row { margin: 3px 0; font-size: 12px; }
+.score-tag { color: var(--faint); font-size: 10px; }
+.score-status { color: var(--faint); font-size: 11px; font-style: italic; }
+.score-mich { font-weight: bold; }
+.score-live .score-status { color: var(--link); font-style: normal; }
+
 .game-form { margin: 8px 0; }
 .game-form input[type=number] {
   width: 60px;

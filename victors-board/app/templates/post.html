@@ -17,7 +17,7 @@
   <form class="board-form" method="post" enctype="multipart/form-data">
     <input type="hidden" name="board" value="{{ board }}">
     {% if board == 'scores' and not parent %}
-    <p class="hint">Posting to the <b>Scores Only</b> board.</p>
+    <p class="hint">Posting to the <b>Scores</b> board.</p>
     {% elif board == 'cards' and not parent %}
     <p class="hint">Posting to the <b>Cards</b> board.</p>
     {% endif %}

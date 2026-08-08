@@ -662,6 +662,58 @@ def leaderboard():
                            total_games=len(finished))
 
 
+# ------------------------------------------------------- live scoreboard
+
+SCOREBOARD_URLS = {
+    "CFB": "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
+    "CBB": "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard",
+}
+SCORE_CACHE = {"at": -999.0, "games": []}
+SCORE_LOCK = threading.Lock()
+STATE_ORDER = {"in": 0, "pre": 1, "post": 2}
+
+
+def fetch_scoreboards():
+    """Today's CFB/CBB slates from ESPN's public scoreboard feed."""
+    import requests
+    games = []
+    for sport, url in SCOREBOARD_URLS.items():
+        try:
+            data = requests.get(url, timeout=6).json()
+            for ev in data.get("events", []):
+                comp = ev["competitions"][0]
+                home = next(c for c in comp["competitors"]
+                            if c.get("homeAway") == "home")
+                away = next(c for c in comp["competitors"]
+                            if c.get("homeAway") == "away")
+                st = ev.get("status", {}).get("type", {})
+                games.append({
+                    "sport": sport,
+                    "away": away["team"].get("abbreviation", "?"),
+                    "home": home["team"].get("abbreviation", "?"),
+                    "away_score": away.get("score", ""),
+                    "home_score": home.get("score", ""),
+                    "status": st.get("shortDetail", ""),
+                    "state": st.get("state", "pre"),
+                })
+        except Exception:
+            continue  # one sport failing shouldn't blank the other
+    games.sort(key=lambda gm: STATE_ORDER.get(gm["state"], 3))
+    return games
+
+
+@app.route("/scores/live.json")
+def scores_live():
+    now = time.monotonic()
+    with SCORE_LOCK:
+        if now - SCORE_CACHE["at"] > 60:
+            fresh = fetch_scoreboards()
+            if fresh or not SCORE_CACHE["games"]:
+                SCORE_CACHE["games"] = fresh
+            SCORE_CACHE["at"] = now
+        return {"games": SCORE_CACHE["games"]}
+
+
 # ------------------------------------------------------------------- chat
 #
 # Deliberately memory-only: messages live in this process and nowhere else.

@@ -29,8 +29,45 @@
 
 {% block content %}
 {% if board_name == 'scores' %}
-<p class="page-row"><b>&mdash; Scores Only &mdash;</b> &middot;
+<p class="page-row"><b>&mdash; Scores &mdash;</b> &middot;
   <a href="{{ url_for('leaderboard') }}">Pick 'em Leaderboard</a></p>
+<div id="live-scores" style="display:none"></div>
+<script>
+(function () {
+  var box = document.getElementById("live-scores");
+  function render(games) {
+    box.textContent = "";
+    if (!games.length) { box.style.display = "none"; return; }
+    games.forEach(function (gm) {
+      var row = document.createElement("div");
+      row.className = "score-row" +
+        (gm.away === "MICH" || gm.home === "MICH" ? " score-mich" : "") +
+        (gm.state === "in" ? " score-live" : "");
+      var tag = document.createElement("span");
+      tag.className = "score-tag";
+      tag.textContent = "[" + gm.sport + "] ";
+      row.appendChild(tag);
+      var text = gm.away + " " + (gm.away_score || "") + " — " +
+                 gm.home + " " + (gm.home_score || "");
+      row.appendChild(document.createTextNode(text + "  "));
+      var st = document.createElement("span");
+      st.className = "score-status";
+      st.textContent = gm.status;
+      row.appendChild(st);
+      box.appendChild(row);
+    });
+    box.style.display = "block";
+  }
+  function poll() {
+    fetch("/scores/live.json")
+      .then(function (r) { return r.json(); })
+      .then(function (d) { render(d.games || []); })
+      .catch(function () {});
+  }
+  poll();
+  setInterval(poll, 60000);
+})();
+</script>
 {% elif board_name == 'cards' %}
 <p class="page-row"><b>&mdash; Cards &mdash;</b></p>
 {% endif %}
