@@ -27,7 +27,12 @@
   <div class="message-body">
     {{ msg['body'] | rendertext if msg['body'] }}
     {% if msg['image_url'] %}
+      {% if msg['image_url'].lower().endswith(('.mp4', '.mov', '.webm')) %}
+      <p><video controls playsinline preload="metadata" class="clip"
+           src="{{ msg['image_url'] }}"></video></p>
+      {% else %}
       <p><img src="{{ msg['image_url'] }}" alt=""></p>
+      {% endif %}
     {% endif %}
   </div>
 
@@ -159,9 +164,10 @@
     <label>Image URL <span class="hint">(optional — paste the URL of a picture)</span>
       <input type="text" name="image_url">
     </label>
-    <label>Or upload a picture <span class="hint">(jpg, png, gif, webp — or just
-      paste a screenshot anywhere on this page)</span>
-      <input type="file" name="image_file" accept="image/*">
+    <label>Or upload a picture or short video <span class="hint">(images, or
+      clips up to 16MB &asymp; 30-60s of phone video — or just paste a
+      screenshot anywhere on this page)</span>
+      <input type="file" name="image_file" accept="image/*,video/mp4,video/quicktime,video/webm">
     </label>
     <button type="submit">Post Reply</button>
   </form>

@@ -50,6 +50,7 @@ def now_utc_iso():
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+ALLOWED_VIDEO_EXT = {".mp4", ".mov", ".webm"}
 
 app = Flask(__name__)
 # behind Render's proxy: trust X-Forwarded-For so remote_addr is the real client
@@ -357,12 +358,15 @@ def save_uploaded_image():
     if not f or not f.filename:
         return None
     ext = Path(f.filename).suffix.lower()
-    if ext not in ALLOWED_IMAGE_EXT:
-        flash("Image uploads must be jpg, png, gif, or webp.")
+    if ext not in ALLOWED_IMAGE_EXT | ALLOWED_VIDEO_EXT:
+        flash("Uploads must be a picture (jpg, png, gif, webp) or a short "
+              "video clip (mp4, mov, webm).")
         return None
     name = secrets.token_hex(8) + ext
     path = UPLOAD_DIR / name
     f.save(path)
+    if ext in ALLOWED_VIDEO_EXT:
+        return url_for("uploads", filename=name)  # videos pass through as-is
     if ext != ".gif":
         try:
             from PIL import Image, ImageOps
@@ -387,6 +391,13 @@ def save_uploaded_image():
 @app.route("/uploads/<path:filename>")
 def uploads(filename):
     return send_from_directory(UPLOAD_DIR, filename)
+
+
+@app.errorhandler(413)
+def too_large(_e):
+    flash("That file is too big — 16MB max (roughly 30-60 seconds of phone "
+          "video). For longer clips, put it on YouTube and paste the link.")
+    return redirect(request.referrer or url_for("index", board_name="main"))
 
 
 # iOS and some browsers request these fixed root paths directly

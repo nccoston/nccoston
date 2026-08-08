@@ -101,6 +101,7 @@ ul.thread-list li { margin: 5px 0; }
 .message-box h2 { margin: 0 0 4px; font-size: 22px; }
 .message-body { margin: 12px 0; overflow-x: auto; }
 .message-body img { max-width: 100%; }
+video.clip { max-width: 100%; width: 560px; }
 
 form.board-form { max-width: 640px; margin: 12px 0; }
 form.board-form label { display: block; margin-top: 10px; font-weight: bold; }
