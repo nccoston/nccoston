@@ -167,14 +167,19 @@ table.admin-table td, table.admin-table th {
 }
 .poll-change summary { cursor: pointer; margin-top: 8px; }
 
-#live-scores {
+#live-scores-box {
   border: 1px solid var(--border);
-  padding: 8px 14px;
+  padding: 5px 14px 7px;
   margin: 8px auto 12px;
   max-width: 760px;
   text-align: left;
+}
+#live-scores-box summary { cursor: pointer; font-size: 12px; }
+#live-scores {
+  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 2px 16px;
+  padding-top: 5px;
 }
 .score-row { margin: 3px 0; font-size: 12px; }
 .score-tag { color: var(--faint); font-size: 10px; }

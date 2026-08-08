@@ -31,14 +31,27 @@
 {% if board_name == 'scores' %}
 <p class="page-row"><b>&mdash; Scores &mdash;</b> &middot;
   <a href="{{ url_for('leaderboard') }}">Pick 'em Leaderboard</a></p>
-<div id="live-scores" style="display:none"></div>
+<details id="live-scores-box" style="display:none">
+  <summary id="live-scores-summary">Live scoreboard</summary>
+  <div id="live-scores"></div>
+</details>
 <script>
 (function () {
+  var wrap = document.getElementById("live-scores-box");
+  var summary = document.getElementById("live-scores-summary");
   var box = document.getElementById("live-scores");
+  // collapsed by default; opening it sticks on this device
+  if (localStorage.getItem("scoresOpen") === "1") wrap.open = true;
+  wrap.addEventListener("toggle", function () {
+    localStorage.setItem("scoresOpen", wrap.open ? "1" : "");
+  });
   function render(games) {
     box.textContent = "";
-    if (!games.length) { box.style.display = "none"; return; }
+    if (!games.length) { wrap.style.display = "none"; return; }
+    var live = 0, mich = null;
     games.forEach(function (gm) {
+      if (gm.state === "in") live++;
+      if (!mich && gm.state === "in" && (gm.away === "MICH" || gm.home === "MICH")) mich = gm;
       var row = document.createElement("div");
       row.className = "score-row" +
         (gm.away === "MICH" || gm.home === "MICH" ? " score-mich" : "") +
@@ -56,7 +69,16 @@
       row.appendChild(st);
       box.appendChild(row);
     });
-    box.style.display = "grid";
+    var label = "Live scoreboard (" +
+      (live ? live + " live of " + games.length + " games" : games.length + " games") + ")";
+    if (mich) {
+      var home = mich.home === "MICH";
+      label += " — MICH " + (home ? mich.home_score : mich.away_score) +
+               "–" + (home ? mich.away_score : mich.home_score) +
+               " vs " + (home ? mich.away : mich.home);
+    }
+    summary.textContent = label;
+    wrap.style.display = "block";
   }
   function poll() {
     fetch("/scores/live.json")
