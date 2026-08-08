@@ -37,11 +37,13 @@
 
 <p class="links-row">{{ links_html | safe }} ||
   <a href="{{ url_for('index', board_name='scores') }}">Scores Only</a> ||
+  <a href="{{ url_for('index', board_name='cards') }}">Lods' Card Site</a> ||
   <a href="{{ url_for('chat') }}">Chat</a></p>
 
-{% set on_scores = request.path.startswith('/scores') %}
+{% set cur_board = 'scores' if request.path.startswith('/scores')
+   else ('cards' if request.path.startswith('/cards') else None) %}
 <p class="nav-row post-row">
-  <b><a href="{{ url_for('post', board='scores' if on_scores else None) }}">Post a New Message</a></b>
+  <b><a href="{{ url_for('post', board=cur_board) }}">Post a New Message</a></b>
 </p>
 <p class="nav-row">
   <a href="{{ url_for('index', board_name='main') }}">Home</a> |

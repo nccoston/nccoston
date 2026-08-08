@@ -18,6 +18,8 @@
     <input type="hidden" name="board" value="{{ board }}">
     {% if board == 'scores' and not parent %}
     <p class="hint">Posting to the <b>Scores Only</b> board.</p>
+    {% elif board == 'cards' and not parent %}
+    <p class="hint">Posting to <b>Lods' Card Site</b>.</p>
     {% endif %}
     <label>Subject
       <span class="hint">(use "*" or "nm" for subject-only posts)</span>

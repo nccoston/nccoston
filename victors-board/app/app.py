@@ -38,7 +38,8 @@ DB_PATH = DATA_DIR / "board.db"
 SECRET_FILE = DATA_DIR / "secret_key"
 
 THREADS_PER_PAGE = 80
-BOARDS = ("main", "scores")
+BOARDS = ("main", "scores", "cards")
+BOARD_LABELS = {"scores": "Scores", "cards": "Cards"}
 BOARD_TZ = ZoneInfo(os.environ.get("BOARD_TZ", "America/Detroit"))
 
 
@@ -258,6 +259,7 @@ def count_traffic():
 
 @app.route("/", defaults={"board_name": "main"})
 @app.route("/scores", defaults={"board_name": "scores"})
+@app.route("/cards", defaults={"board_name": "cards"})
 def index(board_name):
     page = max(1, request.args.get("page", 1, type=int))
     db = get_db()
@@ -696,7 +698,8 @@ def rss():
                 "%a, %d %b %Y %H:%M:%S +0000")
         except ValueError:
             pub = ""
-        title = ("[Scores] " if r["board"] == "scores" else "") + r["subject"]
+        label = BOARD_LABELS.get(r["board"])
+        title = (f"[{label}] " if label else "") + r["subject"]
         desc = f"By {r['author_name']}."
         if r["body"]:
             desc += " " + render_post(r["body"])

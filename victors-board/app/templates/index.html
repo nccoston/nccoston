@@ -30,6 +30,8 @@
 {% if board_name == 'scores' %}
 <p class="page-row"><b>&mdash; Scores Only &mdash;</b> &middot;
   <a href="{{ url_for('leaderboard') }}">Pick 'em Leaderboard</a></p>
+{% elif board_name == 'cards' %}
+<p class="page-row"><b>&mdash; Lods' Card Site &mdash;</b></p>
 {% endif %}
 {{ page_row() }}
 
@@ -40,6 +42,6 @@
 {{ page_row() }}
 {% else %}
 <p style="text-align:center">No messages yet.
-  {% if user %}<a href="{{ url_for('post', board='scores' if board_name == 'scores' else None) }}">Post the first one.</a>{% endif %}</p>
+  {% if user %}<a href="{{ url_for('post', board=board_name if board_name != 'main' else None) }}">Post the first one.</a>{% endif %}</p>
 {% endif %}
 {% endblock %}
