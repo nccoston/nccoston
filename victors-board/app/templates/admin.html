@@ -26,6 +26,9 @@
       <input type="checkbox" name="registration_open" {% if registration_open %}checked{% endif %}>
       Registration open
     </label>
+    <label>Hall of Fame votes needed to enshrine
+      <input type="text" name="hof_threshold" value="{{ hof_threshold }}" style="width:60px">
+    </label>
     <button type="submit">Save settings</button>
   </form>
 

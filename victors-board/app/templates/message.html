@@ -8,6 +8,7 @@
   {% else %}
     <a href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
   {% endif %}
+  {%- if node.get('hof_at') %} &#127942;{% endif %}
   <span class="byline">- By <b>{{ node['author_name'] }}</b>
     <i>{{ node['created_at'] | boardtime }}</i></span>
   {% if node['children'] %}
@@ -22,6 +23,7 @@
 <div class="message-box">
   <h2>{{ msg['subject'] }}</h2>
   <p class="byline">Posted on {{ msg['created_at'] | boardtime }} by <b>{{ msg['author_name'] }}</b>
+    {% if msg['hof_at'] %}<a href="{{ url_for('hof') }}" title="Hall of Fame">&#127942;</a>{% endif %}
     {% if msg['edited_at'] %}<span class="legacy-tag">(edited {{ msg['edited_at'] | boardtime }})</span>{% endif %}
     {% if user and user['is_admin'] and msg['ip_address'] %}<span class="legacy-tag">[IP: {{ msg['ip_address'] }}]</span>{% endif %}</p>
   <div class="message-body">
@@ -125,12 +127,23 @@
   {% endif %}
 
   <p>
+    {% if user and not msg['hof_at'] %}
+    <form class="inline-form" method="post"
+          action="{{ url_for('hof_nominate', message_id=msg['id']) }}">
+      <button type="submit">{{ 'Withdraw HOF nomination' if my_hof_vote
+        else '🏆 Nominate for HOF' }}{% if hof_votes %} ({{ hof_votes }}/{{ hof_threshold }}){% endif %}</button>
+    </form> |
+    {% endif %}
     {% if user and (user['id'] == msg['user_id'] or user['is_admin']) %}
     <a href="{{ url_for('edit', message_id=msg['id']) }}">Edit Post</a> |
     {% endif %}
     <a href="{{ url_for('index', board_name=msg['board']) }}"
        onclick="if (history.length > 1 && document.referrer.indexOf(location.host) !== -1) { history.back(); return false; }">Back to the board</a>
     {% if user and user['is_admin'] %}
+    <form class="inline-form" method="post"
+          action="{{ url_for('hof_toggle', message_id=msg['id']) }}">
+      <button type="submit">{{ 'Un-enshrine' if msg['hof_at'] else 'Enshrine now (admin)' }}</button>
+    </form>
     {% if not msg['parent_id'] %}
     <form class="inline-form" method="post"
           action="{{ url_for('pin_message', message_id=msg['id']) }}">

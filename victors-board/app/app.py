@@ -72,6 +72,7 @@ else:
 DEFAULT_SETTINGS = {
     "site_title": "The Victors",
     "registration_open": "1",
+    "hof_threshold": "5",
     "header_html": (
         "<b>Rules:</b>"
         "<ol>"
@@ -118,7 +119,8 @@ def init_db():
                       "ALTER TABLE messages ADD COLUMN ip_address TEXT",
                       "ALTER TABLE messages ADD COLUMN board TEXT NOT NULL DEFAULT 'main'",
                       "ALTER TABLE messages ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
-                      "ALTER TABLE users ADD COLUMN session_token TEXT"):
+                      "ALTER TABLE users ADD COLUMN session_token TEXT",
+                      "ALTER TABLE messages ADD COLUMN hof_at TEXT"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -352,7 +354,15 @@ def message(message_id):
                         + abs(p["pick_b"] - game["final_b"]))
             best = min(miss(p) for p in game_picks)
             game_winners = [p["h"] for p in game_picks if miss(p) == best]
+    hof_votes = db.execute("SELECT COUNT(*) c FROM hof_votes WHERE message_id = ?",
+                           (message_id,)).fetchone()["c"]
+    u = current_user()
+    my_hof_vote = bool(u and db.execute(
+        "SELECT 1 FROM hof_votes WHERE message_id = ? AND user_id = ?",
+        (message_id, u["id"])).fetchone())
     return render_template("message.html", msg=msg, thread=thread,
+                           hof_votes=hof_votes, my_hof_vote=my_hof_vote,
+                           hof_threshold=int(get_setting("hof_threshold") or 5),
                            reply_subject=reply_subject, poll=poll,
                            poll_options=poll_options, my_vote=my_vote,
                            total_votes=total_votes, game=game,
@@ -902,6 +912,9 @@ def admin():
             set_setting("links_html", request.form.get("links_html", ""))
             set_setting("registration_open",
                         "1" if request.form.get("registration_open") else "0")
+            threshold = request.form.get("hof_threshold", type=int)
+            if threshold and 1 <= threshold <= 99:
+                set_setting("hof_threshold", str(threshold))
             flash("Settings saved.")
         elif action == "create_user":
             handle = request.form.get("handle", "").strip()
@@ -970,7 +983,67 @@ def admin():
         "upload_count": len(upload_files),
     }
     return render_template("admin.html", users=users, counts=counts, disk=disk,
+                           hof_threshold=get_setting("hof_threshold"),
                            registration_open=get_setting("registration_open") == "1")
+
+
+@app.route("/hof")
+def hof():
+    posts = get_db().execute(
+        "SELECT * FROM messages WHERE hof_at IS NOT NULL"
+        " ORDER BY hof_at DESC").fetchall()
+    return render_template("hof.html", posts=posts)
+
+
+@app.route("/hof/nominate/<int:message_id>", methods=["POST"])
+@login_required
+def hof_nominate(message_id):
+    db = get_db()
+    msg = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if msg is None:
+        abort(404)
+    user = current_user()
+    existing = db.execute(
+        "SELECT id FROM hof_votes WHERE message_id = ? AND user_id = ?",
+        (message_id, user["id"])).fetchone()
+    if existing:
+        db.execute("DELETE FROM hof_votes WHERE id = ?", (existing["id"],))
+        flash("Nomination withdrawn.")
+    else:
+        db.execute(
+            "INSERT INTO hof_votes (message_id, user_id, created_at) VALUES (?, ?, ?)",
+            (message_id, user["id"], now_utc_iso()))
+        count = db.execute("SELECT COUNT(*) c FROM hof_votes WHERE message_id = ?",
+                           (message_id,)).fetchone()["c"]
+        threshold = int(get_setting("hof_threshold") or 5)
+        if count >= threshold and not msg["hof_at"]:
+            db.execute("UPDATE messages SET hof_at = ? WHERE id = ?",
+                       (now_utc_iso(), message_id))
+            flash("🏆 THE PEOPLE HAVE SPOKEN — this post is enshrined in the "
+                  "Hall of Fame.")
+        else:
+            flash(f"🏆 Nominated for the Hall of Fame ({count} of {threshold} "
+                  f"votes needed).")
+    db.commit()
+    return redirect(url_for("message", message_id=message_id))
+
+
+@app.route("/admin/hof/<int:message_id>", methods=["POST"])
+@admin_required
+def hof_toggle(message_id):
+    db = get_db()
+    msg = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if msg is None:
+        abort(404)
+    if msg["hof_at"]:
+        db.execute("UPDATE messages SET hof_at = NULL WHERE id = ?", (message_id,))
+        flash("Removed from the Hall of Fame.")
+    else:
+        db.execute("UPDATE messages SET hof_at = ? WHERE id = ?",
+                   (now_utc_iso(), message_id))
+        flash("🏆 Enshrined in the Hall of Fame.")
+    db.commit()
+    return redirect(url_for("message", message_id=message_id))
 
 
 @app.route("/admin/pin/<int:message_id>", methods=["POST"])
@@ -1013,6 +1086,7 @@ def delete_message(message_id):
     db.execute(f"DELETE FROM game_picks WHERE game_id IN "
                f"(SELECT id FROM games WHERE message_id IN ({marks}))", ids)
     db.execute(f"DELETE FROM games WHERE message_id IN ({marks})", ids)
+    db.execute(f"DELETE FROM hof_votes WHERE message_id IN ({marks})", ids)
     db.execute(f"DELETE FROM messages WHERE id IN ({marks})", ids)
     db.commit()
     flash(f"Deleted {len(ids)} message(s).")

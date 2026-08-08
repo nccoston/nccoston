@@ -144,6 +144,12 @@ table.admin-table td, table.admin-table th {
 .legacy-tag { font-size: 10px; color: var(--faint); }
 .poll-tag { font-size: 10px; color: var(--link); font-weight: bold; }
 
+.hof-entry {
+  border: 2px solid #FFCB05;
+  padding: 12px 16px;
+  margin: 16px 0;
+}
+
 .poll-box {
   border: 1px solid var(--border);
   padding: 10px 14px;

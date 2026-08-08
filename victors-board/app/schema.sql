@@ -68,6 +68,15 @@ CREATE TABLE IF NOT EXISTS traffic_visitors (
     UNIQUE(day, visitor)
 );
 
+-- Hall of Fame nominations: enough votes enshrines a post automatically
+CREATE TABLE IF NOT EXISTS hof_votes (
+    id         INTEGER PRIMARY KEY,
+    message_id INTEGER NOT NULL REFERENCES messages(id),
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL,
+    UNIQUE(message_id, user_id)
+);
+
 -- Pick 'em: score-prediction games on the Scores board
 CREATE TABLE IF NOT EXISTS games (
     id         INTEGER PRIMARY KEY,
