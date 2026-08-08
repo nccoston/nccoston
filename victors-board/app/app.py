@@ -47,6 +47,12 @@ def now_utc_iso():
     """Timestamps are stored as naive UTC; displayed in the board timezone."""
     return datetime.now(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
 
+
+def client_ip():
+    """The visitor's real address: Cloudflare fronts the site and supplies it
+    in CF-Connecting-IP; remote_addr is just the relay."""
+    return request.headers.get("CF-Connecting-IP") or request.remote_addr
+
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
@@ -257,7 +263,7 @@ def count_traffic():
         return
     day = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%Y-%m-%d")
     visitor = hashlib.sha256(
-        f"{day}|{app.secret_key}|{request.remote_addr}|"
+        f"{day}|{app.secret_key}|{client_ip()}|"
         f"{request.user_agent.string}".encode()).hexdigest()[:16]
     db = get_db()
     db.execute("INSERT OR IGNORE INTO traffic (day) VALUES (?)", (day,))
@@ -526,7 +532,7 @@ def post(reply_to=None):
                 (parent["thread_id"] if parent else None,
                  parent["id"] if parent else None,
                  subject, body or None, image_url or None,
-                 user["handle"], user["id"], now, request.remote_addr, board))
+                 user["handle"], user["id"], now, client_ip(), board))
             new_id = cur.lastrowid
             flash("Posted! Go Blue!", "goblue")
             if parent is None:
