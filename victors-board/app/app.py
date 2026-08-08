@@ -365,8 +365,11 @@ def save_uploaded_image():
     f.save(path)
     if ext != ".gif":
         try:
-            from PIL import Image
+            from PIL import Image, ImageOps
             img = Image.open(path)
+            # apply the EXIF orientation flag so portrait phone photos stay
+            # upright after recompression strips the metadata
+            img = ImageOps.exif_transpose(img)
             img.thumbnail((1600, 1600))
             if img.mode in ("RGBA", "LA", "P"):
                 img.save(path)  # keep transparency in original format
