@@ -37,7 +37,7 @@
 
 <p class="links-row">{{ links_html | safe }} ||
   <a href="{{ url_for('index', board_name='scores') }}">Scores Only</a> ||
-  <a href="{{ url_for('index', board_name='cards') }}">Lods' Card Site</a> ||
+  <a href="{{ url_for('index', board_name='cards') }}">Cards</a> ||
   <a href="{{ url_for('chat') }}">Chat</a></p>
 
 {% set cur_board = 'scores' if request.path.startswith('/scores')
