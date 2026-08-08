@@ -117,7 +117,8 @@ def init_db():
     for migration in ("ALTER TABLE messages ADD COLUMN edited_at TEXT",
                       "ALTER TABLE messages ADD COLUMN ip_address TEXT",
                       "ALTER TABLE messages ADD COLUMN board TEXT NOT NULL DEFAULT 'main'",
-                      "ALTER TABLE messages ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0"):
+                      "ALTER TABLE messages ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
+                      "ALTER TABLE users ADD COLUMN session_token TEXT"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -147,7 +148,14 @@ def current_user():
     uid = session.get("user_id")
     if uid is None:
         return None
-    return get_db().execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+    row = get_db().execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+    if row is None:
+        return None
+    # a rotated session_token (set on password reset) invalidates any session
+    # that doesn't carry the current one — kicks stale logins immediately
+    if row["session_token"] and session.get("token") != row["session_token"]:
+        return None
+    return row
 
 
 def login_required(f):
@@ -862,6 +870,8 @@ def login():
             else:
                 session.clear()
                 session["user_id"] = row["id"]
+                if row["session_token"]:
+                    session["token"] = row["session_token"]
                 session.permanent = True
                 target = request.args.get("next") or url_for("index", board_name="main")
                 if not target.startswith("/"):
@@ -942,11 +952,14 @@ def admin():
                 flash(f"{target['handle']} is now an admin.")
             elif action == "reset_password":
                 new_pw = secrets.token_urlsafe(8)
-                db.execute("UPDATE users SET password_hash = ? WHERE id = ?",
-                           (generate_password_hash(new_pw), uid))
+                # rotating the session token logs the user out everywhere
+                db.execute("UPDATE users SET password_hash = ?, session_token = ?"
+                           " WHERE id = ?",
+                           (generate_password_hash(new_pw), secrets.token_hex(16), uid))
                 db.commit()
                 flash(f"New password for {target['handle']}: {new_pw} "
-                      f"(share it with them privately)")
+                      f"(share it with them privately). Their existing logins "
+                      f"were signed out.")
         return redirect(url_for("admin"))
     users = db.execute("SELECT * FROM users ORDER BY handle COLLATE NOCASE").fetchall()
     counts = db.execute("SELECT COUNT(*) total FROM messages").fetchone()
