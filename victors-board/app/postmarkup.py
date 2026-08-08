@@ -24,6 +24,8 @@ YOUTUBE_RE = re.compile(
     r"youtube\.com/shorts/)([A-Za-z0-9_-]{6,20})")
 TWEET_RE = re.compile(
     r"https?://(?:www\.)?(?:twitter\.com|x\.com)/[A-Za-z0-9_]+/status/\d+\S*")
+STREAMABLE_RE = re.compile(
+    r"https?://(?:www\.)?streamable\.com/(?:e/)?([A-Za-z0-9]+)")
 
 
 def _linkify(url):
@@ -38,6 +40,12 @@ def _linkify(url):
     if TWEET_RE.match(url):
         return (f'<blockquote class="twitter-tweet">'
                 f'<a href="{esc}" rel="nofollow">{escape(url)}</a></blockquote>')
+    m = STREAMABLE_RE.match(url)
+    if m:
+        return (f'<div class="yt-embed"><iframe '
+                f'src="https://streamable.com/e/{m.group(1)}" '
+                f'loading="lazy" allowfullscreen></iframe></div>'
+                f'<a href="{esc}" rel="nofollow">{escape(url)}</a>')
     return f'<a href="{esc}" rel="nofollow">{escape(url)}</a>'
 
 

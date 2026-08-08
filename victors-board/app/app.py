@@ -55,7 +55,12 @@ ALLOWED_VIDEO_EXT = {".mp4", ".mov", ".webm"}
 app = Flask(__name__)
 # behind Render's proxy: trust X-Forwarded-For so remote_addr is the real client
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # uploaded image cap
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # upload cap (videos)
+LOCAL_VIDEO_CAP = 16 * 1024 * 1024  # fallback cap when hosting clips ourselves
+
+# with Streamable credentials set, video uploads forward there instead of disk
+STREAMABLE_EMAIL = os.environ.get("STREAMABLE_EMAIL")
+STREAMABLE_PASSWORD = os.environ.get("STREAMABLE_PASSWORD")
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)  # stay logged in
 if os.environ.get("SECRET_KEY"):
     app.secret_key = os.environ["SECRET_KEY"]
@@ -347,6 +352,22 @@ def message(message_id):
                            game_winners=game_winners)
 
 
+def upload_to_streamable(path):
+    """Forward a clip to Streamable; returns its page URL."""
+    import requests
+    with open(path, "rb") as fh:
+        resp = requests.post(
+            "https://api.streamable.com/upload",
+            auth=(STREAMABLE_EMAIL, STREAMABLE_PASSWORD),
+            files={"file": (path.name, fh)},
+            timeout=180)
+    resp.raise_for_status()
+    code = resp.json().get("shortcode")
+    if not code:
+        raise ValueError("no shortcode in Streamable response")
+    return f"https://streamable.com/{code}"
+
+
 def save_uploaded_image():
     """Store an uploaded picture on the data disk; return its serving path.
 
@@ -366,7 +387,27 @@ def save_uploaded_image():
     path = UPLOAD_DIR / name
     f.save(path)
     if ext in ALLOWED_VIDEO_EXT:
-        return url_for("uploads", filename=name)  # videos pass through as-is
+        if STREAMABLE_EMAIL and STREAMABLE_PASSWORD:
+            try:
+                url = upload_to_streamable(path)
+                path.unlink(missing_ok=True)
+                return url
+            except Exception:
+                if path.stat().st_size <= LOCAL_VIDEO_CAP:
+                    flash("The video service hiccuped — hosted this clip on "
+                          "the board instead.")
+                    return url_for("uploads", filename=name)
+                path.unlink(missing_ok=True)
+                flash("The video service isn't responding and this clip is too "
+                      "big to host here — try again later, or put it on "
+                      "YouTube and paste the link.")
+                return None
+        if path.stat().st_size > LOCAL_VIDEO_CAP:
+            path.unlink(missing_ok=True)
+            flash("Clips over 16MB need the video service, which isn't set up "
+                  "— put it on YouTube and paste the link.")
+            return None
+        return url_for("uploads", filename=name)
     if ext != ".gif":
         try:
             from PIL import Image, ImageOps
@@ -395,8 +436,8 @@ def uploads(filename):
 
 @app.errorhandler(413)
 def too_large(_e):
-    flash("That file is too big — 16MB max (roughly 30-60 seconds of phone "
-          "video). For longer clips, put it on YouTube and paste the link.")
+    flash("That file is too big — 100MB max. For anything bigger, put it on "
+          "YouTube and paste the link.")
     return redirect(request.referrer or url_for("index", board_name="main"))
 
 

@@ -27,7 +27,11 @@
   <div class="message-body">
     {{ msg['body'] | rendertext if msg['body'] }}
     {% if msg['image_url'] %}
-      {% if msg['image_url'].lower().endswith(('.mp4', '.mov', '.webm')) %}
+      {% if msg['image_url'].startswith('https://streamable.com/') %}
+      <div class="yt-embed"><iframe
+        src="https://streamable.com/e/{{ msg['image_url'].rsplit('/', 1)[1] }}"
+        loading="lazy" allowfullscreen></iframe></div>
+      {% elif msg['image_url'].lower().endswith(('.mp4', '.mov', '.webm')) %}
       <p><video controls playsinline preload="metadata" class="clip"
            src="{{ msg['image_url'] }}"></video></p>
       {% else %}
