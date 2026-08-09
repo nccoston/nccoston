@@ -177,6 +177,7 @@ table.admin-table td, table.admin-table th {
 .footer a { color: var(--faint); }
 .legacy-tag { font-size: 10px; color: var(--faint); }
 .poll-tag { font-size: 10px; color: var(--link); font-weight: bold; }
+.chat-sys { color: var(--faint); font-style: italic; text-align: center; }
 
 .hof-entry {
   border: 2px solid #FFCB05;

@@ -747,6 +747,7 @@ CHAT_MAX_MESSAGES = 200
 CHAT_LOCK = threading.Lock()
 CHAT_MESSAGES = deque(maxlen=CHAT_MAX_MESSAGES)
 CHAT_NEXT_ID = [1]
+CHAT_EPOCH = [1]      # bumped when an admin clears the room; clients wipe on change
 CHAT_LAST_SEND = {}   # user_id -> monotonic time of last message (rate limit)
 CHAT_PRESENCE = {}    # user_id -> (handle, monotonic time of last poll)
 
@@ -770,7 +771,9 @@ def chat_messages():
         names = sorted((h for h, t in CHAT_PRESENCE.values() if now - t < 30),
                        key=str.lower)
         msgs = [m for m in CHAT_MESSAGES if m["id"] > since]
-    return {"messages": msgs, "online": len(names), "names": names}
+        epoch = CHAT_EPOCH[0]
+    return {"messages": msgs, "online": len(names), "names": names,
+            "epoch": epoch}
 
 
 @app.route("/chat/send", methods=["POST"])
@@ -793,6 +796,26 @@ def chat_send():
                     .strftime("%I:%M %p").lstrip("0"),
         })
         CHAT_NEXT_ID[0] += 1
+    return {"ok": True}
+
+
+@app.route("/chat/clear", methods=["POST"])
+@login_required
+def chat_clear():
+    user = current_user()
+    if not user["is_admin"]:
+        abort(403)
+    with CHAT_LOCK:
+        CHAT_MESSAGES.clear()
+        CHAT_MESSAGES.append({
+            "id": CHAT_NEXT_ID[0],
+            "sys": True,
+            "text": f"— the room was cleared by {user['handle']} —",
+            "time": datetime.now(timezone.utc).astimezone(BOARD_TZ)
+                    .strftime("%I:%M %p").lstrip("0"),
+        })
+        CHAT_NEXT_ID[0] += 1
+        CHAT_EPOCH[0] += 1
     return {"ok": True}
 
 
