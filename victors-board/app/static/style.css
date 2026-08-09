@@ -14,6 +14,7 @@
   --success-border: #2a7d2a;
   --input-bg: #fff;
   --input-text: #000;
+  --btn-bg: #efefef;
 }
 :root[data-theme="dark"] {
   --bg: #1a1a1b;
@@ -31,6 +32,7 @@
   --success-border: #5cb85c;
   --input-bg: #2a2a2b;
   --input-text: #ddd;
+  --btn-bg: #333;
 }
 
 body {
@@ -43,6 +45,26 @@ body {
 a { color: var(--link); }
 a:visited { color: var(--link-visited); }
 a.read { color: var(--link-visited); }  /* read on another device */
+.nb { white-space: nowrap; }
+
+/* one button look on every platform (iOS renders bare buttons as blue pills) */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--btn-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  body { margin: 12px 8px; }
+  .links-row, .nav-row { font-size: 12px; }
+}
 
 .header-block { font-size: 12px; }
 .header-block ol { margin: 4px 0 8px 24px; padding: 0; }
@@ -133,7 +155,17 @@ table.admin-table td, table.admin-table th {
   font-size: 12px;
 }
 .inline-form { display: inline; }
-.inline-form button { font-size: 11px; }
+/* inline actions read as links, matching Edit Post / Back to the board */
+.inline-form button {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--link);
+  text-decoration: underline;
+  white-space: nowrap;
+}
 
 .footer {
   margin-top: 40px;

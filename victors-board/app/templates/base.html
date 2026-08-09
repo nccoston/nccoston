@@ -35,11 +35,11 @@
 
 <h1 class="board-title"><a href="{{ url_for('index', board_name='main') }}">{{ site_title }}</a></h1>
 
-<p class="links-row">{{ links_html | safe }} ||
-  <a href="{{ url_for('index', board_name='scores') }}">Scores</a> ||
-  <a href="{{ url_for('index', board_name='cards') }}">Cards</a> ||
-  <a href="{{ url_for('chat') }}">Chat</a> ||
-  <a href="{{ url_for('hof') }}">HOF</a></p>
+<p class="links-row">{{ links_html | safe }}
+  <span class="nb">|| <a href="{{ url_for('index', board_name='scores') }}">Scores</a></span>
+  <span class="nb">|| <a href="{{ url_for('index', board_name='cards') }}">Cards</a></span>
+  <span class="nb">|| <a href="{{ url_for('chat') }}">Chat</a></span>
+  <span class="nb">|| <a href="{{ url_for('hof') }}">HOF</a></span></p>
 
 {% set cur_board = 'scores' if request.path.startswith('/scores')
    else ('cards' if request.path.startswith('/cards') else None) %}
@@ -47,16 +47,16 @@
   <b><a href="{{ url_for('post', board=cur_board) }}">Post a New Message</a></b>
 </p>
 <p class="nav-row">
-  <a href="{{ url_for('index', board_name='main') }}">Home</a> |
-  <a href="{{ url_for('search') }}">Search</a> |
+  <a href="{{ url_for('index', board_name='main') }}">Home</a>
+  <span class="nb">| <a href="{{ url_for('search') }}">Search</a></span>
   {% if user %}
-    <a href="{{ url_for('logout') }}">Logout</a> [ {{ user['handle'] }} ]
-    {% if user['is_admin'] %} | <a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+    <span class="nb">| <a href="{{ url_for('logout') }}">Logout</a> [ {{ user['handle'] }} ]</span>
+    {% if user['is_admin'] %}<span class="nb">| <a href="{{ url_for('admin') }}">Admin</a></span>{% endif %}
   {% else %}
-    <a href="{{ url_for('login') }}">Login</a> |
-    <a href="{{ url_for('register') }}">Register</a>
+    <span class="nb">| <a href="{{ url_for('login') }}">Login</a></span>
+    <span class="nb">| <a href="{{ url_for('register') }}">Register</a></span>
   {% endif %}
-  | <a href="#" id="theme-toggle">Dark Mode</a>
+  <span class="nb">| <a href="#" id="theme-toggle">Dark Mode</a></span>
 </p>
 <script>
 (function () {
