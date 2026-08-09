@@ -14,7 +14,6 @@
   --success-border: #2a7d2a;
   --input-bg: #fff;
   --input-text: #000;
-  --btn-bg: #efefef;
 }
 :root[data-theme="dark"] {
   --bg: #1a1a1b;
@@ -32,7 +31,6 @@
   --success-border: #5cb85c;
   --input-bg: #2a2a2b;
   --input-text: #ddd;
-  --btn-bg: #333;
 }
 
 body {
@@ -47,17 +45,19 @@ a:visited { color: var(--link-visited); }
 a.read { color: var(--link-visited); }  /* read on another device */
 .nb { white-space: nowrap; }
 
-/* one button look on every platform (iOS renders bare buttons as blue pills) */
+/* one button look on every platform (iOS renders bare buttons as blue pills):
+   blue with maize text, matching the Go Blue flash banner */
 button {
   -webkit-appearance: none;
   appearance: none;
   font-family: inherit;
   font-size: 13px;
-  background: var(--btn-bg);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: #00274C;
+  color: #FFCB05;
+  border: 1px solid #FFCB05;
   border-radius: 3px;
   padding: 3px 10px;
+  font-weight: bold;
   cursor: pointer;
 }
 
