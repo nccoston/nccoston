@@ -79,6 +79,7 @@ DEFAULT_SETTINGS = {
     "site_title": "The Victors",
     "registration_open": "1",
     "hof_threshold": "5",
+    "podcast_channel_id": "UCHqmAEJVsfJizpN8wHLI05Q",
     "header_html": (
         "<b>Rules:</b>"
         "<ol>"
@@ -327,6 +328,7 @@ def index(board_name):
             t["has_game"] = t["id"] in game_ids
     return render_template("index.html", threads=threads, page=page, pages=pages,
                            board_name=board_name,
+                           pod=pod_box() if board_name == "main" else None,
                            read_ids=user_read_ids(db, current_user()))
 
 
@@ -724,6 +726,63 @@ def fetch_scoreboards():
     return games
 
 
+# ---------------------------------------------------------------- pod day
+#
+# The Victors Pod (Nikos & gbmcq) publishes to YouTube every Wednesday.
+# The channel's built-in RSS feed tells us the newest upload; the homepage
+# shows a collapsed player only on Wednesdays (board time) and only when
+# the episode is fresh, so a skipped week means no box at all.
+
+POD_FEED = "https://www.youtube.com/feeds/videos.xml?channel_id={cid}"
+POD_CACHE = {"at": -1e9, "video": None}
+POD_LOCK = threading.Lock()
+
+
+def fetch_latest_pod():
+    """Newest upload on the pod channel: dict(video_id, title, published)."""
+    import requests
+    import xml.etree.ElementTree as ET
+    cid = (get_setting("podcast_channel_id") or "").strip()
+    if not cid:
+        return None
+    try:
+        raw = requests.get(POD_FEED.format(cid=cid), timeout=8).text
+        root = ET.fromstring(raw)
+        ns = {"a": "http://www.w3.org/2005/Atom",
+              "yt": "http://www.youtube.com/xml/schemas/2015"}
+        best = None
+        for entry in root.findall("a:entry", ns):
+            vid = entry.findtext("yt:videoId", "", ns)
+            pub = entry.findtext("a:published", "", ns)
+            if not vid or not pub:
+                continue
+            when = datetime.fromisoformat(pub)
+            if best is None or when > best["published"]:
+                best = {"video_id": vid,
+                        "title": entry.findtext("a:title", "", ns),
+                        "published": when}
+        return best
+    except Exception:
+        return None
+
+
+def pod_box():
+    """The homepage pod box, or None. Strictly Wednesdays, board time."""
+    if datetime.now(timezone.utc).astimezone(BOARD_TZ).weekday() != 2:
+        return None
+    now = time.monotonic()
+    with POD_LOCK:
+        if now - POD_CACHE["at"] > 6 * 3600:
+            POD_CACHE["video"] = fetch_latest_pod()
+            POD_CACHE["at"] = now
+        video = POD_CACHE["video"]
+    if not video:
+        return None
+    if datetime.now(timezone.utc) - video["published"] > timedelta(hours=48):
+        return None   # no fresh episode this week
+    return video
+
+
 @app.route("/scores/live.json")
 def scores_live():
     now = time.monotonic()
@@ -1018,6 +1077,8 @@ def admin():
             threshold = request.form.get("hof_threshold", type=int)
             if threshold and 1 <= threshold <= 99:
                 set_setting("hof_threshold", str(threshold))
+            set_setting("podcast_channel_id",
+                        request.form.get("podcast_channel_id", "").strip())
             flash("Settings saved.")
         elif action == "create_user":
             handle = request.form.get("handle", "").strip()
@@ -1088,6 +1149,7 @@ def admin():
     }
     return render_template("admin.html", users=users, counts=counts, disk=disk,
                            hof_threshold=get_setting("hof_threshold"),
+                           podcast_channel_id=get_setting("podcast_channel_id"),
                            registration_open=get_setting("registration_open") == "1")
 
 

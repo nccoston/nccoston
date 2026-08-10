@@ -216,6 +216,16 @@ table.admin-table td, table.admin-table th {
   padding-top: 5px;
 }
 .score-row { margin: 3px 0; font-size: 12px; }
+
+.pod-box {
+  border: 1px solid var(--border);
+  padding: 5px 14px 7px;
+  margin: 8px auto 12px;
+  max-width: 640px;
+  text-align: left;
+}
+.pod-box summary { cursor: pointer; font-size: 12px; }
+.pod-box .yt-embed iframe { width: 100%; }
 .score-tag { color: var(--faint); font-size: 10px; }
 .score-status { color: var(--faint); font-size: 11px; font-style: italic; }
 .score-mich { font-weight: bold; }

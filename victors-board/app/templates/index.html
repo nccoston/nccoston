@@ -28,6 +28,14 @@
 {% endmacro %}
 
 {% block content %}
+{% if pod %}
+<details class="pod-box">
+  <summary>&#127908; <b>It's Pod Day:</b> {{ pod['title'] }}</summary>
+  <div class="yt-embed"><iframe
+    src="https://www.youtube-nocookie.com/embed/{{ pod['video_id'] }}"
+    loading="lazy" allowfullscreen></iframe></div>
+</details>
+{% endif %}
 {% if board_name == 'scores' %}
 <p class="page-row"><b>&mdash; Scores &mdash;</b> &middot;
   <a href="{{ url_for('leaderboard') }}">Pick 'em Leaderboard</a></p>
