@@ -26,7 +26,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from flask import (Flask, abort, flash, g, redirect, render_template, request,
-                   send_from_directory, session, url_for)
+                   send_file, send_from_directory, session, url_for)
 from markupsafe import Markup
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -35,6 +35,8 @@ APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", APP_DIR / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "board.db"
+BACKUP_DIR = DATA_DIR / "backups"
+BACKUP_KEEP = 7   # nightly database snapshots kept on disk
 SECRET_FILE = DATA_DIR / "secret_key"
 
 THREADS_PER_PAGE = 80
@@ -249,6 +251,44 @@ def build_tree(rows):
     return roots
 
 
+# ------------------------------------------------------------------ backups
+#
+# Layered: (1) a gzipped nightly database snapshot on the disk, last
+# BACKUP_KEEP kept, taken on the first request of each board day;
+# (2) Render's own disk snapshots; (3) the admin "download full backup"
+# button, which is the true offsite copy — database plus every photo.
+
+def snapshot_db_to(path):
+    """Write a consistent copy of the live database to path (SQLite backup
+    API, safe while the board is running). Uses its own connection — the
+    backup can never finish from a connection with an open transaction."""
+    src = sqlite3.connect(DB_PATH)
+    dst = sqlite3.connect(path)
+    try:
+        src.backup(dst)
+    finally:
+        dst.close()
+        src.close()
+
+
+def nightly_snapshot(day):
+    BACKUP_DIR.mkdir(exist_ok=True)
+    dest = BACKUP_DIR / f"board-{day}.db.gz"
+    if not dest.exists():
+        import gzip
+        import shutil
+        tmp = BACKUP_DIR / f".building-{day}.db"
+        try:
+            snapshot_db_to(tmp)
+            with open(tmp, "rb") as src, gzip.open(dest, "wb") as out:
+                shutil.copyfileobj(src, out)
+        finally:
+            tmp.unlink(missing_ok=True)
+    keep = sorted(BACKUP_DIR.glob("board-*.db.gz"))
+    for old in keep[:-BACKUP_KEEP]:
+        old.unlink(missing_ok=True)
+
+
 def user_read_ids(db, u):
     """Message ids this member has opened on any device (empty for guests)."""
     if not u:
@@ -291,6 +331,11 @@ def count_traffic():
         db.execute("UPDATE traffic SET uniques = uniques + 1 WHERE day = ?", (day,))
         db.execute("DELETE FROM traffic_visitors WHERE day != ?", (day,))
     db.commit()
+    if new_day:
+        try:
+            nightly_snapshot(day)   # after commit: backup needs a quiet db
+        except Exception:
+            pass   # a failed snapshot must never take down the board
 
 
 # -------------------------------------------------------------------- pages
@@ -1149,10 +1194,49 @@ def admin():
         "uploads_mb": round(sum(p.stat().st_size for p in upload_files) / 1e6, 1),
         "upload_count": len(upload_files),
     }
+    snapshots = sorted(BACKUP_DIR.glob("board-*.db.gz"), reverse=True) \
+        if BACKUP_DIR.exists() else []
     return render_template("admin.html", users=users, counts=counts, disk=disk,
                            hof_threshold=get_setting("hof_threshold"),
                            podcast_channel_id=get_setting("podcast_channel_id"),
+                           snapshots=[{"name": p.name,
+                                       "mb": round(p.stat().st_size / 1e6, 2)}
+                                      for p in snapshots],
                            registration_open=get_setting("registration_open") == "1")
+
+
+@app.route("/admin/backup")
+@admin_required
+def admin_backup():
+    """Full offsite backup: consistent database copy plus every upload."""
+    import tarfile
+    import tempfile
+    stamp = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%Y-%m-%d")
+    snap = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+    snap.close()
+    bundle = tempfile.NamedTemporaryFile(delete=False, suffix=".tar.gz")
+    bundle.close()
+    try:
+        snapshot_db_to(snap.name)
+        with tarfile.open(bundle.name, "w:gz") as tar:
+            tar.add(snap.name, arcname="board.db")
+            if UPLOAD_DIR.exists():
+                tar.add(UPLOAD_DIR, arcname="uploads")
+    finally:
+        os.unlink(snap.name)
+    resp = send_file(bundle.name, as_attachment=True,
+                     download_name=f"victors-backup-{stamp}.tar.gz")
+    resp.call_on_close(lambda: os.unlink(bundle.name))
+    return resp
+
+
+@app.route("/admin/backup/nightly/<name>")
+@admin_required
+def admin_backup_nightly(name):
+    if not re.fullmatch(r"board-\d{4}-\d{2}-\d{2}\.db\.gz", name) \
+            or not (BACKUP_DIR / name).exists():
+        abort(404)
+    return send_file(BACKUP_DIR / name, as_attachment=True, download_name=name)
 
 
 @app.route("/hof")

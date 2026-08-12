@@ -10,6 +10,25 @@
     The disk holds 1000 MB and can be enlarged anytime in Render
     (service &rarr; Disk).</p>
 
+  <h3>Backups</h3>
+  <p class="hint">The database is snapshotted automatically every night (last
+    {{ snapshots|length if snapshots else 0 }} of 7 shown below, kept on the
+    server disk). Those protect against corruption &mdash; they do NOT protect
+    against losing the disk itself. For that, download the full backup now and
+    then &mdash; it's everything needed to rebuild the board from nothing.</p>
+  <p><b><a href="{{ url_for('admin_backup') }}">&#11015;&#65039; Download full
+    backup</a></b> <span class="hint">(database + every photo &mdash; can take a
+    minute; keep the file somewhere safe like your own computer or Drive)</span></p>
+  {% if snapshots %}
+  <p class="hint">
+    Nightly:
+    {% for s in snapshots %}
+    <a href="{{ url_for('admin_backup_nightly', name=s['name']) }}">{{ s['name'] }}</a>
+    ({{ s['mb'] }} MB){% if not loop.last %} &middot;{% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+
   <h3>Board settings</h3>
   <form class="board-form" method="post">
     <input type="hidden" name="action" value="settings">
