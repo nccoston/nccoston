@@ -772,7 +772,9 @@ def pod_box():
         return None
     now = time.monotonic()
     with POD_LOCK:
-        if now - POD_CACHE["at"] > 6 * 3600:
+        # 15-minute cache: fetches only happen on Wednesdays, and the box
+        # should flip to the new episode soon after it uploads
+        if now - POD_CACHE["at"] > 900:
             POD_CACHE["video"] = fetch_latest_pod()
             POD_CACHE["at"] = now
         video = POD_CACHE["video"]
