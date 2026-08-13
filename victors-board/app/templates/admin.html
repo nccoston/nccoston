@@ -68,67 +68,85 @@
   </form>
 
   <h3>Users</h3>
-  <table class="admin-table">
-    <tr><th>Handle</th><th>Joined</th><th>Flags</th><th>Actions</th></tr>
+  <p><input type="text" id="user-filter" placeholder="find a member..."
+            style="width:200px"> <span class="hint" id="user-count"></span></p>
+  <table class="admin-table user-table">
+    <tr><th>Handle</th><th>Joined</th><th></th></tr>
     {% for u in users %}
     <tr>
-      <td>{{ u['handle'] }}</td>
-      <td>{{ u['created_at'] | boardtime }}</td>
+      <td>{{ u['handle'] }}
+        {%- if u['is_admin'] %} <span class="user-flag">admin</span>{% endif %}
+        {%- if u['is_banned'] %} <span class="user-flag flag-banned">banned</span>{% endif %}</td>
+      <td>{{ u['created_at'] | boarddate }}</td>
       <td>
-        {% if u['is_admin'] %}admin{% endif %}
-        {% if u['is_banned'] %}banned{% endif %}
-      </td>
-      <td>
-        {% if u['is_banned'] %}
-        <form class="inline-form" method="post">
-          <input type="hidden" name="action" value="unban">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Unban</button>
-        </form>
-        {% else %}
-        <form class="inline-form" method="post"
-              onsubmit="return confirm('Ban {{ u['handle'] }}?')">
-          <input type="hidden" name="action" value="ban">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Ban</button>
-        </form>
-        {% endif %}
-        {% if not u['is_admin'] %}
-        <form class="inline-form" method="post"
-              onsubmit="return confirm('Make {{ u['handle'] }} an admin?')">
-          <input type="hidden" name="action" value="make_admin">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Make admin</button>
-        </form>
-        {% endif %}
-        <form class="inline-form" method="post"
-              onsubmit="return confirm('Reset password for {{ u['handle'] }}?')">
-          <input type="hidden" name="action" value="reset_password">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Reset password</button>
-        </form>
-        <details class="rename-details">
-          <summary>Rename</summary>
+        <details class="manage-details">
+          <summary>Manage</summary>
+          {% if u['is_banned'] %}
+          <form class="inline-form" method="post">
+            <input type="hidden" name="action" value="unban">
+            <input type="hidden" name="user_id" value="{{ u['id'] }}">
+            <button type="submit">Unban</button>
+          </form>
+          {% else %}
+          <form class="inline-form" method="post"
+                onsubmit="return confirm('Ban {{ u['handle'] }}?')">
+            <input type="hidden" name="action" value="ban">
+            <input type="hidden" name="user_id" value="{{ u['id'] }}">
+            <button type="submit">Ban</button>
+          </form>
+          {% endif %}
+          <form class="inline-form" method="post"
+                onsubmit="return confirm('Reset password for {{ u['handle'] }}?')">
+            <input type="hidden" name="action" value="reset_password">
+            <input type="hidden" name="user_id" value="{{ u['id'] }}">
+            <button type="submit">Reset password</button>
+          </form>
+          {% if not u['is_admin'] %}
+          <form class="inline-form" method="post"
+                onsubmit="return confirm('Make {{ u['handle'] }} an admin?')">
+            <input type="hidden" name="action" value="make_admin">
+            <input type="hidden" name="user_id" value="{{ u['id'] }}">
+            <button type="submit">Make admin</button>
+          </form>
+          <form class="inline-form" method="post"
+                onsubmit="return confirm('Delete account {{ u['handle'] }}? Their posts stay; the handle frees up.')">
+            <input type="hidden" name="action" value="delete_user">
+            <input type="hidden" name="user_id" value="{{ u['id'] }}">
+            <button type="submit">Delete account</button>
+          </form>
+          {% endif %}
           <form class="inline-form" method="post">
             <input type="hidden" name="action" value="rename">
             <input type="hidden" name="user_id" value="{{ u['id'] }}">
             <input type="text" name="new_handle" value="{{ u['handle'] }}"
                    maxlength="30" style="width:110px">
-            <button type="submit">Save</button>
+            <button type="submit">Rename</button>
           </form>
         </details>
-        {% if not u['is_admin'] %}
-        <form class="inline-form" method="post"
-              onsubmit="return confirm('Delete account {{ u['handle'] }}? Their posts stay; the handle frees up.')">
-          <input type="hidden" name="action" value="delete_user">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Delete account</button>
-        </form>
-        {% endif %}
       </td>
     </tr>
     {% endfor %}
   </table>
+  <script>
+  (function () {
+    var filter = document.getElementById("user-filter");
+    var count = document.getElementById("user-count");
+    var rows = Array.prototype.slice.call(
+      document.querySelectorAll(".user-table tr")).slice(1);
+    function apply() {
+      var q = filter.value.toLowerCase();
+      var shown = 0;
+      rows.forEach(function (tr) {
+        var hit = tr.cells[0].textContent.toLowerCase().indexOf(q) !== -1;
+        tr.style.display = hit ? "" : "none";
+        if (hit) shown++;
+      });
+      count.textContent = q ? shown + " of " + rows.length : rows.length + " members";
+    }
+    filter.addEventListener("input", apply);
+    apply();
+  })();
+  </script>
   <p class="hint">To delete a message, open it and use the Delete button
     (removes the message and all its replies).</p>
 </div>

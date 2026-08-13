@@ -14,6 +14,7 @@
   --success-border: #2a7d2a;
   --input-bg: #fff;
   --input-text: #000;
+  --stripe: #f4f4f4;
 }
 :root[data-theme="dark"] {
   --bg: #1a1a1b;
@@ -31,6 +32,7 @@
   --success-border: #5cb85c;
   --input-bg: #2a2a2b;
   --input-text: #ddd;
+  --stripe: #222;
 }
 
 body {
@@ -155,16 +157,28 @@ table.admin-table td, table.admin-table th {
   font-size: 12px;
 }
 .inline-form { display: inline; }
-/* rename tucks behind a link-looking summary in the admin user table */
-.rename-details { display: inline; }
-.rename-details summary {
+/* per-user actions tuck behind a link-looking Manage toggle */
+.manage-details { display: inline; }
+.manage-details summary {
   display: inline;
   cursor: pointer;
   color: var(--link);
   text-decoration: underline;
   list-style: none;
 }
-.rename-details summary::-webkit-details-marker { display: none; }
+.manage-details summary::-webkit-details-marker { display: none; }
+.manage-details[open] summary { font-weight: bold; }
+
+.user-table { width: 100%; max-width: 720px; }
+.user-table tr:nth-child(even) td { background: var(--stripe); }
+.user-table td { padding: 5px 10px; }
+.user-flag {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--hint);
+  text-transform: uppercase;
+}
+.flag-banned { color: var(--flash-border); }
 /* inline actions read as links, matching Edit Post / Back to the board */
 .inline-form button {
   background: none;

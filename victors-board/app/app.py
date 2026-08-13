@@ -216,6 +216,21 @@ def boardtime(iso):
     return re.sub(r" 0(\d,)", r" \1", out)  # strip leading zero on day
 
 
+@app.template_filter("boarddate")
+def boarddate(iso):
+    """Date only — 'August 3, 2026' — for dense tables."""
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso)
+    except ValueError:
+        return iso
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    out = dt.astimezone(BOARD_TZ).strftime("%B %d, %Y")
+    return re.sub(r" 0(\d,)", r" \1", out)
+
+
 @app.template_filter("rendertext")
 def rendertext(text):
     """Render a post body: safe-HTML subset, auto-linked URLs, newlines kept."""
