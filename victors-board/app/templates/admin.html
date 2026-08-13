@@ -107,13 +107,16 @@
           <input type="hidden" name="user_id" value="{{ u['id'] }}">
           <button type="submit">Reset password</button>
         </form>
-        <form class="inline-form" method="post">
-          <input type="hidden" name="action" value="rename">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <input type="text" name="new_handle" value="{{ u['handle'] }}"
-                 maxlength="30" style="width:110px">
-          <button type="submit">Rename</button>
-        </form>
+        <details class="rename-details">
+          <summary>Rename</summary>
+          <form class="inline-form" method="post">
+            <input type="hidden" name="action" value="rename">
+            <input type="hidden" name="user_id" value="{{ u['id'] }}">
+            <input type="text" name="new_handle" value="{{ u['handle'] }}"
+                   maxlength="30" style="width:110px">
+            <button type="submit">Save</button>
+          </form>
+        </details>
         {% if not u['is_admin'] %}
         <form class="inline-form" method="post"
               onsubmit="return confirm('Delete account {{ u['handle'] }}? Their posts stay; the handle frees up.')">

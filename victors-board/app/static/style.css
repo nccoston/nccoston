@@ -155,6 +155,16 @@ table.admin-table td, table.admin-table th {
   font-size: 12px;
 }
 .inline-form { display: inline; }
+/* rename tucks behind a link-looking summary in the admin user table */
+.rename-details { display: inline; }
+.rename-details summary {
+  display: inline;
+  cursor: pointer;
+  color: var(--link);
+  text-decoration: underline;
+  list-style: none;
+}
+.rename-details summary::-webkit-details-marker { display: none; }
 /* inline actions read as links, matching Edit Post / Back to the board */
 .inline-form button {
   background: none;
