@@ -35,6 +35,7 @@ APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", APP_DIR / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "board.db"
+HANDLE_RE = r"[A-Za-z0-9_ .@&'-]{2,30}"   # the old board allowed LS&Play
 BACKUP_DIR = DATA_DIR / "backups"
 BACKUP_KEEP = 7   # nightly database snapshots kept on disk
 SECRET_FILE = DATA_DIR / "secret_key"
@@ -1054,7 +1055,7 @@ def register():
         handle = request.form.get("handle", "").strip()
         password = request.form.get("password", "")
         db = get_db()
-        if not re.fullmatch(r"[A-Za-z0-9_ .@'-]{2,30}", handle or ""):
+        if not re.fullmatch(HANDLE_RE, handle or ""):
             flash("Handle must be 2-30 characters (letters, numbers, basic punctuation).")
         elif len(password) < 6:
             flash("Password must be at least 6 characters.")
@@ -1129,7 +1130,7 @@ def admin():
             flash("Settings saved.")
         elif action == "create_user":
             handle = request.form.get("handle", "").strip()
-            if not re.fullmatch(r"[A-Za-z0-9_ .@'-]{2,30}", handle or ""):
+            if not re.fullmatch(HANDLE_RE, handle or ""):
                 flash("Handle must be 2-30 characters (letters, numbers, basic punctuation).")
             elif db.execute("SELECT 1 FROM users WHERE handle = ?", (handle,)).fetchone():
                 flash("That handle is taken.")
@@ -1158,6 +1159,28 @@ def admin():
                 db.commit()
                 flash(f"Deleted account {target['handle']} (their posts remain, "
                       f"the handle is free to register again).")
+        elif action == "rename":
+            uid = request.form.get("user_id", type=int)
+            new = request.form.get("new_handle", "").strip()
+            target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+            if target is None:
+                flash("No such user.")
+            elif not re.fullmatch(HANDLE_RE, new):
+                flash("Handle must be 2-30 characters (letters, numbers, "
+                      "basic punctuation).")
+            elif db.execute("SELECT 1 FROM users WHERE handle = ? AND id != ?",
+                            (new, uid)).fetchone():
+                flash("That handle is taken.")
+            elif new == target["handle"]:
+                flash("That's already their handle.")
+            else:
+                db.execute("UPDATE users SET handle = ? WHERE id = ?", (new, uid))
+                # their posts carry the handle denormalized — bring history along
+                db.execute("UPDATE messages SET author_name = ? WHERE user_id = ?",
+                           (new, uid))
+                db.commit()
+                flash(f"Renamed {target['handle']} to {new} — all their posts "
+                      f"now show the new handle; password and login unchanged.")
         elif action in ("ban", "unban", "make_admin", "reset_password"):
             uid = request.form.get("user_id", type=int)
             target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
