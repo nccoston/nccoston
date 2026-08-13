@@ -78,49 +78,53 @@
         {%- if u['is_admin'] %} <span class="user-flag">admin</span>{% endif %}
         {%- if u['is_banned'] %} <span class="user-flag flag-banned">banned</span>{% endif %}</td>
       <td>{{ u['created_at'] | boarddate }}</td>
-      <td>
+      <td class="row-actions">
+        {% if u['is_banned'] %}
+        <form class="inline-form" method="post">
+          <input type="hidden" name="action" value="unban">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Unban</button>
+        </form>
+        {% else %}
+        <form class="inline-form" method="post"
+              onsubmit="return confirm('Ban {{ u['handle'] }}?')">
+          <input type="hidden" name="action" value="ban">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Ban</button>
+        </form>
+        {% endif %}
+        &middot;
+        <form class="inline-form" method="post"
+              onsubmit="return confirm('Reset password for {{ u['handle'] }}?')">
+          <input type="hidden" name="action" value="reset_password">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Reset password</button>
+        </form>
+        {% if not u['is_admin'] %}
+        &middot;
+        <form class="inline-form" method="post"
+              onsubmit="return confirm('Make {{ u['handle'] }} an admin?')">
+          <input type="hidden" name="action" value="make_admin">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Make admin</button>
+        </form>
+        &middot;
+        <form class="inline-form" method="post"
+              onsubmit="return confirm('Delete account {{ u['handle'] }}? Their posts stay; the handle frees up.')">
+          <input type="hidden" name="action" value="delete_user">
+          <input type="hidden" name="user_id" value="{{ u['id'] }}">
+          <button type="submit">Delete account</button>
+        </form>
+        {% endif %}
+        &middot;
         <details class="manage-details">
-          <summary>Manage</summary>
-          {% if u['is_banned'] %}
-          <form class="inline-form" method="post">
-            <input type="hidden" name="action" value="unban">
-            <input type="hidden" name="user_id" value="{{ u['id'] }}">
-            <button type="submit">Unban</button>
-          </form>
-          {% else %}
-          <form class="inline-form" method="post"
-                onsubmit="return confirm('Ban {{ u['handle'] }}?')">
-            <input type="hidden" name="action" value="ban">
-            <input type="hidden" name="user_id" value="{{ u['id'] }}">
-            <button type="submit">Ban</button>
-          </form>
-          {% endif %}
-          <form class="inline-form" method="post"
-                onsubmit="return confirm('Reset password for {{ u['handle'] }}?')">
-            <input type="hidden" name="action" value="reset_password">
-            <input type="hidden" name="user_id" value="{{ u['id'] }}">
-            <button type="submit">Reset password</button>
-          </form>
-          {% if not u['is_admin'] %}
-          <form class="inline-form" method="post"
-                onsubmit="return confirm('Make {{ u['handle'] }} an admin?')">
-            <input type="hidden" name="action" value="make_admin">
-            <input type="hidden" name="user_id" value="{{ u['id'] }}">
-            <button type="submit">Make admin</button>
-          </form>
-          <form class="inline-form" method="post"
-                onsubmit="return confirm('Delete account {{ u['handle'] }}? Their posts stay; the handle frees up.')">
-            <input type="hidden" name="action" value="delete_user">
-            <input type="hidden" name="user_id" value="{{ u['id'] }}">
-            <button type="submit">Delete account</button>
-          </form>
-          {% endif %}
+          <summary>Rename</summary>
           <form class="inline-form" method="post">
             <input type="hidden" name="action" value="rename">
             <input type="hidden" name="user_id" value="{{ u['id'] }}">
             <input type="text" name="new_handle" value="{{ u['handle'] }}"
                    maxlength="30" style="width:110px">
-            <button type="submit">Rename</button>
+            <button type="submit">Save</button>
           </form>
         </details>
       </td>

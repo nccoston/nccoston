@@ -169,9 +169,12 @@ table.admin-table td, table.admin-table th {
 .manage-details summary::-webkit-details-marker { display: none; }
 .manage-details[open] summary { font-weight: bold; }
 
-.user-table { width: 100%; max-width: 720px; }
+.user-table { width: 100%; }
 .user-table tr:nth-child(even) td { background: var(--stripe); }
 .user-table td { padding: 5px 10px; }
+.row-actions { white-space: nowrap; font-size: 11px; color: var(--faint); }
+.row-actions .inline-form button { font-size: 11px; }
+.row-actions .manage-details summary { font-size: 11px; }
 .user-flag {
   font-size: 10px;
   font-weight: bold;
