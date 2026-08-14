@@ -22,25 +22,22 @@
     <p class="hint">Posting to the <b>Cards</b> board.</p>
     {% endif %}
     <label>Subject
-      <span class="hint">(use "*" or "nm" for subject-only posts)</span>
+      <span class="hint">(use "*" or "nm" for subject-only)</span>
       <input type="text" name="subject" maxlength="300" required
              value="{{ request.form.get('subject', subject_prefill) }}">
     </label>
-    <label>Message <span class="hint">(optional — leave blank for subject-only.
-      Basic HTML works: &lt;b&gt;, &lt;i&gt;, &lt;a href&gt;, &lt;img src&gt;.
-      YouTube and Twitter/X links embed automatically)</span>
+    <label>Message <span class="hint">(optional — basic HTML works;
+      YouTube and Twitter links embed)</span>
       <textarea name="body">{{ request.form.get('body', '') }}</textarea>
     </label>
-    <label>Image URL <span class="hint">(optional — paste the URL of a picture)</span>
+    <label>Image URL <span class="hint">(optional)</span>
       <input type="text" name="image_url" value="{{ request.form.get('image_url', '') }}">
     </label>
-    <label>Or upload a picture or short video <span class="hint">(images, or
-      clips up to 16MB &asymp; 30-60s of phone video — or just paste a
-      screenshot anywhere on this page)</span>
+    <label>Or upload a picture or short video <span class="hint">(or just
+      paste a screenshot anywhere on this page)</span>
       <input type="file" name="image_file" accept="image/*,video/mp4,video/quicktime,video/webm">
     </label>
-    <label>Picture display size <span class="hint">(small/medium/large are
-      click-to-enlarge; full is the whole thing)</span></label>
+    <label>Picture display size</label>
     <p class="size-row">
       {% for s in ('small', 'medium', 'large', 'full') %}
       <label class="size-opt"><input type="radio" name="image_size" value="{{ s }}"
@@ -48,8 +45,7 @@
       {% endfor %}
     </p>
     {% if not parent %}
-    <label>Poll <span class="hint">(optional — one option per line, 2-10 options,
-      turns this thread into a poll)</span>
+    <label>Poll <span class="hint">(optional — one option per line)</span>
       <textarea name="poll_options" style="height:70px"
         placeholder="Yes&#10;No">{{ request.form.get('poll_options', '') }}</textarea>
     </label>

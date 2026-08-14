@@ -185,17 +185,15 @@
       <input type="text" name="subject" maxlength="300" required
              value="{{ reply_subject }}">
     </label>
-    <label>Message <span class="hint">(optional — leave blank for subject-only.
-      Basic HTML works: &lt;b&gt;, &lt;i&gt;, &lt;a href&gt;, &lt;img src&gt;.
-      YouTube and Twitter/X links embed automatically)</span>
+    <label>Message <span class="hint">(optional — basic HTML works;
+      YouTube and Twitter links embed)</span>
       <textarea name="body"></textarea>
     </label>
-    <label>Image URL <span class="hint">(optional — paste the URL of a picture)</span>
+    <label>Image URL <span class="hint">(optional)</span>
       <input type="text" name="image_url">
     </label>
-    <label>Or upload a picture or short video <span class="hint">(images, or
-      clips up to 16MB &asymp; 30-60s of phone video — or just paste a
-      screenshot anywhere on this page)</span>
+    <label>Or upload a picture or short video <span class="hint">(or just
+      paste a screenshot anywhere on this page)</span>
       <input type="file" name="image_file" accept="image/*,video/mp4,video/quicktime,video/webm">
     </label>
     <label>Picture display size</label>

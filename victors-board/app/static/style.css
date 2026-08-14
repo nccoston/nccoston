@@ -130,7 +130,12 @@ ul.thread-list li { margin: 5px 0; }
 img.img-small { max-width: min(200px, 100%); }
 img.img-medium { max-width: min(420px, 100%); }
 img.img-large { max-width: min(720px, 100%); }
-.size-opt { display: inline; font-weight: normal; margin-right: 14px; }
+/* one horizontal row of radios; outranks the form's block-label rule */
+form.board-form label.size-opt {
+  display: inline;
+  font-weight: normal;
+  margin: 0 14px 0 0;
+}
 .size-row { margin: 4px 0 0; }
 video.clip { max-width: 100%; width: 560px; }
 
