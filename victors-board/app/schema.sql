@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at  TEXT NOT NULL,  -- ISO 8601
     edited_at   TEXT,
     ip_address  TEXT,           -- shown to admins only
-    board       TEXT NOT NULL DEFAULT 'main'   -- 'main' or 'scores'
+    board       TEXT NOT NULL DEFAULT 'main',  -- 'main' or 'scores'
+    image_size  TEXT           -- small/medium/large; NULL = full size
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id, created_at);

@@ -130,7 +130,8 @@ def init_db():
                       "ALTER TABLE messages ADD COLUMN board TEXT NOT NULL DEFAULT 'main'",
                       "ALTER TABLE messages ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE users ADD COLUMN session_token TEXT",
-                      "ALTER TABLE messages ADD COLUMN hof_at TEXT"):
+                      "ALTER TABLE messages ADD COLUMN hof_at TEXT",
+                      "ALTER TABLE messages ADD COLUMN image_size TEXT"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -612,14 +613,19 @@ def post(reply_to=None):
             if dupe:
                 flash("⚠️ No double posting, moron! ⚠️", "success")
                 return redirect(url_for("message", message_id=dupe["id"]))
+            image_size = request.form.get("image_size")
+            if image_size not in ("small", "medium", "large"):
+                image_size = None   # full size, the default
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
-                " image_url, author_name, user_id, created_at, ip_address, board)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " image_url, author_name, user_id, created_at, ip_address,"
+                " board, image_size)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (parent["thread_id"] if parent else None,
                  parent["id"] if parent else None,
                  subject, body or None, image_url or None,
-                 user["handle"], user["id"], now, client_ip(), board))
+                 user["handle"], user["id"], now, client_ip(), board,
+                 image_size))
             new_id = cur.lastrowid
             flash("Posted! Go Blue!", "goblue")
             if parent is None:
@@ -1039,10 +1045,13 @@ def edit(message_id):
             uploaded = save_uploaded_image()
             if uploaded:
                 image_url = uploaded
+            image_size = request.form.get("image_size")
+            if image_size not in ("small", "medium", "large"):
+                image_size = None
             db.execute(
                 "UPDATE messages SET subject = ?, body = ?, image_url = ?,"
-                " edited_at = ? WHERE id = ?",
-                (subject, body or None, image_url or None,
+                " image_size = ?, edited_at = ? WHERE id = ?",
+                (subject, body or None, image_url or None, image_size,
                  now_utc_iso(), message_id))
             db.commit()
             return redirect(url_for("message", message_id=message_id))

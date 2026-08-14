@@ -126,6 +126,12 @@ ul.thread-list li { margin: 5px 0; }
 .message-box h2 { margin: 0 0 4px; font-size: 22px; }
 .message-body { margin: 12px 0; overflow-x: auto; }
 .message-body img { max-width: 100%; }
+/* poster-chosen display sizes; the picture links to its full-size self */
+img.img-small { max-width: min(200px, 100%); }
+img.img-medium { max-width: min(420px, 100%); }
+img.img-large { max-width: min(720px, 100%); }
+.size-opt { display: inline; font-weight: normal; margin-right: 14px; }
+.size-row { margin: 4px 0 0; }
 video.clip { max-width: 100%; width: 560px; }
 
 form.board-form { max-width: 640px; margin: 12px 0; }

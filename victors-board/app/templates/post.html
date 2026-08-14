@@ -39,6 +39,14 @@
       screenshot anywhere on this page)</span>
       <input type="file" name="image_file" accept="image/*,video/mp4,video/quicktime,video/webm">
     </label>
+    <label>Picture display size <span class="hint">(small/medium/large are
+      click-to-enlarge; full is the whole thing)</span></label>
+    <p class="size-row">
+      {% for s in ('small', 'medium', 'large', 'full') %}
+      <label class="size-opt"><input type="radio" name="image_size" value="{{ s }}"
+        {% if request.form.get('image_size', 'full') == s %}checked{% endif %}> {{ s }}</label>
+      {% endfor %}
+    </p>
     {% if not parent %}
     <label>Poll <span class="hint">(optional — one option per line, 2-10 options,
       turns this thread into a poll)</span>

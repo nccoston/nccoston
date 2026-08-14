@@ -22,6 +22,13 @@
     <label>Or upload a replacement picture <span class="hint">(jpg, png, gif, webp)</span>
       <input type="file" name="image_file" accept="image/*">
     </label>
+    <label>Picture display size</label>
+    <p class="size-row">
+      {% for s in ('small', 'medium', 'large', 'full') %}
+      <label class="size-opt"><input type="radio" name="image_size" value="{{ s }}"
+        {% if request.form.get('image_size', msg['image_size'] or 'full') == s %}checked{% endif %}> {{ s }}</label>
+      {% endfor %}
+    </p>
     <button type="submit">Save Changes</button>
     <a href="{{ url_for('message', message_id=msg['id']) }}">Cancel</a>
   </form>

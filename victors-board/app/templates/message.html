@@ -36,6 +36,9 @@
       {% elif msg['image_url'].lower().endswith(('.mp4', '.mov', '.webm')) %}
       <p><video controls playsinline preload="metadata" class="clip"
            src="{{ msg['image_url'] }}"></video></p>
+      {% elif msg['image_size'] in ('small', 'medium', 'large') %}
+      <p><a href="{{ msg['image_url'] }}" target="_blank" title="Click for full size"><img
+        class="img-{{ msg['image_size'] }}" src="{{ msg['image_url'] }}" alt=""></a></p>
       {% else %}
       <p><img src="{{ msg['image_url'] }}" alt=""></p>
       {% endif %}
@@ -195,6 +198,13 @@
       screenshot anywhere on this page)</span>
       <input type="file" name="image_file" accept="image/*,video/mp4,video/quicktime,video/webm">
     </label>
+    <label>Picture display size</label>
+    <p class="size-row">
+      {% for s in ('small', 'medium', 'large', 'full') %}
+      <label class="size-opt"><input type="radio" name="image_size" value="{{ s }}"
+        {% if s == 'full' %}checked{% endif %}> {{ s }}</label>
+      {% endfor %}
+    </p>
     <button type="submit">Post Reply</button>
   </form>
   {% else %}

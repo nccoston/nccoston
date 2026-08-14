@@ -21,6 +21,9 @@
       {% elif p['image_url'].lower().endswith(('.mp4', '.mov', '.webm')) %}
       <p><video controls playsinline preload="metadata" class="clip"
            src="{{ p['image_url'] }}"></video></p>
+      {% elif p['image_size'] in ('small', 'medium', 'large') %}
+      <p><a href="{{ p['image_url'] }}" target="_blank" title="Click for full size"><img
+        class="img-{{ p['image_size'] }}" src="{{ p['image_url'] }}" alt=""></a></p>
       {% else %}
       <p><img src="{{ p['image_url'] }}" alt=""></p>
       {% endif %}
