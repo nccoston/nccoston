@@ -26,11 +26,10 @@
       <input type="text" name="subject" maxlength="300" required
              value="{{ request.form.get('subject', subject_prefill) }}">
     </label>
-    <label>Message <span class="hint">(optional — basic HTML works;
-      YouTube and Twitter links embed)</span>
+    <label>Message
       <textarea name="body">{{ request.form.get('body', '') }}</textarea>
     </label>
-    <label>Image URL <span class="hint">(optional)</span>
+    <label>Image URL
       <input type="text" name="image_url" value="{{ request.form.get('image_url', '') }}">
     </label>
     <label>Or upload a picture or short video <span class="hint">(or just
@@ -45,7 +44,7 @@
       {% endfor %}
     </p>
     {% if not parent %}
-    <label>Poll <span class="hint">(optional — one option per line)</span>
+    <label>Poll <span class="hint">(one option per line)</span>
       <textarea name="poll_options" style="height:70px"
         placeholder="Yes&#10;No">{{ request.form.get('poll_options', '') }}</textarea>
     </label>

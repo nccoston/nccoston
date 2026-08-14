@@ -12,10 +12,10 @@
       <input type="text" name="subject" maxlength="300" required
              value="{{ request.form.get('subject', msg['subject']) }}">
     </label>
-    <label>Message <span class="hint">(optional)</span>
+    <label>Message
       <textarea name="body">{{ request.form.get('body', msg['body'] or '') }}</textarea>
     </label>
-    <label>Image URL <span class="hint">(optional)</span>
+    <label>Image URL
       <input type="text" name="image_url"
              value="{{ request.form.get('image_url', msg['image_url'] or '') }}">
     </label>
