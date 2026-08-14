@@ -91,21 +91,29 @@
   {% endif %}
 
   {% if poll %}
-  <div class="poll-box">
-    <p><b>Poll</b> &mdash; {{ total_votes }} vote{{ '' if total_votes == 1 else 's' }}</p>
+  <div class="bigpoll">
+    <div class="bigpoll-head">&#128202; BOARD POLL
+      <span>{{ total_votes }} vote{{ '' if total_votes == 1 else 's' }}</span></div>
+    <div class="bigpoll-body">
     {% if user and my_vote is none %}
     <form method="post" action="{{ url_for('poll_vote', poll_id=poll['id']) }}">
       {% for o in poll_options %}
-      <label class="poll-opt"><input type="radio" name="option_id" value="{{ o['id'] }}"> {{ o['text'] }}</label>
+      <label class="bigpoll-opt"><input type="radio" name="option_id" value="{{ o['id'] }}"> {{ o['text'] }}</label>
       {% endfor %}
       <button type="submit">Vote</button>
     </form>
     {% else %}
       {% for o in poll_options %}
-      <div class="poll-result">
-        {{ o['text'] }}{% if my_vote == o['id'] %} <b>&#10003; your vote</b>{% endif %}
-        &mdash; {{ o['votes'] }} ({{ ((100 * o['votes'] / total_votes) | round | int) if total_votes else 0 }}%)
-        <div class="poll-bar" style="width: {{ (100 * o['votes'] / total_votes) if total_votes else 0 }}%"></div>
+      {% set pct = ((100 * o['votes'] / total_votes) | round | int) if total_votes else 0 %}
+      <div class="bigpoll-result{% if total_votes and o['votes'] == top_votes %} bigpoll-leader{% endif %}">
+        <div class="bigpoll-line">
+          <span>{{ o['text'] }}
+            {%- if my_vote == o['id'] %} <span class="bigpoll-your">&#10003; your vote</span>{% endif %}
+            {%- if total_votes and o['votes'] == top_votes %} &#127942;{% endif %}</span>
+          <span class="bigpoll-pct">{{ pct }}% <span class="bigpoll-n">&middot; {{ o['votes'] }}</span></span>
+        </div>
+        <div class="bigpoll-track"><div class="bigpoll-bar"
+          style="width: {{ (100 * o['votes'] / total_votes) if total_votes else 0 }}%"></div></div>
       </div>
       {% endfor %}
       {% if user %}
@@ -113,7 +121,7 @@
         <summary class="hint">Change your vote</summary>
         <form method="post" action="{{ url_for('poll_vote', poll_id=poll['id']) }}">
           {% for o in poll_options %}
-          <label class="poll-opt"><input type="radio" name="option_id" value="{{ o['id'] }}"
+          <label class="bigpoll-opt"><input type="radio" name="option_id" value="{{ o['id'] }}"
             {% if my_vote == o['id'] %}checked{% endif %}> {{ o['text'] }}</label>
           {% endfor %}
           <button type="submit">Change vote</button>
@@ -123,6 +131,7 @@
       <p class="hint"><a href="{{ url_for('login') }}">Log in</a> to vote.</p>
       {% endif %}
     {% endif %}
+    </div>
   </div>
   {% endif %}
 

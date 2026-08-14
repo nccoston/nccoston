@@ -409,7 +409,7 @@ def message(message_id):
 
     poll = db.execute("SELECT * FROM polls WHERE message_id = ?",
                       (message_id,)).fetchone()
-    poll_options, my_vote, total_votes = [], None, 0
+    poll_options, my_vote, total_votes, top_votes = [], None, 0, 0
     if poll:
         poll_options = db.execute(
             "SELECT o.id, o.text, COUNT(v.id) votes FROM poll_options o"
@@ -417,6 +417,7 @@ def message(message_id):
             " WHERE o.poll_id = ? GROUP BY o.id, o.text ORDER BY o.id",
             (poll["id"],)).fetchall()
         total_votes = sum(r["votes"] for r in poll_options)
+        top_votes = max((r["votes"] for r in poll_options), default=0)
         u = current_user()
         if u:
             row = db.execute(
@@ -456,7 +457,8 @@ def message(message_id):
                            hof_threshold=int(get_setting("hof_threshold") or 5),
                            reply_subject=reply_subject, poll=poll,
                            poll_options=poll_options, my_vote=my_vote,
-                           total_votes=total_votes, game=game,
+                           total_votes=total_votes, top_votes=top_votes,
+                           game=game,
                            game_picks=game_picks, my_pick=my_pick,
                            game_winners=game_winners)
 
