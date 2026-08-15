@@ -392,6 +392,7 @@ def index(board_name):
                            board_name=board_name,
                            gameday=gameday_banner() if board_name == "main" else None,
                            pod=pod_box() if board_name == "main" else None,
+                           rocking=chat_rocking(),
                            read_ids=user_read_ids(db, current_user()))
 
 
@@ -928,6 +929,23 @@ CHAT_EPOCH = [1]      # bumped when an admin clears the room; clients wipe on ch
 CHAT_LAST_SEND = {}   # user_id -> monotonic time of last message (rate limit)
 CHAT_PRESENCE = {}    # user_id -> (handle, monotonic time of last poll)
 
+# "Chat is rocking": the boards advertise the room when it's genuinely
+# lively — enough people AND enough recent messages, not one idler
+ROCKING_PEOPLE = 3
+ROCKING_MSGS = 10
+ROCKING_WINDOW = 300   # seconds
+
+
+def chat_rocking():
+    now = time.monotonic()
+    with CHAT_LOCK:
+        people = sum(1 for _, t in CHAT_PRESENCE.values() if now - t < 30)
+        recent = sum(1 for m in CHAT_MESSAGES
+                     if now - m.get("at", -1e9) < ROCKING_WINDOW)
+    if people >= ROCKING_PEOPLE and recent >= ROCKING_MSGS:
+        return {"people": people, "recent": recent}
+    return None
+
 
 @app.route("/chat")
 @login_required
@@ -947,7 +965,8 @@ def chat_messages():
             del CHAT_PRESENCE[uid]
         names = sorted((h for h, t in CHAT_PRESENCE.values() if now - t < 30),
                        key=str.lower)
-        msgs = [m for m in CHAT_MESSAGES if m["id"] > since]
+        msgs = [{k: v for k, v in m.items() if k != "at"}
+                for m in CHAT_MESSAGES if m["id"] > since]
         epoch = CHAT_EPOCH[0]
     return {"messages": msgs, "online": len(names), "names": names,
             "epoch": epoch}
@@ -969,6 +988,7 @@ def chat_send():
             "id": CHAT_NEXT_ID[0],
             "handle": user["handle"],
             "text": text,
+            "at": now,   # monotonic; feeds the "chat is rocking" banner
             "time": datetime.now(timezone.utc).astimezone(BOARD_TZ)
                     .strftime("%I:%M %p").lstrip("0"),
         })

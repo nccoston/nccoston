@@ -304,6 +304,9 @@ table.admin-table td, table.admin-table th {
 }
 .score-row { margin: 3px 0; font-size: 12px; }
 
+.chat-rocking { text-align: center; font-size: 13px; margin: 10px 0; }
+.chat-rocking a { font-weight: bold; }
+
 /* maize-and-blue banner on the homepage whenever Michigan plays today */
 .gameday {
   background: #FFCB05;

@@ -28,6 +28,11 @@
 {% endmacro %}
 
 {% block content %}
+{% if rocking %}
+<p class="chat-rocking">&#128293; <a href="{{ url_for('chat') }}">Chat is
+  <b>ROCKING</b></a> &mdash; {{ rocking.people }} in the room,
+  {{ rocking.recent }} messages in the last five minutes &#128293;</p>
+{% endif %}
 {% if gameday %}
 <div class="gameday">
   <div class="gameday-title">&#127944; IT'S GAME DAY{% if gameday.state == 'in' %}
