@@ -304,6 +304,26 @@ table.admin-table td, table.admin-table th {
 }
 .score-row { margin: 3px 0; font-size: 12px; }
 
+/* maize-and-blue banner on the homepage whenever Michigan plays today */
+.gameday {
+  background: #FFCB05;
+  color: #00274C;
+  border: 3px solid #00274C;
+  max-width: 640px;
+  margin: 10px auto 12px;
+  padding: 10px 16px 12px;
+  text-align: center;
+}
+.gameday-title {
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 3px;
+}
+.gameday-live { font-size: 11px; letter-spacing: 1px; vertical-align: 2px; }
+.gameday-line { font-size: 15px; font-weight: bold; margin: 5px 0 4px; }
+.gameday-links { font-size: 12px; }
+.gameday a { color: #00274C; font-weight: bold; }
+
 .pod-box {
   border: 1px solid var(--border);
   padding: 5px 14px 7px;

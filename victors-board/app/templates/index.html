@@ -28,6 +28,17 @@
 {% endmacro %}
 
 {% block content %}
+{% if gameday %}
+<div class="gameday">
+  <div class="gameday-title">&#127944; IT'S GAME DAY{% if gameday.state == 'in' %}
+    <span class="gameday-live">&#128308; LIVE</span>{% endif %}</div>
+  <div class="gameday-line">{{ gameday.line }}</div>
+  <div class="gameday-links">
+    <a href="{{ url_for('chat') }}">Chat{% if gameday.chat %} ({{ gameday.chat }} in the room){% endif %}</a>
+    &middot; <a href="{{ url_for('index', board_name='scores') }}">Scores</a>
+  </div>
+</div>
+{% endif %}
 {% if pod %}
 <details class="pod-box">
   <summary>&#127908; <b>It's Pod Day:</b> {{ pod['title'] }}</summary>

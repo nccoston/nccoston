@@ -390,6 +390,7 @@ def index(board_name):
             t["has_game"] = t["id"] in game_ids
     return render_template("index.html", threads=threads, page=page, pages=pages,
                            board_name=board_name,
+                           gameday=gameday_banner() if board_name == "main" else None,
                            pod=pod_box() if board_name == "main" else None,
                            read_ids=user_read_ids(db, current_user()))
 
@@ -788,11 +789,64 @@ def fetch_scoreboards():
                     "home_score": home.get("score", ""),
                     "status": st.get("shortDetail", ""),
                     "state": st.get("state", "pre"),
+                    "date": ev.get("date", ""),
                 })
         except Exception:
             continue  # one sport failing shouldn't blank the other
     games.sort(key=lambda gm: STATE_ORDER.get(gm["state"], 3))
     return games
+
+
+def live_games():
+    """The cached scoreboard slate, refreshed at most once a minute."""
+    now = time.monotonic()
+    with SCORE_LOCK:
+        if now - SCORE_CACHE["at"] > 60:
+            fresh = fetch_scoreboards()
+            if fresh or not SCORE_CACHE["games"]:
+                SCORE_CACHE["games"] = fresh
+            SCORE_CACHE["at"] = now
+        return SCORE_CACHE["games"]
+
+
+def gameday_banner():
+    """Michigan's game on today's slate, shaped for the homepage banner —
+    None on the ~340 days a year there isn't one."""
+    today = datetime.now(timezone.utc).astimezone(BOARD_TZ).date()
+    best = None
+    for gm in live_games():
+        if "MICH" not in (gm["away"], gm["home"]):
+            continue
+        try:
+            gd = datetime.fromisoformat(
+                gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ).date()
+        except ValueError:
+            continue
+        if gd != today:
+            continue
+        if gm["state"] == "in":
+            best = gm
+            break
+        if best is None or (gm["state"] == "pre" and best["state"] == "post"):
+            best = gm   # an upcoming game outranks an earlier final
+    if best is None:
+        return None
+    home = best["home"] == "MICH"
+    opp = best["away"] if home else best["home"]
+    if best["state"] == "pre":
+        line = f"Michigan {'vs' if home else 'at'} {opp} · {best['status']}"
+    elif best["state"] == "in":
+        mich = best["home_score"] if home else best["away_score"]
+        theirs = best["away_score"] if home else best["home_score"]
+        line = f"MICH {mich} — {opp} {theirs} · {best['status']}"
+    else:
+        mich = best["home_score"] if home else best["away_score"]
+        theirs = best["away_score"] if home else best["home_score"]
+        line = f"FINAL: MICH {mich} — {opp} {theirs}"
+    now_m = time.monotonic()
+    with CHAT_LOCK:
+        in_chat = sum(1 for _, t in CHAT_PRESENCE.values() if now_m - t < 30)
+    return {"line": line, "state": best["state"], "chat": in_chat}
 
 
 # ---------------------------------------------------------------- pod day
@@ -856,14 +910,7 @@ def pod_box():
 
 @app.route("/scores/live.json")
 def scores_live():
-    now = time.monotonic()
-    with SCORE_LOCK:
-        if now - SCORE_CACHE["at"] > 60:
-            fresh = fetch_scoreboards()
-            if fresh or not SCORE_CACHE["games"]:
-                SCORE_CACHE["games"] = fresh
-            SCORE_CACHE["at"] = now
-        return {"games": SCORE_CACHE["games"]}
+    return {"games": live_games()}
 
 
 # ------------------------------------------------------------------- chat
