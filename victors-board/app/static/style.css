@@ -16,6 +16,37 @@
   --input-text: #000;
   --stripe: #f4f4f4;
 }
+/* the hidden third theme — found by clicking "by" in the footer */
+:root[data-theme="goblue"] {
+  --bg: #00274C;
+  --text: #FFCB05;
+  --link: #9ecfff;
+  --link-visited: #cfa8ff;
+  --muted: #e8c93a;
+  --hint: #d9bc2e;
+  --faint: #b89f28;
+  --border: #FFCB05;
+  --table-border: #3d5a7d;
+  --flash-bg: #3a1f1f;
+  --flash-border: #ff9d9d;
+  --success-bg: #1e3320;
+  --success-border: #8fe08f;
+  --input-bg: #001b36;
+  --input-text: #FFCB05;
+  --stripe: #003058;
+}
+:root[data-theme="goblue"] button {
+  background: #FFCB05;
+  color: #00274C;
+  border-color: #00274C;
+}
+:root[data-theme="goblue"] .inline-form button {
+  background: none;
+  color: var(--link);
+}
+:root[data-theme="goblue"] .gameday { border-color: #FFCB05; }
+:root[data-theme="goblue"] .bigpoll { border-color: #FFCB05; }
+
 :root[data-theme="dark"] {
   --bg: #1a1a1b;
   --text: #d7d7d7;

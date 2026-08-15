@@ -11,7 +11,9 @@
       window.matchMedia("(prefers-color-scheme: dark)").matches) {
     saved = "dark";
   }
-  if (saved === "dark") document.documentElement.dataset.theme = "dark";
+  if (saved === "dark" || saved === "goblue") {
+    document.documentElement.dataset.theme = saved;
+  }
 })();
 </script>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
@@ -93,9 +95,30 @@
 
 {% block content %}{% endblock %}
 
-<p class="footer">Self-hosted by Nick Coston &middot;
+<p class="footer">Self-hosted <span id="goblue-egg">by</span> Nick Coston &middot;
   <a href="{{ url_for('rss') }}">RSS</a> &middot;
   <a href="{{ url_for('stats') }}">Stats</a></p>
+<script>
+// the third theme. you either know or you don't.
+(function () {
+  var egg = document.getElementById("goblue-egg");
+  egg.addEventListener("click", function () {
+    var root = document.documentElement;
+    if (root.dataset.theme === "goblue") {
+      delete root.dataset.theme;
+      localStorage.setItem("theme", "light");
+    } else {
+      root.dataset.theme = "goblue";
+      localStorage.setItem("theme", "goblue");
+    }
+    var toggle = document.getElementById("theme-toggle");
+    if (toggle) {
+      toggle.textContent =
+        root.dataset.theme === "dark" ? "Light Mode" : "Dark Mode";
+    }
+  });
+})();
+</script>
 <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 <script>
 // one click per post: disable submit buttons once a post form is sent
