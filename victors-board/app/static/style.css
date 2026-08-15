@@ -20,8 +20,8 @@
 :root[data-theme="goblue"] {
   --bg: #00274C;
   --text: #FFCB05;
-  --link: #9ecfff;
-  --link-visited: #cfa8ff;
+  --link: #FFCB05;
+  --link-visited: #c4a339;   /* read links: antique gold, still legible */
   --muted: #e8c93a;
   --hint: #d9bc2e;
   --faint: #b89f28;
