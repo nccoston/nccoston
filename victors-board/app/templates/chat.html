@@ -27,6 +27,12 @@
   var lastId = 0;
   var epoch = null;
   var URL_RE = /(https?:\/\/[^\s<>"]+)/g;
+  var myHandle = {{ user['handle'] | tojson }};
+  var baseTitle = document.title;
+  var unseen = 0;
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { unseen = 0; document.title = baseTitle; }
+  });
 
   function nearBottom() {
     return box.scrollTop + box.clientHeight >= box.scrollHeight - 80;
@@ -57,6 +63,10 @@
       return;
     }
     div.className = "chat-msg";
+    if (m.handle !== myHandle &&
+        m.text.toLowerCase().indexOf(myHandle.toLowerCase()) !== -1) {
+      div.className += " chat-mention";
+    }
     var handle = document.createElement("b");
     handle.textContent = m.handle + ": ";
     var text = document.createElement("span");
@@ -71,18 +81,28 @@
     while (box.children.length > 250) box.removeChild(box.firstChild);
   }
 
+  var polling = false;
   function poll() {
+    if (polling) return;   // overlapping polls double-drew messages
+    polling = true;
     fetch("/chat/messages?since=" + lastId)
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (epoch !== null && d.epoch !== epoch) { box.textContent = ""; }
         epoch = d.epoch;
         var stick = nearBottom();
+        var drew = 0;
         (d.messages || []).forEach(function (m) {
+          if (m.id <= lastId) return;   // already drawn (belt to the flag's suspenders)
           addMessage(m);
-          lastId = Math.max(lastId, m.id);
+          lastId = m.id;
+          drew++;
+          if (document.hidden && !m.sys && m.handle !== myHandle) {
+            unseen++;
+            document.title = "(" + unseen + ") " + baseTitle;
+          }
         });
-        if (d.messages && d.messages.length && stick) {
+        if (drew && stick) {
           box.scrollTop = box.scrollHeight;
         }
         onlineEl.textContent = "🟢 " + d.online + " in the room";
@@ -94,7 +114,8 @@
           rn.appendChild(div);
         });
       })
-      .catch(function () {});
+      .catch(function () {})
+      .then(function () { polling = false; });
   }
 
   form.addEventListener("submit", function (e) {

@@ -216,6 +216,7 @@ table.admin-table td, table.admin-table th {
 .legacy-tag { font-size: 10px; color: var(--faint); }
 .poll-tag { font-size: 10px; color: var(--link); font-weight: bold; }
 .chat-sys { color: var(--faint); font-style: italic; text-align: center; }
+.chat-mention { background: rgba(255, 203, 5, 0.22); }  /* your handle came up */
 
 .hof-entry {
   border: 2px solid #FFCB05;
