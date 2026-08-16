@@ -306,6 +306,32 @@ def nightly_snapshot(day):
         old.unlink(missing_ok=True)
 
 
+REDDIT_SHARE_RE = re.compile(
+    r"https?://(?:www\.)?reddit\.com/r/[^/\s]+/s/[A-Za-z0-9]+")
+
+
+def resolve_reddit_links(text):
+    """Reddit's mobile share links (/r/x/s/abc) are redirects; embeds only
+    work on the real post URL. Resolve them once at post time, best effort —
+    on any failure the original link is kept."""
+    if not text or "/s/" not in text:
+        return text
+    import requests
+
+    def swap(m):
+        try:
+            r = requests.get(m.group(0), timeout=4, allow_redirects=False,
+                             headers={"User-Agent": "Mozilla/5.0"})
+            loc = r.headers.get("Location", "")
+            if loc.startswith("http") and "/comments/" in loc:
+                return loc.split("?")[0]
+        except Exception:
+            pass
+        return m.group(0)
+
+    return REDDIT_SHARE_RE.sub(swap, text)
+
+
 def user_read_ids(db, u):
     """Message ids this member has opened on any device (empty for guests)."""
     if not u:
@@ -584,7 +610,7 @@ def post(reply_to=None):
         board = parent["board"]
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
-        body = request.form.get("body", "").strip()
+        body = resolve_reddit_links(request.form.get("body", "").strip())
         image_url = request.form.get("image_url", "").strip()
         poll_lines = [ln.strip() for ln in
                       request.form.get("poll_options", "").splitlines() if ln.strip()][:10]
@@ -1133,7 +1159,7 @@ def edit(message_id):
         abort(403)
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
-        body = request.form.get("body", "").strip()
+        body = resolve_reddit_links(request.form.get("body", "").strip())
         image_url = request.form.get("image_url", "").strip()
         if not subject:
             flash("A subject is required.")
