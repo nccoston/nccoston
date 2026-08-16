@@ -87,6 +87,25 @@ p + p { margin-top: 14px; }
 }
 .timeline b { color: var(--blue); font-family: Verdana, sans-serif; font-size: 13px; }
 @media (prefers-color-scheme: dark) { .timeline b { color: var(--maize); } }
+.chart { margin: 22px 0 4px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.bar { fill: var(--maize); }
+.bar-max { fill: var(--blue); }
+.axis { font: 12px Verdana, sans-serif; fill: var(--soft); }
+@media (prefers-color-scheme: dark) { .bar-max { fill: #7fb2e5; } }
+.incident { margin: 16px 0; padding-left: 18px; border-left: 3px solid var(--rule); }
+.incident b { font-family: Verdana, sans-serif; font-size: 13.5px; color: var(--blue); }
+@media (prefers-color-scheme: dark) { .incident b { color: var(--maize); } }
+.incident p { font-size: 15px; margin-top: 3px; }
+.incident .fix { color: var(--soft); font-size: 14px; }
+.stack { font-size: 15.5px; }
+.stack code {
+  font-family: Menlo, Consolas, monospace;
+  font-size: 13px;
+  background: var(--rule);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
 blockquote {
   border-left: 4px solid var(--blue);
   padding: 6px 0 6px 18px;
@@ -114,8 +133,8 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
 <div class="hero">
   <img src="{{ url_for('static', filename='umich.png') }}" alt="Block M">
   <h1>The board that refused to die</h1>
-  <p>How a 25-year-old community lost its home, got a new one in six days,
-     and came back bigger than ever.</p>
+  <p>How a thirty-year-old community lost its home, got a new one in six
+     days, and came back bigger than ever.</p>
 </div>
 
 <div class="wrap">
@@ -128,22 +147,68 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
     <div class="stat"><b>{{ "{:,}".format(pageviews) }}</b><span>pageviews yesterday</span><i>counted, not estimated</i></div>
     <div class="stat"><b>$7</b><span>per month, total</span><i>the whole operation</i></div>
   </div>
+  <div class="stats">
+    <div class="stat"><b>{{ "{:,}".format(photos) }}</b><span>photos &amp; clips hosted</span><i>compressed, EXIF-corrected</i></div>
+    <div class="stat"><b>{{ games }}</b><span>polls &amp; pick 'em games</span><i>member-created</i></div>
+    <div class="stat"><b>{{ hof }}</b><span>Hall of Fame posts</span><i>enshrined by member vote</i></div>
+    <div class="stat"><b>{{ days_live }}</b><span>days since launch</span><i>zero data lost</i></div>
+  </div>
   <p style="font-size:12px; font-family: Verdana, sans-serif; color: var(--soft)">
     These figures are queried live from the board's database every time this
     page loads &mdash; this page is served by the same $7 server it describes.</p>
+
+  {% if chart %}
+  <div class="chart">
+    <svg viewBox="0 0 560 130" role="img"
+         aria-label="Daily pageviews, last {{ chart|length }} days">
+      {% set n = chart|length %}
+      {% set bw = (560 / n) - 6 %}
+      {% for c in chart %}
+      {% set h = (100 * c['pageviews'] / chart_max) if chart_max else 0 %}
+      <rect class="bar{% if c['pageviews'] == chart_max %} bar-max{% endif %}"
+            x="{{ loop.index0 * (560 / n) + 3 }}" y="{{ 110 - h }}"
+            width="{{ bw }}" height="{{ h }}"><title>{{ c['day'] }}:
+        {{ "{:,}".format(c['pageviews']) }} pageviews</title></rect>
+      {% endfor %}
+      <text class="axis" x="3" y="126">{{ chart[0]['day'] }}</text>
+      <text class="axis" x="557" y="126" text-anchor="end">{{ chart[-1]['day'] }}</text>
+      <text class="axis" x="557" y="14" text-anchor="end">peak
+        {{ "{:,}".format(chart_max) }}/day</text>
+    </svg>
+    <p style="font-size:11px; font-family: Verdana, sans-serif; color: var(--soft); margin-top:2px">
+      Daily pageviews, most recent {{ chart|length }} days &mdash; drawn from
+      the live traffic table at page load.</p>
+  </div>
+  {% endif %}
 </section>
 
 <section>
   <h2>The crash</h2>
-  <p class="lede">For 25 years, a few hundred Michigan fans argued about
-    football on a message board that looked like 1998 &mdash; because it was
-    from 1998. Threaded replies, handles, an asterisk in the subject line when
-    the subject was the whole post. Marriages, kids, jobs, and national
-    championships all got announced there.</p>
+  <p class="lede">Since 1995 &mdash; before Google existed &mdash; a few
+    hundred Michigan fans have argued about football on a message board that
+    looks like 1998. Threaded replies, handles, an asterisk in the subject
+    line when the subject is the whole post. Marriages, kids, jobs, and
+    national championships all got announced there. One member found it via
+    Ask Jeeves. Another wrote a book about it.</p>
   <p>In the summer of 2026 the free service hosting it crashed and never came
     back. No warning, no export, no support &mdash; the host's own help forum
-    had been dead for years. Twenty-five years of community suddenly had no
+    had been dead for years. Thirty years of community suddenly had no
     address.</p>
+</section>
+
+<section>
+  <h2>Thirty years, five homes</h2>
+  <p>The community predates its every address. It began on a fan-run
+    recruiting board in <b>1995</b>, moved to the beloved &ldquo;VV
+    board&rdquo; in <b>1996</b> (famous for showing whole posts without a
+    click), became <em>The Victors</em> around <b>1999</b>, and rode a free
+    1998-era host for decades after that &mdash; through outages, ads, and
+    neglect &mdash; because moving felt impossible.</p>
+  <p>The 2026 crash forced the question. The answer, this time, was an
+    address the community owns. When the new board ran a roll call, members
+    dated themselves to every era back to 1995 &mdash; and the founder of the
+    1996 board showed up in the thread, to a chorus of &ldquo;long time no
+    see.&rdquo;</p>
 </section>
 
 <section>
@@ -151,8 +216,8 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
   <p>Nick Coston, the board's admin &mdash; not a developer &mdash; rebuilt it
     in six evenings, directing AI tools (Claude Code) the way an architect
     directs a construction crew: deciding what to build, reviewing everything
-    against 25 years of community instinct, and testing on the toughest QA
-    department in existence &mdash; the members themselves, live.</p>
+    against thirty years of community instinct, and testing on the toughest
+    QA department in existence &mdash; the members themselves, live.</p>
   <p>The design brief was one sentence: <em>keep everything the community
     loved, fix everything the old host wouldn't.</em> The 1998 look stayed.
     The threads, handles, and asterisk culture stayed. Underneath: photo and
@@ -180,7 +245,52 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
 </section>
 
 <section>
+  <h2>Incident log</h2>
+  <p>Real communities generate real production incidents. A selection, each
+    diagnosed and fixed in hours &mdash; usually before most members noticed:</p>
+  <div class="incident">
+    <b>Photos posting sideways</b>
+    <p>Phone cameras store orientation as metadata; the upload compressor was
+      stripping it without applying it.</p>
+    <p class="fix">Fix: apply orientation before resizing. Every phone photo
+      since lands right-side up.</p>
+  </div>
+  <div class="incident">
+    <b>A password reset that didn't stop anyone</b>
+    <p>Year-long login sessions meant a reset password couldn't kick a
+      problem user's existing logins.</p>
+    <p class="fix">Fix: per-account session tokens, rotated on reset — every
+      live session dies instantly, on every device.</p>
+  </div>
+  <div class="incident">
+    <b>3,900 daily "visitors" on a 350-member board</b>
+    <p>The traffic counter was counting the CDN's relay addresses as people.</p>
+    <p class="fix">Fix: read the real client address from the CDN header.
+      Honest numbers overnight; the analytics stayed anonymous throughout.</p>
+  </div>
+  <div class="incident">
+    <b>Chat messages appearing twice</b>
+    <p>Two overlapping refresh requests could each draw the same new
+      messages — a classic race, surfacing only when the room got busy.</p>
+    <p class="fix">Fix: client-side dedupe by message id, one refresh in
+      flight at a time.</p>
+  </div>
+  <div class="incident">
+    <b>The backup that would have hung the board at midnight</b>
+    <p>The first nightly-snapshot implementation ran inside an open database
+      transaction — a deadlock that would fire on the first pageview of every
+      new day.</p>
+    <p class="fix">Fix: caught before it ever shipped, by an actual restore
+      drill. Untested backups are hope; these are tested.</p>
+  </div>
+</section>
+
+<section>
   <h2>What the members say</h2>
+  <blockquote>&ldquo;Here, I realized at that moment, are my people. And,
+    nearly a quarter of a century later, I'm still there.&rdquo;
+    <footer>&mdash; from a member's published book about this community</footer>
+  </blockquote>
   <blockquote>&ldquo;Thank you for everything you've done. I know I speak for
     many in saying we'd like to help pay for this.&rdquo;
     <footer>&mdash; a member, unprompted, offering money to a free board</footer>
@@ -191,6 +301,27 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
   <blockquote>&ldquo;You're going to need Jira.&rdquo;
     <footer>&mdash; a member, on the speed of shipped feature requests</footer>
   </blockquote>
+  <blockquote>&ldquo;I would like my ampersand back.&rdquo;
+    <footer>&mdash; a member whose handle lost its &amp; in the migration,
+      filing history's most 1998 bug report. Restored within the hour,
+      retroactively, across every post they ever made.</footer>
+  </blockquote>
+</section>
+
+<section>
+  <h2>The stack</h2>
+  <p class="stack">One Python file &mdash; <code>{{ "{:,}".format(loc) }}
+    lines</code> as of this page load &mdash; plus SQLite, plain HTML
+    templates, and one small CSS file. No framework churn, no build step, no
+    JavaScript beyond what the chat and scoreboard genuinely need. It runs on
+    a single <code>$7/month</code> server with a persistent disk, behind a
+    CDN, deploying automatically on every push.</p>
+  <p class="stack">The code was written by AI (Claude Code) under direction;
+    every feature was specified, reviewed, and accepted by a human who knows
+    the community — then tested by 350 people who don't file bug reports so
+    much as post them publicly with jokes attached. Feature requests routinely
+    shipped the same afternoon they were posted, which the members found
+    funnier than the features.</p>
 </section>
 
 <section>
@@ -206,9 +337,11 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
 </div>
 
 <div class="foot">
-  <b>The Victors</b> &middot; rebuilt August 2026 &middot; Flask + SQLite on a
-  $7 server &middot; built with Claude Code<br>
-  Community architecture by <b>Nick Coston</b>
+  <b>The Victors</b> &middot; est. 1995, rebuilt August 2026 &middot;
+  Flask + SQLite on a $7 server &middot; built with Claude Code<br>
+  Community architecture by <b>Nick Coston</b><br>
+  <span style="color:#7d8ea1">P.S. — the board has two hidden easter eggs.
+  The members have found one.</span>
 </div>
 
 </body>

@@ -1018,8 +1018,8 @@ def chat_clear():
 
 @app.route("/story")
 def story():
-    """The rescue case study — unlisted; the only link lives on the admin
-    page. Stats are queried live so the page proves itself."""
+    """The rescue case study — fully unlisted, no links anywhere.
+    Stats are queried live so the page proves itself."""
     db = get_db()
     members = db.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
     messages = db.execute("SELECT COUNT(*) c FROM messages").fetchone()["c"]
@@ -1027,8 +1027,25 @@ def story():
                  - timedelta(days=1)).strftime("%Y-%m-%d")
     row = db.execute("SELECT pageviews FROM traffic WHERE day = ?",
                      (yesterday,)).fetchone()
+    hof = db.execute("SELECT COUNT(*) c FROM messages"
+                     " WHERE hof_at IS NOT NULL").fetchone()["c"]
+    games = db.execute("SELECT COUNT(*) c FROM polls").fetchone()["c"] \
+        + db.execute("SELECT COUNT(*) c FROM games").fetchone()["c"]
+    photos = sum(1 for p in UPLOAD_DIR.glob("*") if p.is_file())
+    launched = datetime(2026, 8, 3, tzinfo=BOARD_TZ)
+    days_live = (datetime.now(timezone.utc).astimezone(BOARD_TZ)
+                 - launched).days
+    week = db.execute(
+        "SELECT day, pageviews FROM traffic ORDER BY day DESC LIMIT 15"
+    ).fetchall()
+    chart = [dict(r) for r in reversed(week)][:-1]   # last 14 full days
+    chart_max = max((c["pageviews"] for c in chart), default=1)
+    loc = (APP_DIR / "app.py").read_text().count("\n")
     return render_template("story.html", members=members, messages=messages,
-                           pageviews=row["pageviews"] if row else 0)
+                           pageviews=row["pageviews"] if row else 0,
+                           hof=hof, games=games, photos=photos,
+                           days_live=days_live, chart=chart,
+                           chart_max=chart_max, loc=loc)
 
 
 @app.route("/stats")
