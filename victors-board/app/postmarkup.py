@@ -26,6 +26,12 @@ TWEET_RE = re.compile(
     r"https?://(?:www\.)?(?:twitter\.com|x\.com)/[A-Za-z0-9_]+/status/\d+\S*")
 STREAMABLE_RE = re.compile(
     r"https?://(?:www\.)?streamable\.com/(?:e/)?([A-Za-z0-9]+)")
+IMAGE_RE = re.compile(
+    r"https?://\S+\.(?:gif|jpe?g|png|webp)(?:\?\S*)?$", re.IGNORECASE)
+REDDIT_RE = re.compile(
+    r"https?://(?:www\.|old\.)?reddit\.com/r/[^/\s]+/comments/\S+")
+TIKTOK_RE = re.compile(
+    r"https?://(?:www\.)?tiktok\.com/@[^/\s]+/video/(\d+)")
 
 
 def _linkify(url):
@@ -46,6 +52,18 @@ def _linkify(url):
                 f'src="https://streamable.com/e/{m.group(1)}" '
                 f'loading="lazy" allowfullscreen></iframe></div>'
                 f'<a href="{esc}" rel="nofollow">{escape(url)}</a>')
+    if IMAGE_RE.match(url):
+        # a bare picture/GIF link shows the picture itself
+        return (f'<a href="{esc}" rel="nofollow" target="_blank">'
+                f'<img src="{esc}" alt="" loading="lazy"></a>')
+    if REDDIT_RE.match(url):
+        return (f'<blockquote class="reddit-embed-bq" data-embed-height="500">'
+                f'<a href="{esc}" rel="nofollow">{escape(url)}</a></blockquote>')
+    m = TIKTOK_RE.match(url)
+    if m:
+        return (f'<blockquote class="tiktok-embed" cite="{esc}" '
+                f'data-video-id="{m.group(1)}" style="max-width:605px">'
+                f'<a href="{esc}" rel="nofollow">{escape(url)}</a></blockquote>')
     return f'<a href="{esc}" rel="nofollow">{escape(url)}</a>'
 
 
