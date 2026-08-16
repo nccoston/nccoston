@@ -1016,6 +1016,21 @@ def chat_clear():
     return {"ok": True}
 
 
+@app.route("/story")
+def story():
+    """The rescue case study — unlisted; the only link lives on the admin
+    page. Stats are queried live so the page proves itself."""
+    db = get_db()
+    members = db.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
+    messages = db.execute("SELECT COUNT(*) c FROM messages").fetchone()["c"]
+    yesterday = (datetime.now(timezone.utc).astimezone(BOARD_TZ)
+                 - timedelta(days=1)).strftime("%Y-%m-%d")
+    row = db.execute("SELECT pageviews FROM traffic WHERE day = ?",
+                     (yesterday,)).fetchone()
+    return render_template("story.html", members=members, messages=messages,
+                           pageviews=row["pageviews"] if row else 0)
+
+
 @app.route("/stats")
 def stats():
     db = get_db()

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Victors — a community rescue story</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<style>
+:root {
+  --blue: #00274C;
+  --maize: #FFCB05;
+  --ink: #1c2733;
+  --paper: #ffffff;
+  --soft: #5b6b7b;
+  --rule: #e3e8ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ink: #e8e6e1; --paper: #121820; --soft: #9aa8b6; --rule: #26303b; }
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: Georgia, 'Times New Roman', serif;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.65;
+}
+.hero {
+  background: var(--blue);
+  color: #fff;
+  text-align: center;
+  padding: 64px 24px 56px;
+}
+.hero img { height: 72px; }
+.hero h1 {
+  font-size: clamp(30px, 5.5vw, 52px);
+  color: var(--maize);
+  margin: 18px 0 10px;
+  letter-spacing: 0.5px;
+}
+.hero p {
+  font-size: clamp(16px, 2.4vw, 21px);
+  color: #cfd8e3;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.wrap { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+section { padding: 44px 0 8px; }
+h2 {
+  font-size: 15px;
+  font-family: Verdana, sans-serif;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--soft);
+  border-bottom: 2px solid var(--maize);
+  display: inline-block;
+  padding-bottom: 4px;
+  margin-bottom: 18px;
+}
+p + p { margin-top: 14px; }
+.lede { font-size: 19px; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin: 26px 0 10px;
+}
+.stat {
+  border: 1px solid var(--rule);
+  border-top: 4px solid var(--maize);
+  padding: 16px 14px 13px;
+  text-align: center;
+}
+.stat b {
+  display: block;
+  font-size: clamp(26px, 4vw, 38px);
+  color: var(--blue);
+  font-family: Verdana, sans-serif;
+}
+@media (prefers-color-scheme: dark) { .stat b { color: var(--maize); } }
+.stat span { font-size: 12px; font-family: Verdana, sans-serif; color: var(--soft); }
+.stat i { display: block; font-size: 10px; color: var(--soft); font-style: normal; margin-top: 3px; }
+.timeline { list-style: none; margin: 8px 0; }
+.timeline li {
+  padding: 9px 0 9px 22px;
+  border-left: 3px solid var(--maize);
+  margin-left: 6px;
+}
+.timeline b { color: var(--blue); font-family: Verdana, sans-serif; font-size: 13px; }
+@media (prefers-color-scheme: dark) { .timeline b { color: var(--maize); } }
+blockquote {
+  border-left: 4px solid var(--blue);
+  padding: 6px 0 6px 18px;
+  margin: 18px 0;
+  font-style: italic;
+  font-size: 17px;
+}
+@media (prefers-color-scheme: dark) { blockquote { border-color: var(--maize); } }
+blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); margin-top: 4px; }
+.foot {
+  margin-top: 52px;
+  background: var(--blue);
+  color: #cfd8e3;
+  text-align: center;
+  padding: 34px 24px;
+  font-family: Verdana, sans-serif;
+  font-size: 12px;
+}
+.foot b { color: var(--maize); }
+.foot a { color: var(--maize); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <img src="{{ url_for('static', filename='umich.png') }}" alt="Block M">
+  <h1>The board that refused to die</h1>
+  <p>How a 25-year-old community lost its home, got a new one in six days,
+     and came back bigger than ever.</p>
+</div>
+
+<div class="wrap">
+
+<section>
+  <h2>The numbers, live</h2>
+  <div class="stats">
+    <div class="stat"><b>{{ members }}</b><span>members</span><i>285 at the old board's peak</i></div>
+    <div class="stat"><b>{{ "{:,}".format(messages) }}</b><span>messages posted</span><i>since August 3</i></div>
+    <div class="stat"><b>{{ "{:,}".format(pageviews) }}</b><span>pageviews yesterday</span><i>counted, not estimated</i></div>
+    <div class="stat"><b>$7</b><span>per month, total</span><i>the whole operation</i></div>
+  </div>
+  <p style="font-size:12px; font-family: Verdana, sans-serif; color: var(--soft)">
+    These figures are queried live from the board's database every time this
+    page loads &mdash; this page is served by the same $7 server it describes.</p>
+</section>
+
+<section>
+  <h2>The crash</h2>
+  <p class="lede">For 25 years, a few hundred Michigan fans argued about
+    football on a message board that looked like 1998 &mdash; because it was
+    from 1998. Threaded replies, handles, an asterisk in the subject line when
+    the subject was the whole post. Marriages, kids, jobs, and national
+    championships all got announced there.</p>
+  <p>In the summer of 2026 the free service hosting it crashed and never came
+    back. No warning, no export, no support &mdash; the host's own help forum
+    had been dead for years. Twenty-five years of community suddenly had no
+    address.</p>
+</section>
+
+<section>
+  <h2>The rebuild</h2>
+  <p>Nick Coston, the board's admin &mdash; not a developer &mdash; rebuilt it
+    in six evenings, directing AI tools (Claude Code) the way an architect
+    directs a construction crew: deciding what to build, reviewing everything
+    against 25 years of community instinct, and testing on the toughest QA
+    department in existence &mdash; the members themselves, live.</p>
+  <p>The design brief was one sentence: <em>keep everything the community
+    loved, fix everything the old host wouldn't.</em> The 1998 look stayed.
+    The threads, handles, and asterisk culture stayed. Underneath: photo and
+    video posting, polls, score-prediction games with a leaderboard, a live
+    college scoreboard, an ephemeral chat room, a member-voted Hall of Fame,
+    cross-device read tracking, moderation tools, privacy-preserving
+    analytics, and nightly tested backups &mdash; so no crash can ever take
+    the community's history again.</p>
+</section>
+
+<section>
+  <h2>Six days, then a season</h2>
+  <ul class="timeline">
+    <li><b>Day 0</b> — The old host dies. The community waits around a dead URL.</li>
+    <li><b>Day 3</b> — A clean rebuild goes live on its own address. Members
+      re-register by the dozens the first night.</li>
+    <li><b>Week 1</b> — Photos, polls, search, edit, dark mode; the member
+      feature-request firehose opens and never closes.</li>
+    <li><b>Week 2</b> — Pick 'em games, Hall of Fame, live chat, video clips;
+      the community passes its old size.</li>
+    <li><b>Week 3</b> — Live scoreboards, game-day mode, a weekly podcast
+      integration, tested disaster recovery. 350 members, ~35,000 pageviews a
+      day.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>What the members say</h2>
+  <blockquote>&ldquo;Thank you for everything you've done. I know I speak for
+    many in saying we'd like to help pay for this.&rdquo;
+    <footer>&mdash; a member, unprompted, offering money to a free board</footer>
+  </blockquote>
+  <blockquote>&ldquo;This redesign has generally been fantastic.&rdquo;
+    <footer>&mdash; a member of 20 years</footer>
+  </blockquote>
+  <blockquote>&ldquo;You're going to need Jira.&rdquo;
+    <footer>&mdash; a member, on the speed of shipped feature requests</footer>
+  </blockquote>
+</section>
+
+<section>
+  <h2>The lesson</h2>
+  <p class="lede">The engineering turned out to be the easy half. The hard
+    half was twenty-five years in the making: knowing what a community needs,
+    what it will reject, and when to say no &mdash; then saying yes fast to
+    everything else.</p>
+  <p>AI didn't replace a developer here. It let a community person become the
+    architect &mdash; social and engineering, both halves.</p>
+</section>
+
+</div>
+
+<div class="foot">
+  <b>The Victors</b> &middot; rebuilt August 2026 &middot; Flask + SQLite on a
+  $7 server &middot; built with Claude Code<br>
+  Community architecture by <b>Nick Coston</b>
+</div>
+
+</body>
+</html>

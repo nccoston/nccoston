@@ -10,6 +10,10 @@
     The disk holds 1000 MB and can be enlarged anytime in Render
     (service &rarr; Disk).</p>
 
+  <p class="hint">&#128220; The board's origin story lives at
+    <a href="{{ url_for('story') }}">/story</a> &mdash; a shareable case-study
+    page with live numbers. Unlisted: this is the only link to it.</p>
+
   <h3>Backups</h3>
   <p class="hint">The database is snapshotted automatically every night (last
     {{ snapshots|length if snapshots else 0 }} of 7 shown below, kept on the
