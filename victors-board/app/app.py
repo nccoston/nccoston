@@ -1260,9 +1260,37 @@ def register():
     return render_template("register.html", closed=False)
 
 
+# login rate limit: after LOGIN_MAX_FAILS failed tries from one address,
+# that address waits out LOGIN_COOLDOWN before trying again
+LOGIN_FAILS = {}          # ip -> [monotonic times of recent failures]
+LOGIN_LOCK = threading.Lock()
+LOGIN_MAX_FAILS = 5
+LOGIN_WINDOW = 900        # failures older than this stop counting
+LOGIN_COOLDOWN = 900
+
+
+def login_blocked(ip):
+    now = time.monotonic()
+    with LOGIN_LOCK:
+        fails = [t for t in LOGIN_FAILS.get(ip, []) if now - t < LOGIN_WINDOW]
+        LOGIN_FAILS[ip] = fails
+        if len(LOGIN_FAILS) > 5000:   # bot-swarm memory backstop
+            LOGIN_FAILS.clear()
+        return len(fails) >= LOGIN_MAX_FAILS
+
+
+def login_failed(ip):
+    with LOGIN_LOCK:
+        LOGIN_FAILS.setdefault(ip, []).append(time.monotonic())
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        if login_blocked(client_ip()):
+            flash("Too many failed tries — wait 15 minutes and try again "
+                  "(or email the admins for a password reset).")
+            return render_template("login.html")
         handle = request.form.get("handle", "").strip()
         password = request.form.get("password", "")
         row = get_db().execute("SELECT * FROM users WHERE handle = ?", (handle,)).fetchone()
@@ -1280,6 +1308,7 @@ def login():
                     target = url_for("index", board_name="main")
                 return redirect(target)
         else:
+            login_failed(client_ip())
             flash("Wrong handle or password.")
     return render_template("login.html")
 
