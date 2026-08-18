@@ -509,15 +509,38 @@ def upload_to_streamable(path):
 
 
 def save_uploaded_image():
-    """Store an uploaded picture on the data disk; return its serving path.
+    """First upload only (or None) — the edit page replaces the attachment."""
+    files = [f for f in request.files.getlist("image_file") if f and f.filename]
+    return _save_one_upload(files[0]) if files else None
+
+
+def save_uploaded_images(limit=6):
+    """All uploads in order, as serving URLs. One video max per post — extra
+    clips are skipped so a single request can't sit on the video service."""
+    files = [f for f in request.files.getlist("image_file") if f and f.filename]
+    if len(files) > limit:
+        flash(f"{limit} pictures max per post — kept the first {limit}.")
+        files = files[:limit]
+    urls, video_done = [], False
+    for f in files:
+        if Path(f.filename).suffix.lower() in ALLOWED_VIDEO_EXT:
+            if video_done:
+                flash("One video clip per post — extra clips were skipped.")
+                continue
+            video_done = True
+        u = _save_one_upload(f)
+        if u:
+            urls.append(u)
+    return urls
+
+
+def _save_one_upload(f):
+    """Store one uploaded picture/clip on the data disk; return its URL.
 
     Non-GIF images are downscaled to 1600px max and recompressed, which
     turns multi-MB phone photos into a few hundred KB. GIFs pass through
     untouched to preserve animation.
     """
-    f = request.files.get("image_file")
-    if not f or not f.filename:
-        return None
     ext = Path(f.filename).suffix.lower()
     if ext not in ALLOWED_IMAGE_EXT | ALLOWED_VIDEO_EXT:
         flash("Uploads must be a picture (jpg, png, gif, webp) or a short "
@@ -621,9 +644,17 @@ def post(reply_to=None):
         else:
             if image_url and not image_url.lower().startswith(("http://", "https://")):
                 image_url = ""
-            uploaded = save_uploaded_image()
+            uploaded = save_uploaded_images()
             if uploaded:
-                image_url = uploaded
+                image_url = uploaded[0]
+                if len(uploaded) > 1:
+                    # extra pictures go inline in the body, absolute so the
+                    # renderer embeds them
+                    root = request.url_root.rstrip("/")
+                    extras = "\n".join(
+                        u if u.startswith("http") else root + u
+                        for u in uploaded[1:])
+                    body = (body + "\n\n" + extras).strip()
             user = current_user()
             now = now_utc_iso()
             # double-post guard: identical post by the same user in the last
