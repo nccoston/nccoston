@@ -371,6 +371,7 @@ table.admin-table td, table.admin-table th {
 .score-tag { color: var(--faint); font-size: 10px; }
 .score-status { color: var(--faint); font-size: 11px; font-style: italic; }
 .score-mich { font-weight: bold; }
+.score-sru { grid-column: 1 / -1; padding-top: 4px; border-top: 1px solid var(--border); }
 .score-live .score-status { color: var(--link); font-style: normal; }
 
 .game-form { margin: 8px 0; }

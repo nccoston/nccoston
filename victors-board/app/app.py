@@ -855,6 +855,64 @@ def fetch_scoreboards():
     return games
 
 
+# The Slippery Rock score has been announced at Michigan Stadium since the
+# 1950s. The board carries it too, on Saturdays, with no explanation — same
+# as the stadium. Division II is group 57 in ESPN's scoreboard feed.
+SRU_URL = ("https://site.api.espn.com/apis/site/v2/sports/football/"
+           "college-football/scoreboard?groups=57&limit=200")
+SRU_CACHE = {"at": -1e9, "game": None}
+SRU_LOCK = threading.Lock()
+
+
+def fetch_slippery_rock():
+    """Slippery Rock's game today, or None."""
+    import requests
+    try:
+        data = requests.get(SRU_URL, timeout=6).json()
+    except Exception:
+        return None
+    for ev in data.get("events", []):
+        try:
+            comp = ev["competitions"][0]
+            teams = comp["competitors"]
+            if not any("slippery rock" in (c["team"].get("displayName", "")).lower()
+                       for c in teams):
+                continue
+            home = next(c for c in teams if c.get("homeAway") == "home")
+            away = next(c for c in teams if c.get("homeAway") == "away")
+            st = ev.get("status", {}).get("type", {})
+            return {
+                "away": away["team"].get("abbreviation") or away["team"].get("displayName", "?"),
+                "home": home["team"].get("abbreviation") or home["team"].get("displayName", "?"),
+                "away_score": away.get("score", ""),
+                "home_score": home.get("score", ""),
+                "status": st.get("shortDetail", ""),
+                "state": st.get("state", "pre"),
+            }
+        except Exception:
+            continue
+    return None
+
+
+def slippery_rock_line():
+    """One rendered line for the scoreboard, Saturdays only, or None."""
+    now_local = datetime.now(timezone.utc).astimezone(BOARD_TZ)
+    if now_local.weekday() != 5:   # Saturday
+        return None
+    now = time.monotonic()
+    with SRU_LOCK:
+        if now - SRU_CACHE["at"] > 300:
+            SRU_CACHE["game"] = fetch_slippery_rock()
+            SRU_CACHE["at"] = now
+        gm = SRU_CACHE["game"]
+    if not gm:
+        return None
+    if gm["state"] == "pre":
+        return f"Slippery Rock vs {gm['away'] if gm['home'] == 'SRU' else gm['home']}"
+    return (f"{gm['away']} {gm['away_score']} — {gm['home']} {gm['home_score']}"
+            f" · {gm['status']}")
+
+
 def live_games():
     """The cached scoreboard slate, refreshed at most once a minute."""
     now = time.monotonic()
@@ -968,7 +1026,18 @@ def pod_box():
 
 @app.route("/scores/live.json")
 def scores_live():
-    return {"games": live_games()}
+    return {"games": live_games(), "sru": slippery_rock_line()}
+
+
+@app.route("/admin/sru-check")
+@admin_required
+def sru_check():
+    """One-off: does ESPN's D-II feed carry Slippery Rock today?"""
+    with SRU_LOCK:
+        SRU_CACHE["at"] = -1e9
+    raw = fetch_slippery_rock()
+    return {"found": bool(raw), "game": raw, "line_shown_now": slippery_rock_line(),
+            "note": "line only renders on Saturdays"}
 
 
 # ------------------------------------------------------------------- chat

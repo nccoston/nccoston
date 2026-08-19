@@ -69,9 +69,9 @@
   wrap.addEventListener("toggle", function () {
     localStorage.setItem("scoresOpen", wrap.open ? "1" : "");
   });
-  function render(games) {
+  function render(games, sru) {
     box.textContent = "";
-    if (!games.length) { wrap.style.display = "none"; return; }
+    if (!games.length && !sru) { wrap.style.display = "none"; return; }
     var live = 0, mich = null;
     games.forEach(function (gm) {
       if (gm.state === "in") live++;
@@ -93,6 +93,16 @@
       row.appendChild(st);
       box.appendChild(row);
     });
+    if (sru) {
+      var srow = document.createElement("div");
+      srow.className = "score-row score-sru";
+      var stag = document.createElement("span");
+      stag.className = "score-tag";
+      stag.textContent = "[SRU] ";
+      srow.appendChild(stag);
+      srow.appendChild(document.createTextNode(sru));
+      box.appendChild(srow);
+    }
     var label = "Live scoreboard (" +
       (live ? live + " live of " + games.length + " games" : games.length + " games") + ")";
     if (mich) {
@@ -107,7 +117,7 @@
   function poll() {
     fetch("/scores/live.json")
       .then(function (r) { return r.json(); })
-      .then(function (d) { render(d.games || []); })
+      .then(function (d) { render(d.games || [], d.sru); })
       .catch(function () {});
   }
   poll();
