@@ -873,19 +873,20 @@ def fetch_slippery_rock():
         return None
     for ev in data.get("events", []):
         try:
-            comp = ev["competitions"][0]
-            teams = comp["competitors"]
-            if not any("slippery rock" in (c["team"].get("displayName", "")).lower()
-                       for c in teams):
+            teams = ev["competitions"][0]["competitors"]
+            rock = next((c for c in teams
+                         if "slippery rock" in c["team"].get("displayName", "").lower()),
+                        None)
+            if rock is None:
                 continue
-            home = next(c for c in teams if c.get("homeAway") == "home")
-            away = next(c for c in teams if c.get("homeAway") == "away")
+            other = next(c for c in teams if c is not rock)
             st = ev.get("status", {}).get("type", {})
             return {
-                "away": away["team"].get("abbreviation") or away["team"].get("displayName", "?"),
-                "home": home["team"].get("abbreviation") or home["team"].get("displayName", "?"),
-                "away_score": away.get("score", ""),
-                "home_score": home.get("score", ""),
+                "opponent": (other["team"].get("abbreviation")
+                             or other["team"].get("displayName", "?")),
+                "at_home": rock.get("homeAway") == "home",
+                "score": rock.get("score", ""),
+                "opp_score": other.get("score", ""),
                 "status": st.get("shortDetail", ""),
                 "state": st.get("state", "pre"),
             }
@@ -907,9 +908,10 @@ def slippery_rock_line():
         gm = SRU_CACHE["game"]
     if not gm:
         return None
+    versus = "vs" if gm["at_home"] else "at"
     if gm["state"] == "pre":
-        return f"Slippery Rock vs {gm['away'] if gm['home'] == 'SRU' else gm['home']}"
-    return (f"{gm['away']} {gm['away_score']} — {gm['home']} {gm['home_score']}"
+        return f"Slippery Rock {versus} {gm['opponent']} · {gm['status']}"
+    return (f"Slippery Rock {gm['score']} — {gm['opponent']} {gm['opp_score']}"
             f" · {gm['status']}")
 
 
