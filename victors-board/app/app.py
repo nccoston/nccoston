@@ -244,7 +244,7 @@ def rendertext(text):
     return Markup(render_post(text))
 
 
-FLAG_FILE = APP_DIR / "static" / "flag.gif"   # waving M, game day banner only
+FLAG_FILE = APP_DIR / "static" / "goblu-banner.gif"   # waving M, game day only
 
 
 @app.context_processor
