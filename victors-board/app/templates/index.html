@@ -40,7 +40,7 @@
     {%- else %}&#127944;{% endif %} IT'S GAME DAY
     {%- if has_flag %} <img class="gd-flag" src="{{ url_for('static', filename='goblu-banner.gif') }}" alt="">{% endif %}
     {%- if gameday.state == 'in' %}
-    <span class="gameday-live">&#128309; LIVE</span>{% endif %}</div>
+    <span class="gameday-live">LIVE</span>{% endif %}</div>
   <div class="gameday-line">{{ gameday.line }}</div>
   <div class="gameday-links">
     <a href="{{ url_for('index', board_name='scores') }}">Scores</a>
