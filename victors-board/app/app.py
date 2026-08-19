@@ -244,6 +244,9 @@ def rendertext(text):
     return Markup(render_post(text))
 
 
+FLAG_FILE = APP_DIR / "static" / "flag.gif"   # waving M, game day banner only
+
+
 @app.context_processor
 def inject_globals():
     pinned = get_db().execute(
@@ -254,6 +257,7 @@ def inject_globals():
         "site_title": get_setting("site_title"),
         "header_html": get_setting("header_html"),
         "links_html": get_setting("links_html"),
+        "has_flag": FLAG_FILE.exists(),
         "pinned_threads": pinned,
     }
 

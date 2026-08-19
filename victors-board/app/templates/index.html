@@ -35,7 +35,11 @@
 {% endif %}
 {% if gameday %}
 <div class="gameday">
-  <div class="gameday-title">&#127944; IT'S GAME DAY{% if gameday.state == 'in' %}
+  <div class="gameday-title">
+    {%- if has_flag %}<img class="gd-flag" src="{{ url_for('static', filename='flag.gif') }}" alt="">
+    {%- else %}&#127944;{% endif %} IT'S GAME DAY
+    {%- if has_flag %} <img class="gd-flag" src="{{ url_for('static', filename='flag.gif') }}" alt="">{% endif %}
+    {%- if gameday.state == 'in' %}
     <span class="gameday-live">&#128309; LIVE</span>{% endif %}</div>
   <div class="gameday-line">{{ gameday.line }}</div>
   <div class="gameday-links">
