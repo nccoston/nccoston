@@ -1267,9 +1267,15 @@ def edit(message_id):
             if image_url and not image_url.lower().startswith(
                     ("http://", "https://", "/uploads/")):
                 image_url = ""
-            uploaded = save_uploaded_image()
+            uploaded = save_uploaded_images()
             if uploaded:
-                image_url = uploaded
+                image_url = uploaded[0]
+                if len(uploaded) > 1:
+                    root = request.url_root.rstrip("/")
+                    extras = "\n".join(
+                        u if u.startswith("http") else root + u
+                        for u in uploaded[1:])
+                    body = (body + "\n\n" + extras).strip()
             image_size = request.form.get("image_size")
             if image_size not in ("small", "medium", "large"):
                 image_size = None

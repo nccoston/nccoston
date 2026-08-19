@@ -19,8 +19,9 @@
       <input type="text" name="image_url"
              value="{{ request.form.get('image_url', msg['image_url'] or '') }}">
     </label>
-    <label>Or upload a replacement picture <span class="hint">(jpg, png, gif, webp)</span>
-      <input type="file" name="image_file" accept="image/*">
+    <label>Or upload pictures <span class="hint">(the first replaces the
+      attached picture; any others are added to the message)</span>
+      <input type="file" name="image_file" multiple accept="image/*">
     </label>
     <label>Picture display size</label>
     <p class="size-row">
