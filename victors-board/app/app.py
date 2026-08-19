@@ -958,10 +958,8 @@ def gameday_banner():
         mich = best["home_score"] if home else best["away_score"]
         theirs = best["away_score"] if home else best["home_score"]
         line = f"FINAL: MICH {mich} — {opp} {theirs}"
-    now_m = time.monotonic()
-    with CHAT_LOCK:
-        in_chat = sum(1 for _, t in CHAT_PRESENCE.values() if now_m - t < 30)
-    return {"line": line, "state": best["state"], "chat": in_chat}
+    # deliberately no chat link: game day belongs to the board itself
+    return {"line": line, "state": best["state"]}
 
 
 # ---------------------------------------------------------------- pod day

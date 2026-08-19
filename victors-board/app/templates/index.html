@@ -39,8 +39,7 @@
     <span class="gameday-live">&#128308; LIVE</span>{% endif %}</div>
   <div class="gameday-line">{{ gameday.line }}</div>
   <div class="gameday-links">
-    <a href="{{ url_for('chat') }}">Chat{% if gameday.chat %} ({{ gameday.chat }} in the room){% endif %}</a>
-    &middot; <a href="{{ url_for('index', board_name='scores') }}">Scores</a>
+    <a href="{{ url_for('index', board_name='scores') }}">Scores</a>
   </div>
 </div>
 {% endif %}
