@@ -143,33 +143,39 @@
 (function () {
   var input = document.querySelector('input[name="image_file"]');
   if (!input) return;
-  var dt = new DataTransfer();   // pastes accumulate when the form allows it
   document.addEventListener("paste", function (e) {
     var items = (e.clipboardData && e.clipboardData.items) || [];
+    var blobs = [];
     for (var i = 0; i < items.length; i++) {
       if (items[i].type.indexOf("image/") === 0) {
-        var blob = items[i].getAsFile();
-        if (!blob) continue;
-        var ext = (blob.type.split("/")[1] || "png").replace("jpeg", "jpg");
-        if (!input.multiple) dt = new DataTransfer();
-        dt.items.add(new File([blob], "pasted-" + (dt.items.length + 1) + "." + ext,
-                              { type: blob.type }));
-        input.files = dt.files;
-        var note = document.getElementById("paste-note");
-        if (!note) {
-          note = document.createElement("span");
-          note.id = "paste-note";
-          note.className = "hint";
-          input.parentNode.appendChild(note);
-        }
-        var n = dt.items.length;
-        note.textContent = n === 1
-          ? " 📎 pasted image attached — it will upload when you post"
-          : " 📎 " + n + " pasted images attached — they will upload when you post";
-        e.preventDefault();
-        return;
+        var b = items[i].getAsFile();
+        if (b) blobs.push(b);
       }
     }
+    if (!blobs.length) return;
+    // start from whatever is already attached (picked OR pasted), then add
+    var dt = new DataTransfer();
+    if (input.multiple) {
+      for (var j = 0; j < input.files.length; j++) dt.items.add(input.files[j]);
+    }
+    for (var k = 0; k < blobs.length && dt.items.length < 6; k++) {
+      var ext = (blobs[k].type.split("/")[1] || "png").replace("jpeg", "jpg");
+      dt.items.add(new File([blobs[k]],
+        "pasted-" + Date.now() + "-" + k + "." + ext, { type: blobs[k].type }));
+    }
+    input.files = dt.files;
+    var note = document.getElementById("paste-note");
+    if (!note) {
+      note = document.createElement("span");
+      note.id = "paste-note";
+      note.className = "hint";
+      input.parentNode.appendChild(note);
+    }
+    var n = dt.items.length;
+    note.textContent = n === 1
+      ? " 📎 1 image attached — it will upload when you post"
+      : " 📎 " + n + " images attached — they will upload when you post";
+    e.preventDefault();
   });
 })();
 </script>
