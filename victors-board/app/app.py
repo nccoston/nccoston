@@ -111,6 +111,9 @@ def get_db():
         g.db = sqlite3.connect(DB_PATH)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
+        # readers keep reading while a post is being written (see init_db)
+        g.db.execute("PRAGMA synchronous = NORMAL")
+        g.db.execute("PRAGMA busy_timeout = 10000")
     return g.db
 
 
@@ -123,6 +126,9 @@ def close_db(_exc):
 
 def init_db():
     db = sqlite3.connect(DB_PATH)
+    # write-ahead logging: a post no longer locks out everyone reading the
+    # board, which matters on game day. Persists on the database file.
+    db.execute("PRAGMA journal_mode = WAL")
     db.executescript((APP_DIR / "schema.sql").read_text())
     # migrations for databases created before a column existed
     for migration in ("ALTER TABLE messages ADD COLUMN edited_at TEXT",
