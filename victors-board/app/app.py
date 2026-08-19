@@ -896,10 +896,7 @@ def fetch_slippery_rock():
 
 
 def slippery_rock_line():
-    """One rendered line for the scoreboard, Saturdays only, or None."""
-    now_local = datetime.now(timezone.utc).astimezone(BOARD_TZ)
-    if now_local.weekday() != 5:   # Saturday
-        return None
+    """One rendered line for the scoreboard on any day they play, or None."""
     now = time.monotonic()
     with SRU_LOCK:
         if now - SRU_CACHE["at"] > 300:
@@ -1039,7 +1036,7 @@ def sru_check():
         SRU_CACHE["at"] = -1e9
     raw = fetch_slippery_rock()
     return {"found": bool(raw), "game": raw, "line_shown_now": slippery_rock_line(),
-            "note": "line only renders on Saturdays"}
+            "note": "the line renders on any day Slippery Rock plays"}
 
 
 # ------------------------------------------------------------------- chat
