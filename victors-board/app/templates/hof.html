@@ -4,6 +4,11 @@
 {% block content %}
 <div class="message-box">
   <h2>&#127942; The Victors Hall of Fame</h2>
+  {% if total %}
+  <p class="byline">{{ total }} post{{ '' if total == 1 else 's' }} enshrined
+    by member vote{% if archive %} &mdash; the newest {{ posts|length }} below,
+    the rest filed by year{% endif %}.</p>
+  {% endif %}
 </div>
 
 {% for p in posts %}
@@ -30,6 +35,19 @@
     {% endif %}
   </div>
   <p class="hint"><a href="{{ url_for('message', message_id=p['id']) }}">View in its thread</a></p>
+</div>
+{% endfor %}
+
+{% for year, entries in archive.items() %}
+<div class="message-box hof-year">
+  <h3>{{ year }} <span class="byline">&mdash; {{ entries|length }} enshrined</span></h3>
+  <ul class="thread-list">
+    {% for p in entries %}
+    <li><a href="{{ url_for('message', message_id=p['id']) }}">{{ p['subject'] }}</a>
+      <span class="byline">- By <b>{{ p['author_name'] }}</b>
+        <i>{{ p['hof_at'] | boarddate }}</i></span></li>
+    {% endfor %}
+  </ul>
 </div>
 {% endfor %}
 {% endblock %}

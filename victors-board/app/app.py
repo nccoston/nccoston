@@ -1555,12 +1555,21 @@ def admin_backup_nightly(name):
     return send_file(BACKUP_DIR / name, as_attachment=True, download_name=name)
 
 
+HOF_FEATURED = 3   # newest enshrinements shown in full; the rest file by year
+
+
 @app.route("/hof")
 def hof():
-    posts = get_db().execute(
+    rows = get_db().execute(
         "SELECT * FROM messages WHERE hof_at IS NOT NULL"
         " ORDER BY hof_at DESC").fetchall()
-    return render_template("hof.html", posts=posts)
+    featured = rows[:HOF_FEATURED]
+    archive = {}   # year (newest first) -> posts, also newest first
+    for r in rows[HOF_FEATURED:]:
+        year = (r["hof_at"] or "")[:4] or "—"
+        archive.setdefault(year, []).append(r)
+    return render_template("hof.html", posts=featured, archive=archive,
+                           total=len(rows))
 
 
 @app.route("/hof/nominate/<int:message_id>", methods=["POST"])
