@@ -78,12 +78,31 @@
     body.shaking {
       animation: shake 0.45s ease;
     }
+
+    #chess-link {
+      position: fixed;
+      bottom: 14px;
+      right: 16px;
+      font-size: 1rem;
+      color: #555;
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid #ccc;
+      border-radius: 0.6rem;
+      padding: 0.4rem 0.8rem;
+    }
+
+    #chess-link:hover {
+      background: #fff;
+      color: #222;
+    }
   </style>
 </head>
 <body>
   <h1>Hey Andy 👋</h1>
   <button id="fart-btn">💨</button>
   <div id="message"></div>
+  <a id="chess-link" href="chess.html">♞ Chess Trainer</a>
 
   <script>
     const messages = [
