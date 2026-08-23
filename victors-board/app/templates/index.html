@@ -51,6 +51,10 @@
     <a href="{{ url_for('index', board_name='scores') }}">Scores</a>
   </div>
 </div>
+{% elif pickem and pickem.kind == 'pre' %}
+<p class="pickem-line">&#127944; <b>{{ pickem.matchup }}</b>
+  {{- ' ' + pickem.day if pickem.day }} &middot; {{ pickem.text }} &middot;
+  <a href="{{ url_for('message', message_id=pickem.mid) }}">make yours</a></p>
 {% endif %}
 {% if pod %}
 <details class="pod-box">

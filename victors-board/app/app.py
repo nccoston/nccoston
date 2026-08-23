@@ -429,14 +429,16 @@ def index(board_name):
     gameday = pickem = None
     if board_name == "main":
         gameday = gameday_banner()
-        if gameday:
-            gm = michigan_game_today()
-            try:
+        try:
+            # game day uses the live feed; Monday-Friday the week feed
+            # finds Saturday's game early so picks get real runway
+            gm = michigan_game_today() if gameday else michigan_game_this_week()
+            if gm:
                 mid = seed_gameday_pickem(db, gm)
                 if mid:
                     pickem = pickem_ticker(db, gm, mid)
-            except Exception:
-                pass   # the banner must never die over pick 'em bookkeeping
+        except Exception:
+            pass   # the banner must never die over pick 'em bookkeeping
     return render_template("index.html", threads=threads, page=page, pages=pages,
                            board_name=board_name,
                            gameday=gameday, pickem=pickem,
@@ -848,6 +850,30 @@ SCORE_LOCK = threading.Lock()
 STATE_ORDER = {"in": 0, "pre": 1, "post": 2}
 
 
+def _parse_event(sport, ev):
+    """One ESPN scoreboard event -> our game dict."""
+    comp = ev["competitions"][0]
+    home = next(c for c in comp["competitors"]
+                if c.get("homeAway") == "home")
+    away = next(c for c in comp["competitors"]
+                if c.get("homeAway") == "away")
+    st = ev.get("status", {}).get("type", {})
+    return {
+        "sport": sport,
+        "away": away["team"].get("abbreviation", "?"),
+        "home": home["team"].get("abbreviation", "?"),
+        "away_name": away["team"].get("shortDisplayName")
+            or away["team"].get("displayName", "?"),
+        "home_name": home["team"].get("shortDisplayName")
+            or home["team"].get("displayName", "?"),
+        "away_score": away.get("score", ""),
+        "home_score": home.get("score", ""),
+        "status": st.get("shortDetail", ""),
+        "state": st.get("state", "pre"),
+        "date": ev.get("date", ""),
+    }
+
+
 def fetch_scoreboards():
     """Today's CFB/CBB slates from ESPN's public scoreboard feed."""
     import requests
@@ -856,26 +882,7 @@ def fetch_scoreboards():
         try:
             data = requests.get(url, timeout=6).json()
             for ev in data.get("events", []):
-                comp = ev["competitions"][0]
-                home = next(c for c in comp["competitors"]
-                            if c.get("homeAway") == "home")
-                away = next(c for c in comp["competitors"]
-                            if c.get("homeAway") == "away")
-                st = ev.get("status", {}).get("type", {})
-                games.append({
-                    "sport": sport,
-                    "away": away["team"].get("abbreviation", "?"),
-                    "home": home["team"].get("abbreviation", "?"),
-                    "away_name": away["team"].get("shortDisplayName")
-                        or away["team"].get("displayName", "?"),
-                    "home_name": home["team"].get("shortDisplayName")
-                        or home["team"].get("displayName", "?"),
-                    "away_score": away.get("score", ""),
-                    "home_score": home.get("score", ""),
-                    "status": st.get("shortDetail", ""),
-                    "state": st.get("state", "pre"),
-                    "date": ev.get("date", ""),
-                })
+                games.append(_parse_event(sport, ev))
         except Exception:
             continue  # one sport failing shouldn't blank the other
     games.sort(key=lambda gm: STATE_ORDER.get(gm["state"], 3))
@@ -977,6 +984,45 @@ def michigan_game_today():
     return best
 
 
+# Pick 'em opens Monday, not game morning, so the board needs to see the
+# coming Saturday days ahead: same ESPN feed, queried for the current
+# Mon-Sun week. One lookup an hour is plenty — schedules don't move.
+WEEK_CACHE = {"at": -1e9, "game": None}
+WEEK_LOCK = threading.Lock()
+
+
+def fetch_week_michigan():
+    """Michigan's upcoming CFB game in the current Mon-Sun board week,
+    or None on an idle week (or once the game is behind us)."""
+    import requests
+    today = datetime.now(timezone.utc).astimezone(BOARD_TZ).date()
+    monday = today - timedelta(days=today.weekday())
+    span = f"{monday:%Y%m%d}-{monday + timedelta(days=6):%Y%m%d}"
+    try:
+        data = requests.get(f"{SCOREBOARD_URLS['CFB']}?dates={span}",
+                            timeout=6).json()
+        for ev in data.get("events", []):
+            gm = _parse_event("CFB", ev)
+            if "MICH" not in (gm["away"], gm["home"]):
+                continue
+            gd = datetime.fromisoformat(
+                gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ).date()
+            if gd >= today and gm["state"] != "post":
+                return gm
+    except Exception:
+        pass
+    return None
+
+
+def michigan_game_this_week():
+    now = time.monotonic()
+    with WEEK_LOCK:
+        if now - WEEK_CACHE["at"] > 3600:
+            WEEK_CACHE["game"] = fetch_week_michigan()
+            WEEK_CACHE["at"] = now
+        return WEEK_CACHE["game"]
+
+
 def gameday_banner():
     """Michigan's game on today's slate, shaped for the homepage banner —
     None on the ~340 days a year there isn't one."""
@@ -1026,16 +1072,22 @@ def board_user_id(db):
     return row["id"]
 
 
-def _pickem_key():
-    day = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%Y-%m-%d")
-    return f"pickem_msg_{day}"
+def _pickem_key(gm):
+    """Settings key for a game's thread — keyed by the GAME's local date,
+    so the thread seeded on Monday is the same one found on Saturday."""
+    try:
+        day = datetime.fromisoformat(
+            gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ)
+    except (KeyError, ValueError):
+        day = datetime.now(timezone.utc).astimezone(BOARD_TZ)
+    return f"pickem_msg_{day.strftime('%Y-%m-%d')}"
 
 
 def seed_gameday_pickem(db, gm):
     """Ensure today's official Pick 'em thread exists; enter the final once
     ESPN has it. Returns the thread's message id, or None."""
     with PICKEM_LOCK:
-        mid = get_setting(_pickem_key())
+        mid = get_setting(_pickem_key(gm))
         home = gm["home"] == "MICH"
         opp = gm["away_name"] if home else gm["home_name"]
         if not mid:
@@ -1060,7 +1112,7 @@ def seed_gameday_pickem(db, gm):
                 "INSERT INTO games (message_id, team_a, team_b, created_at)"
                 " VALUES (?, 'Michigan', ?, ?)", (mid, opp, now_utc_iso()))
             db.commit()
-            set_setting(_pickem_key(), str(mid))
+            set_setting(_pickem_key(gm), str(mid))
         mid = int(mid)
         if gm["state"] == "post":
             game = db.execute("SELECT * FROM games WHERE message_id = ?",
@@ -1078,11 +1130,21 @@ def seed_gameday_pickem(db, gm):
 
 
 def pickem_ticker(db, gm, mid):
-    """One line for the banner: open / if-it-ended-now / winner."""
+    """One line for the banner: open / if-it-ended-now / winner.
+    Also carries the matchup and the game's weekday for the quieter
+    Monday-to-Friday homepage line."""
     game = db.execute("SELECT * FROM games WHERE message_id = ?",
                       (mid,)).fetchone()
     if game is None:
         return None
+    at_home = gm["home"] == "MICH"
+    matchup = (f"Michigan {'vs' if at_home else 'at'} "
+               f"{gm['away_name'] if at_home else gm['home_name']}")
+    try:
+        day = datetime.fromisoformat(
+            gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ).strftime("%A")
+    except (KeyError, ValueError):
+        day = ""
     picks = db.execute(
         "SELECT p.pick_a, p.pick_b, u.handle h FROM game_picks p"
         " JOIN users u ON u.id = p.user_id WHERE p.game_id = ?",
@@ -1093,7 +1155,7 @@ def pickem_ticker(db, gm, mid):
                     + abs(p["pick_b"] - game["final_b"]))
         best = min(miss(p) for p in picks)
         winners = [p["h"] for p in picks if miss(p) == best]
-        return {"kind": "post", "mid": mid,
+        return {"kind": "post", "mid": mid, "matchup": matchup, "day": day,
                 "text": f"🏆 Pick 'em: {', '.join(winners)} "
                         f"take{'s' if len(winners) == 1 else ''} the week "
                         f"(final {game['final_a']}–{game['final_b']})"}
@@ -1112,9 +1174,10 @@ def pickem_ticker(db, gm, mid):
         if len(ranked) >= 5:
             w = ranked[-1]
             text += f" — way off: {w['h']} ({w['pick_a']}–{w['pick_b']})"
-        return {"kind": "in", "mid": mid, "text": text}
+        return {"kind": "in", "mid": mid, "matchup": matchup,
+                "day": day, "text": text}
     n = len(picks)
-    return {"kind": "pre", "mid": mid,
+    return {"kind": "pre", "mid": mid, "matchup": matchup, "day": day,
             "text": f"🎯 Pick 'em is open — {n} pick{'' if n == 1 else 's'} in"}
 
 

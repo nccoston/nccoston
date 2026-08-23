@@ -342,6 +342,9 @@ table.admin-table td, table.admin-table th {
 .chat-rocking { text-align: center; font-size: 13px; margin: 10px 0; }
 .chat-rocking a { font-weight: bold; }
 
+/* the quiet Monday-to-kickoff pick 'em pointer (game day gets the banner) */
+.pickem-line { text-align: center; font-size: 13px; margin: 10px 0; }
+
 /* maize-and-blue banner on the homepage whenever Michigan plays today */
 .gameday {
   background: #FFCB05;
