@@ -1043,7 +1043,7 @@ def seed_gameday_pickem(db, gm):
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
                 " author_name, user_id, created_at, board)"
                 " VALUES (NULL, NULL, ?, ?, 'Skeeps', ?, ?, 'scores')",
-                (f"🏈 PICK 'EM: Michigan {'vs' if home else 'at'} {opp}*",
+                (f"🏈 Michigan {'vs' if home else 'at'} {opp}*",
                  "Official game-day Pick 'em — enter your final score below "
                  "before kickoff. Skeeps keeps score: the real final goes in "
                  "automatically and the winner gets crowned.",
