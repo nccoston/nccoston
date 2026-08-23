@@ -42,29 +42,29 @@ def _linkify(url):
         return (f'<div class="yt-embed"><iframe '
                 f'src="https://www.youtube-nocookie.com/embed/{m.group(1)}" '
                 f'loading="lazy" allowfullscreen></iframe></div>'
-                f'<a href="{esc}" rel="nofollow">{escape(url)}</a>')
+                f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a>')
     if TWEET_RE.match(url):
         return (f'<blockquote class="twitter-tweet">'
-                f'<a href="{esc}" rel="nofollow">{escape(url)}</a></blockquote>')
+                f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a></blockquote>')
     m = STREAMABLE_RE.match(url)
     if m:
         return (f'<div class="yt-embed"><iframe '
                 f'src="https://streamable.com/e/{m.group(1)}" '
                 f'loading="lazy" allowfullscreen></iframe></div>'
-                f'<a href="{esc}" rel="nofollow">{escape(url)}</a>')
+                f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a>')
     if IMAGE_RE.match(url):
         # a bare picture/GIF link shows the picture itself
-        return (f'<a href="{esc}" rel="nofollow" target="_blank">'
+        return (f'<a href="{esc}" rel="nofollow noopener" target="_blank">'
                 f'<img src="{esc}" alt="" loading="lazy"></a>')
     if REDDIT_RE.match(url):
         return (f'<blockquote class="reddit-embed-bq" data-embed-height="500">'
-                f'<a href="{esc}" rel="nofollow">{escape(url)}</a></blockquote>')
+                f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a></blockquote>')
     m = TIKTOK_RE.match(url)
     if m:
         return (f'<blockquote class="tiktok-embed" cite="{esc}" '
                 f'data-video-id="{m.group(1)}" style="max-width:605px">'
-                f'<a href="{esc}" rel="nofollow">{escape(url)}</a></blockquote>')
-    return f'<a href="{esc}" rel="nofollow">{escape(url)}</a>'
+                f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a></blockquote>')
+    return f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a>'
 
 
 def _safe_url(value):
@@ -91,7 +91,12 @@ class _Renderer(HTMLParser):
                     continue
                 kept.append(f'{name}="{escape(value, quote=True)}"')
         attr_str = (" " + " ".join(kept)) if kept else ""
-        extra = ' rel="nofollow"' if tag == "a" else ""
+        extra = ""
+        if tag == "a":
+            external = any(n == "href" and v and v.strip().lower().startswith("http")
+                           for n, v in attrs)
+            extra = (' rel="nofollow noopener" target="_blank"' if external
+                     else ' rel="nofollow"')
         self.out.append(f"<{tag}{attr_str}{extra}>")
         if tag not in VOID_TAGS:
             self.open_stack.append(tag)
