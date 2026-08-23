@@ -952,10 +952,15 @@ def live_games():
 
 
 def michigan_game_today():
-    """Michigan's game on today's slate (raw feed dict), or None."""
+    """Michigan's FOOTBALL game on today's slate (raw feed dict), or None.
+    Football only, by decree: this feeds the GAME DAY banner and the
+    Skeeps pick 'em, and those are Saturday traditions — a Tuesday hoops
+    game stays on the scoreboard where it belongs."""
     today = datetime.now(timezone.utc).astimezone(BOARD_TZ).date()
     best = None
     for gm in live_games():
+        if gm.get("sport") != "CFB":
+            continue
         if "MICH" not in (gm["away"], gm["home"]):
             continue
         try:
