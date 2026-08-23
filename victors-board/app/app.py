@@ -424,9 +424,20 @@ def index(board_name):
         for t in threads:
             t["has_poll"] = t["id"] in poll_ids
             t["has_game"] = t["id"] in game_ids
+    gameday = pickem = None
+    if board_name == "main":
+        gameday = gameday_banner()
+        if gameday:
+            gm = michigan_game_today()
+            try:
+                mid = seed_gameday_pickem(db, gm)
+                if mid:
+                    pickem = pickem_ticker(db, gm, mid)
+            except Exception:
+                pass   # the banner must never die over pick 'em bookkeeping
     return render_template("index.html", threads=threads, page=page, pages=pages,
                            board_name=board_name,
-                           gameday=gameday_banner() if board_name == "main" else None,
+                           gameday=gameday, pickem=pickem,
                            pod=pod_box() if board_name == "main" else None,
                            rocking=chat_rocking(),
                            read_ids=user_read_ids(db, current_user()))
@@ -853,6 +864,10 @@ def fetch_scoreboards():
                     "sport": sport,
                     "away": away["team"].get("abbreviation", "?"),
                     "home": home["team"].get("abbreviation", "?"),
+                    "away_name": away["team"].get("shortDisplayName")
+                        or away["team"].get("displayName", "?"),
+                    "home_name": home["team"].get("shortDisplayName")
+                        or home["team"].get("displayName", "?"),
                     "away_score": away.get("score", ""),
                     "home_score": home.get("score", ""),
                     "status": st.get("shortDetail", ""),
@@ -934,9 +949,8 @@ def live_games():
         return SCORE_CACHE["games"]
 
 
-def gameday_banner():
-    """Michigan's game on today's slate, shaped for the homepage banner —
-    None on the ~340 days a year there isn't one."""
+def michigan_game_today():
+    """Michigan's game on today's slate (raw feed dict), or None."""
     today = datetime.now(timezone.utc).astimezone(BOARD_TZ).date()
     best = None
     for gm in live_games():
@@ -950,10 +964,16 @@ def gameday_banner():
         if gd != today:
             continue
         if gm["state"] == "in":
-            best = gm
-            break
+            return gm
         if best is None or (gm["state"] == "pre" and best["state"] == "post"):
             best = gm   # an upcoming game outranks an earlier final
+    return best
+
+
+def gameday_banner():
+    """Michigan's game on today's slate, shaped for the homepage banner —
+    None on the ~340 days a year there isn't one."""
+    best = michigan_game_today()
     if best is None:
         return None
     home = best["home"] == "MICH"
@@ -970,6 +990,124 @@ def gameday_banner():
         line = f"FINAL: MICH {mich} — {opp} {theirs}"
     # deliberately no chat link: game day belongs to the board itself
     return {"line": line, "state": best["state"]}
+
+
+# ------------------------------------------------ game day pick 'em engine
+#
+# On a Michigan game day the board seeds the official Pick 'em thread on
+# Scores itself (posting as the reserved account "The Board"), fills in the
+# real final score when ESPN reports it, and feeds the homepage banner a
+# ticker of who's picking well. No admin typing anywhere.
+
+PICKEM_LOCK = threading.Lock()
+
+
+def board_user_id(db):
+    """The reserved system account. Unloginable: its password hash ('!')
+    can never verify."""
+    row = db.execute("SELECT id, password_hash FROM users"
+                     " WHERE handle = 'The Board'").fetchone()
+    if row is None:
+        cur = db.execute(
+            "INSERT INTO users (handle, password_hash, created_at)"
+            " VALUES ('The Board', '!', ?)", (now_utc_iso(),))
+        db.commit()
+        return cur.lastrowid
+    if row["password_hash"] != "!":
+        return None   # a human somehow owns the name; never post as them
+    return row["id"]
+
+
+def _pickem_key():
+    day = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%Y-%m-%d")
+    return f"pickem_msg_{day}"
+
+
+def seed_gameday_pickem(db, gm):
+    """Ensure today's official Pick 'em thread exists; enter the final once
+    ESPN has it. Returns the thread's message id, or None."""
+    with PICKEM_LOCK:
+        mid = get_setting(_pickem_key())
+        home = gm["home"] == "MICH"
+        opp = gm["away_name"] if home else gm["home_name"]
+        if not mid:
+            if gm["state"] == "post":
+                return None   # never seed a pick 'em after the game ended
+            uid = board_user_id(db)
+            if uid is None:
+                return None
+            cur = db.execute(
+                "INSERT INTO messages (thread_id, parent_id, subject, body,"
+                " author_name, user_id, created_at, board)"
+                " VALUES (NULL, NULL, ?, ?, 'The Board', ?, ?, 'scores')",
+                (f"🏈 PICK 'EM: Michigan {'vs' if home else 'at'} {opp}*",
+                 "Official game-day Pick 'em — enter your final score below "
+                 "before kickoff. The Board posts the real final "
+                 "automatically and crowns the winner.",
+                 uid, now_utc_iso()))
+            mid = cur.lastrowid
+            db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
+                       (mid, mid))
+            db.execute(
+                "INSERT INTO games (message_id, team_a, team_b, created_at)"
+                " VALUES (?, 'Michigan', ?, ?)", (mid, opp, now_utc_iso()))
+            db.commit()
+            set_setting(_pickem_key(), str(mid))
+        mid = int(mid)
+        if gm["state"] == "post":
+            game = db.execute("SELECT * FROM games WHERE message_id = ?",
+                              (mid,)).fetchone()
+            if game and game["final_a"] is None:
+                try:
+                    mich = int(gm["home_score"] if home else gm["away_score"])
+                    them = int(gm["away_score"] if home else gm["home_score"])
+                except ValueError:
+                    return mid
+                db.execute("UPDATE games SET final_a = ?, final_b = ?"
+                           " WHERE id = ?", (mich, them, game["id"]))
+                db.commit()
+    return mid
+
+
+def pickem_ticker(db, gm, mid):
+    """One line for the banner: open / if-it-ended-now / winner."""
+    game = db.execute("SELECT * FROM games WHERE message_id = ?",
+                      (mid,)).fetchone()
+    if game is None:
+        return None
+    picks = db.execute(
+        "SELECT p.pick_a, p.pick_b, u.handle h FROM game_picks p"
+        " JOIN users u ON u.id = p.user_id WHERE p.game_id = ?",
+        (game["id"],)).fetchall()
+    if game["final_a"] is not None and picks:
+        def miss(p):
+            return (abs(p["pick_a"] - game["final_a"])
+                    + abs(p["pick_b"] - game["final_b"]))
+        best = min(miss(p) for p in picks)
+        winners = [p["h"] for p in picks if miss(p) == best]
+        return {"kind": "post", "mid": mid,
+                "text": f"🏆 Pick 'em: {', '.join(winners)} "
+                        f"take{'s' if len(winners) == 1 else ''} the week "
+                        f"(final {game['final_a']}–{game['final_b']})"}
+    if gm["state"] == "in" and picks:
+        home = gm["home"] == "MICH"
+        try:
+            mich = int(gm["home_score"] if home else gm["away_score"])
+            them = int(gm["away_score"] if home else gm["home_score"])
+        except ValueError:
+            return None
+        ranked = sorted(picks, key=lambda p: (abs(p["pick_a"] - mich)
+                                              + abs(p["pick_b"] - them)))
+        lead = " · ".join(f"{p['h']} ({p['pick_a']}–{p['pick_b']})"
+                          for p in ranked[:3])
+        text = f"🎯 If it ended now: {lead}"
+        if len(ranked) >= 5:
+            w = ranked[-1]
+            text += f" — way off: {w['h']} ({w['pick_a']}–{w['pick_b']})"
+        return {"kind": "in", "mid": mid, "text": text}
+    n = len(picks)
+    return {"kind": "pre", "mid": mid,
+            "text": f"🎯 Pick 'em is open — {n} pick{'' if n == 1 else 's'} in"}
 
 
 # ---------------------------------------------------------------- pod day

@@ -361,6 +361,7 @@ table.admin-table td, table.admin-table th {
 .gd-flag { height: 30px; vertical-align: -8px; margin: 0 2px; }
 @media (max-width: 480px) { .gd-flag { height: 24px; vertical-align: -6px; } }
 .gameday-line { font-size: 15px; font-weight: bold; margin: 5px 0 4px; }
+.gameday-pickem { font-size: 12.5px; margin: 2px 0 4px; }
 .gameday-links { font-size: 12px; }
 .gameday a { color: #00274C; font-weight: bold; }
 

@@ -42,6 +42,11 @@
     {%- if gameday.state == 'in' %}
     <span class="gameday-live">LIVE</span>{% endif %}</div>
   <div class="gameday-line">{{ gameday.line }}</div>
+  {% if pickem %}
+  <div class="gameday-pickem">{{ pickem.text }} &middot;
+    <a href="{{ url_for('message', message_id=pickem.mid) }}">{{
+      'make yours' if pickem.kind == 'pre' else 'the thread' }}</a></div>
+  {% endif %}
   <div class="gameday-links">
     <a href="{{ url_for('index', board_name='scores') }}">Scores</a>
   </div>
