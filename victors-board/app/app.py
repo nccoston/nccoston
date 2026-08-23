@@ -142,6 +142,8 @@ def init_db():
             db.execute(migration)
         except sqlite3.OperationalError:
             pass  # column already there
+    db.execute("INSERT OR IGNORE INTO users (handle, password_hash, created_at)"
+               " VALUES ('Skeeps', '!', ?)", (now_utc_iso(),))
     for key, value in DEFAULT_SETTINGS.items():
         db.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
                    (key, value))
@@ -995,7 +997,7 @@ def gameday_banner():
 # ------------------------------------------------ game day pick 'em engine
 #
 # On a Michigan game day the board seeds the official Pick 'em thread on
-# Scores itself (posting as the reserved account "The Board"), fills in the
+# Scores itself (posting as the reserved account "Skeeps"), fills in the
 # real final score when ESPN reports it, and feeds the homepage banner a
 # ticker of who's picking well. No admin typing anywhere.
 
@@ -1003,14 +1005,15 @@ PICKEM_LOCK = threading.Lock()
 
 
 def board_user_id(db):
-    """The reserved system account. Unloginable: its password hash ('!')
-    can never verify."""
+    """Skeeps, the reserved scorekeeping account (named for the Ann Arbor
+    bar; the pun is the job description). Unloginable: its password hash
+    ('!') can never verify. The name is reserved at init_db."""
     row = db.execute("SELECT id, password_hash FROM users"
-                     " WHERE handle = 'The Board'").fetchone()
+                     " WHERE handle = 'Skeeps'").fetchone()
     if row is None:
         cur = db.execute(
             "INSERT INTO users (handle, password_hash, created_at)"
-            " VALUES ('The Board', '!', ?)", (now_utc_iso(),))
+            " VALUES ('Skeeps', '!', ?)", (now_utc_iso(),))
         db.commit()
         return cur.lastrowid
     if row["password_hash"] != "!":
@@ -1039,11 +1042,11 @@ def seed_gameday_pickem(db, gm):
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
                 " author_name, user_id, created_at, board)"
-                " VALUES (NULL, NULL, ?, ?, 'The Board', ?, ?, 'scores')",
+                " VALUES (NULL, NULL, ?, ?, 'Skeeps', ?, ?, 'scores')",
                 (f"🏈 PICK 'EM: Michigan {'vs' if home else 'at'} {opp}*",
                  "Official game-day Pick 'em — enter your final score below "
-                 "before kickoff. The Board posts the real final "
-                 "automatically and crowns the winner.",
+                 "before kickoff. Skeeps keeps score: the real final goes in "
+                 "automatically and the winner gets crowned.",
                  uid, now_utc_iso()))
             mid = cur.lastrowid
             db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
