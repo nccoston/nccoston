@@ -1193,8 +1193,26 @@ POD_CACHE = {"at": -1e9, "video": None}
 POD_LOCK = threading.Lock()
 
 
+def pod_playable(video_id):
+    """The RSS feed still lists videos YouTube has taken down (a
+    copyright-struck stream, a deleted upload), and embedding one puts a
+    dead player on the homepage. oEmbed answers 200 only for videos that
+    actually play. On a network hiccup, benefit of the doubt."""
+    import requests
+    try:
+        r = requests.get(
+            "https://www.youtube.com/oembed",
+            params={"url": f"https://www.youtube.com/watch?v={video_id}",
+                    "format": "json"},
+            timeout=4)
+        return r.status_code == 200
+    except Exception:
+        return True
+
+
 def fetch_latest_pod():
-    """Newest upload on the pod channel: dict(video_id, title, published)."""
+    """Newest playable upload on the pod channel:
+    dict(video_id, title, published)."""
     import requests
     import xml.etree.ElementTree as ET
     cid = (get_setting("podcast_channel_id") or "").strip()
@@ -1216,6 +1234,8 @@ def fetch_latest_pod():
                 best = {"video_id": vid,
                         "title": entry.findtext("a:title", "", ns),
                         "published": when}
+        if best and not pod_playable(best["video_id"]):
+            return None
         return best
     except Exception:
         return None
