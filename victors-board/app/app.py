@@ -83,6 +83,8 @@ DEFAULT_SETTINGS = {
     "registration_open": "1",
     "hof_threshold": "5",
     "podcast_channel_id": "UCHqmAEJVsfJizpN8wHLI05Q",
+    # Blue By Ninety hosts several shows; only this one is ours
+    "podcast_title_filter": "Michigan Weekly",
     "header_html": (
         "<b>Rules:</b>"
         "<ol>"
@@ -1211,13 +1213,16 @@ def pod_playable(video_id):
 
 
 def fetch_latest_pod():
-    """Newest playable upload on the pod channel:
-    dict(video_id, title, published)."""
+    """Newest playable OUR-SHOW upload on the pod channel:
+    dict(video_id, title, published). The channel hosts several shows,
+    so entries are filtered by title (podcast_title_filter setting);
+    blank filter = whole channel."""
     import requests
     import xml.etree.ElementTree as ET
     cid = (get_setting("podcast_channel_id") or "").strip()
     if not cid:
         return None
+    show = (get_setting("podcast_title_filter") or "").strip().lower()
     try:
         raw = requests.get(POD_FEED.format(cid=cid), timeout=8).text
         root = ET.fromstring(raw)
@@ -1227,13 +1232,14 @@ def fetch_latest_pod():
         for entry in root.findall("a:entry", ns):
             vid = entry.findtext("yt:videoId", "", ns)
             pub = entry.findtext("a:published", "", ns)
+            title = entry.findtext("a:title", "", ns)
             if not vid or not pub:
                 continue
+            if show and show not in title.lower():
+                continue   # some other show on the channel
             when = datetime.fromisoformat(pub)
             if best is None or when > best["published"]:
-                best = {"video_id": vid,
-                        "title": entry.findtext("a:title", "", ns),
-                        "published": when}
+                best = {"video_id": vid, "title": title, "published": when}
         if best and not pod_playable(best["video_id"]):
             return None
         return best
