@@ -844,7 +844,12 @@ def leaderboard():
 # ------------------------------------------------------- live scoreboard
 
 SCOREBOARD_URLS = {
-    "CFB": "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
+    # groups=80 = all of FBS. Without it ESPN serves a curated top-25-ish
+    # slate, and a week Michigan isn't on it would silently skip GAME DAY.
+    # (Audit credit: Andy.) CBB stays curated — a full D-I hoops Saturday
+    # is 150+ games of noise.
+    "CFB": "https://site.api.espn.com/apis/site/v2/sports/football/"
+           "college-football/scoreboard?groups=80&limit=250",
     "CBB": "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard",
 }
 SCORE_CACHE = {"at": -999.0, "games": []}
@@ -876,6 +881,21 @@ def _parse_event(sport, ev):
     }
 
 
+def _on_todays_slate(gm):
+    """True for games that belong on TODAY'S scoreboard: dated today
+    (board time) or still in progress past midnight. On an idle day
+    ESPN returns the next scheduled slate — November hoops in August —
+    and those shouldn't show."""
+    if gm["state"] == "in":
+        return True
+    try:
+        gd = datetime.fromisoformat(
+            gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ).date()
+    except ValueError:
+        return True   # unparseable date: let it through rather than hide
+    return gd == datetime.now(timezone.utc).astimezone(BOARD_TZ).date()
+
+
 def fetch_scoreboards():
     """Today's CFB/CBB slates from ESPN's public scoreboard feed."""
     import requests
@@ -884,7 +904,9 @@ def fetch_scoreboards():
         try:
             data = requests.get(url, timeout=6).json()
             for ev in data.get("events", []):
-                games.append(_parse_event(sport, ev))
+                gm = _parse_event(sport, ev)
+                if _on_todays_slate(gm):
+                    games.append(gm)
         except Exception:
             continue  # one sport failing shouldn't blank the other
     games.sort(key=lambda gm: STATE_ORDER.get(gm["state"], 3))
@@ -1001,7 +1023,8 @@ def fetch_week_michigan():
     monday = today - timedelta(days=today.weekday())
     span = f"{monday:%Y%m%d}-{monday + timedelta(days=6):%Y%m%d}"
     try:
-        data = requests.get(f"{SCOREBOARD_URLS['CFB']}?dates={span}",
+        joiner = "&" if "?" in SCOREBOARD_URLS["CFB"] else "?"
+        data = requests.get(f"{SCOREBOARD_URLS['CFB']}{joiner}dates={span}",
                             timeout=6).json()
         for ev in data.get("events", []):
             gm = _parse_event("CFB", ev)
