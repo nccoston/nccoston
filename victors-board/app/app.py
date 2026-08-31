@@ -881,19 +881,27 @@ def _parse_event(sport, ev):
     }
 
 
-def _on_todays_slate(gm):
+def _fresh_for_scoreboard(date_str, state):
     """True for games that belong on TODAY'S scoreboard: dated today
-    (board time) or still in progress past midnight. On an idle day
-    ESPN returns the next scheduled slate — November hoops in August —
-    and those shouldn't show."""
-    if gm["state"] == "in":
-        return True
+    (board time), or in progress and started within the last 12 hours
+    (a real game can cross midnight; a game ESPN forgot to flip to
+    Final should not haunt the board until Monday). On an idle day
+    ESPN returns the nearest scheduled slate — November hoops in
+    August, last Saturday's stragglers — and those shouldn't show."""
     try:
-        gd = datetime.fromisoformat(
-            gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ).date()
-    except ValueError:
+        start = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    except (AttributeError, ValueError):
         return True   # unparseable date: let it through rather than hide
-    return gd == datetime.now(timezone.utc).astimezone(BOARD_TZ).date()
+    if start.astimezone(BOARD_TZ).date() == \
+            datetime.now(timezone.utc).astimezone(BOARD_TZ).date():
+        return True
+    return (state == "in"
+            and timedelta() <= datetime.now(timezone.utc) - start
+            <= timedelta(hours=12))
+
+
+def _on_todays_slate(gm):
+    return _fresh_for_scoreboard(gm["date"], gm["state"])
 
 
 def fetch_scoreboards():
@@ -937,8 +945,11 @@ def fetch_slippery_rock():
                         None)
             if rock is None:
                 continue
-            other = next(c for c in teams if c is not rock)
             st = ev.get("status", {}).get("type", {})
+            if not _fresh_for_scoreboard(ev.get("date", ""),
+                                         st.get("state", "pre")):
+                continue   # Thursday's final has no business on Monday
+            other = next(c for c in teams if c is not rock)
             return {
                 "opponent": (other["team"].get("abbreviation")
                              or other["team"].get("displayName", "?")),
