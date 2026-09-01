@@ -139,7 +139,8 @@ def init_db():
                       "ALTER TABLE messages ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE users ADD COLUMN session_token TEXT",
                       "ALTER TABLE messages ADD COLUMN hof_at TEXT",
-                      "ALTER TABLE messages ADD COLUMN image_size TEXT"):
+                      "ALTER TABLE messages ADD COLUMN image_size TEXT",
+                      "ALTER TABLE games ADD COLUMN kickoff_at TEXT"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -778,6 +779,9 @@ def game_pick(game_id):
     if game["final_a"] is not None:
         flash("Picks are locked — the final score is in.")
         return redirect(url_for("message", message_id=game["message_id"]))
+    if game["kickoff_at"] and now_utc_iso() >= game["kickoff_at"]:
+        flash("Picks locked at kickoff — see you next week.")
+        return redirect(url_for("message", message_id=game["message_id"]))
     pick_a = request.form.get("pick_a", type=int)
     pick_b = request.form.get("pick_b", type=int)
     if pick_a is None or pick_b is None or not (0 <= pick_a <= 999 and 0 <= pick_b <= 999):
@@ -1122,6 +1126,16 @@ def _pickem_key(gm):
     return f"pickem_msg_{day.strftime('%Y-%m-%d')}"
 
 
+def _kickoff_naive_iso(gm):
+    """The game's kickoff as stored-format (naive UTC) ISO, or None."""
+    try:
+        return (datetime.fromisoformat(gm["date"].replace("Z", "+00:00"))
+                .astimezone(timezone.utc).replace(tzinfo=None)
+                .isoformat(timespec="seconds"))
+    except (KeyError, ValueError):
+        return None
+
+
 def seed_gameday_pickem(db, gm):
     """Ensure today's official Pick 'em thread exists; enter the final once
     ESPN has it. Returns the thread's message id, or None."""
@@ -1148,11 +1162,17 @@ def seed_gameday_pickem(db, gm):
             db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
                        (mid, mid))
             db.execute(
-                "INSERT INTO games (message_id, team_a, team_b, created_at)"
-                " VALUES (?, 'Michigan', ?, ?)", (mid, opp, now_utc_iso()))
+                "INSERT INTO games (message_id, team_a, team_b, created_at,"
+                " kickoff_at) VALUES (?, 'Michigan', ?, ?, ?)",
+                (mid, opp, now_utc_iso(), _kickoff_naive_iso(gm)))
             db.commit()
             set_setting(_pickem_key(gm), str(mid))
         mid = int(mid)
+        ko = _kickoff_naive_iso(gm)
+        if ko:
+            # backfill: a thread seeded before kickoff enforcement existed
+            db.execute("UPDATE games SET kickoff_at = ? WHERE message_id = ?"
+                       " AND kickoff_at IS NULL", (ko, mid))
         if gm["state"] == "post":
             game = db.execute("SELECT * FROM games WHERE message_id = ?",
                               (mid,)).fetchone()
