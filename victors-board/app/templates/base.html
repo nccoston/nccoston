@@ -14,10 +14,6 @@
   if (saved === "dark" || saved === "goblue") {
     document.documentElement.dataset.theme = saved;
   }
-  var ts = localStorage.getItem("textsize");
-  if (ts === "large" || ts === "huge") {
-    document.documentElement.dataset.textsize = ts;
-  }
 })();
 </script>
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
@@ -64,33 +60,7 @@
     <span class="nb">| <a href="{{ url_for('register') }}">Register</a></span>
   {% endif %}
   <span class="nb">| <a href="#" id="theme-toggle">Dark Mode</a></span>
-  <span class="nb">| <a href="#" id="textsize-toggle" title="Cycle the board's text size">Text: Normal</a></span>
 </p>
-<script>
-(function () {
-  // for the old guys: cycle Normal -> Large -> Huge, remembered per device
-  var link = document.getElementById("textsize-toggle");
-  var ORDER = ["", "large", "huge"];
-  var NAMES = { "": "Normal", "large": "Large", "huge": "Huge" };
-  function label() {
-    link.textContent = "Text: " +
-      NAMES[document.documentElement.dataset.textsize || ""];
-  }
-  link.addEventListener("click", function (e) {
-    e.preventDefault();
-    var cur = document.documentElement.dataset.textsize || "";
-    var next = ORDER[(ORDER.indexOf(cur) + 1) % ORDER.length];
-    if (next) {
-      document.documentElement.dataset.textsize = next;
-    } else {
-      delete document.documentElement.dataset.textsize;
-    }
-    localStorage.setItem("textsize", next);
-    label();
-  });
-  label();
-})();
-</script>
 <script>
 (function () {
   var link = document.getElementById("theme-toggle");
