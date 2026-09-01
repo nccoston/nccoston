@@ -345,6 +345,10 @@ table.admin-table td, table.admin-table th {
 /* the quiet Monday-to-kickoff pick 'em pointer (game day gets the banner) */
 .pickem-line { text-align: center; font-size: 13px; margin: 10px 0; }
 
+/* text size for the old guys: scales everything, like ctrl-plus but ours */
+:root[data-textsize="large"] body { zoom: 1.15; }
+:root[data-textsize="huge"] body { zoom: 1.35; }
+
 /* maize-and-blue banner on the homepage whenever Michigan plays today */
 .gameday {
   background: #FFCB05;
