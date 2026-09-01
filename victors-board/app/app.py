@@ -438,6 +438,7 @@ def index(board_name):
             if gm:
                 mid = seed_gameday_pickem(db, gm)
                 if mid:
+                    harvest_pickem(db, gm, mid)
                     pickem = pickem_ticker(db, gm, mid)
         except Exception:
             pass   # the banner must never die over pick 'em bookkeeping
@@ -1215,6 +1216,82 @@ def pickem_ticker(db, gm, mid):
     n = len(picks)
     return {"kind": "pre", "mid": mid, "matchup": matchup, "day": day,
             "text": f"🎯 Pick 'em is open — {n} pick{'' if n == 1 else 's'} in"}
+
+
+# The board predicted finals in bare threads ("M 48 WMU 10*") for thirty
+# years before there was a form. Skeeps reads those too: a game-week root
+# post on Scores whose subject parses as a score IS that member's pick.
+
+PICK_NUM_RE = re.compile(r"\d{1,3}")
+PICK_MICH_TOKENS = {"m", "um", "mich", "michigan", "wolverines"}
+
+
+def parse_pick_subject(subject):
+    """(michigan, opponent) read from an old-fashioned score subject, or
+    None. Accepts 'M 48 WMU 10*', 'Michigan 22 Western Michigan 17',
+    '35-10 UM', bare '42-17'. Rejects subjects with words but no Michigan
+    token ('Tigers win 5-3') so ordinary threads never become picks."""
+    s = (subject or "").strip().lower()
+    nums = [(m.start(), int(m.group())) for m in PICK_NUM_RE.finditer(s)]
+    if len(nums) != 2:
+        return None
+    (pos_a, a), (pos_b, b) = nums
+    if not (0 <= a <= 150 and 0 <= b <= 150):
+        return None
+    words = re.findall(r"[a-z][a-z&']*", s)
+    if words and not any(w in PICK_MICH_TOKENS for w in words):
+        return None
+    def word_before(pos):
+        m = re.search(r"([a-z][a-z&']*)\s*[-=:.]?\s*$", s[:pos])
+        return m.group(1) if m else None
+    if (word_before(pos_b) in PICK_MICH_TOKENS
+            and word_before(pos_a) not in PICK_MICH_TOKENS):
+        return (b, a)   # 'WMU 10 Michigan 45' — Michigan named second
+    return (a, b)       # the board says its own team first
+
+
+def harvest_pickem(db, gm, mid):
+    """Count the old-fashioned picks: root posts on Scores from the game
+    week, before kickoff, whose subject parses as a score. INSERT OR
+    IGNORE only — a pick made in the thread always outranks parsing, and
+    nothing is ever overwritten."""
+    game = db.execute("SELECT * FROM games WHERE message_id = ?",
+                      (mid,)).fetchone()
+    if game is None or game["final_a"] is not None:
+        return
+    try:
+        kickoff = datetime.fromisoformat(gm["date"].replace("Z", "+00:00"))
+    except (KeyError, ValueError):
+        return
+    kick_local = kickoff.astimezone(BOARD_TZ)
+    monday = (kick_local - timedelta(days=kick_local.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0)
+    monday_utc = monday.astimezone(timezone.utc).replace(tzinfo=None)
+    kickoff_naive = kickoff.replace(tzinfo=None)
+    rows = db.execute(
+        "SELECT subject, user_id, created_at FROM messages"
+        " WHERE board = 'scores' AND parent_id IS NULL"
+        " AND user_id IS NOT NULL AND id != ? AND created_at >= ?",
+        (mid, monday_utc.isoformat(timespec="seconds"))).fetchall()
+    added = False
+    for r in rows:
+        try:
+            when = datetime.fromisoformat(r["created_at"])
+        except ValueError:
+            continue
+        if when >= kickoff_naive:
+            continue   # posted after kickoff: a score update, not a pick
+        pick = parse_pick_subject(r["subject"])
+        if pick is None:
+            continue
+        cur = db.execute(
+            "INSERT OR IGNORE INTO game_picks"
+            " (game_id, user_id, pick_a, pick_b, created_at)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (game["id"], r["user_id"], pick[0], pick[1], r["created_at"]))
+        added = added or cur.rowcount > 0
+    if added:
+        db.commit()
 
 
 # ---------------------------------------------------------------- pod day
