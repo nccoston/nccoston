@@ -497,6 +497,7 @@ def message(message_id):
                         + abs(p["pick_b"] - game["final_b"]))
             best = min(miss(p) for p in game_picks)
             game_winners = [p["h"] for p in game_picks if miss(p) == best]
+    game_consensus = pick_consensus(game_picks)
     hof_votes = db.execute("SELECT COUNT(*) c FROM hof_votes WHERE message_id = ?",
                            (message_id,)).fetchone()["c"]
     u = current_user()
@@ -517,7 +518,8 @@ def message(message_id):
                            total_votes=total_votes, top_votes=top_votes,
                            game=game,
                            game_picks=game_picks, my_pick=my_pick,
-                           game_winners=game_winners)
+                           game_winners=game_winners,
+                           game_consensus=game_consensus)
 
 
 def upload_to_streamable(path):
@@ -1135,8 +1137,8 @@ def seed_gameday_pickem(db, gm):
                 return None
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
-                " author_name, user_id, created_at, board)"
-                " VALUES (NULL, NULL, ?, ?, 'Skeeps', ?, ?, 'scores')",
+                " author_name, user_id, created_at, board, pinned)"
+                " VALUES (NULL, NULL, ?, ?, 'Skeeps', ?, ?, 'scores', 1)",
                 (f"🏈 Michigan {'vs' if home else 'at'} {opp}*",
                  "Official game-day Pick 'em — enter your final score below "
                  "before kickoff. Skeeps keeps score: the real final goes in "
@@ -1162,6 +1164,9 @@ def seed_gameday_pickem(db, gm):
                     return mid
                 db.execute("UPDATE games SET final_a = ?, final_b = ?"
                            " WHERE id = ?", (mich, them, game["id"]))
+                # game's over: the thread comes down off the header pin
+                db.execute("UPDATE messages SET pinned = 0 WHERE id = ?",
+                           (mid,))
                 db.commit()
     return mid
 
@@ -1248,6 +1253,25 @@ def parse_pick_subject(subject):
             and word_before(pos_a) not in PICK_MICH_TOKENS):
         return (b, a)   # 'WMU 10 Michigan 45' — Michigan named second
     return (a, b)       # the board says its own team first
+
+
+def pick_consensus(picks):
+    """The board's collective prediction: mean, median, and the most
+    popular exact score. None under 3 picks — two guys agreeing is a
+    coincidence, not a consensus. (Andy's curiosity.)"""
+    if len(picks) < 3:
+        return None
+    from statistics import mean, median
+    from collections import Counter
+    a = [p["pick_a"] for p in picks]
+    b = [p["pick_b"] for p in picks]
+    def fmt(x):
+        return f"{x:.1f}".rstrip("0").rstrip(".")
+    (ma, mb), mc = Counter(zip(a, b)).most_common(1)[0]
+    return {"n": len(picks),
+            "mean": f"{fmt(mean(a))}–{fmt(mean(b))}",
+            "median": f"{fmt(median(a))}–{fmt(median(b))}",
+            "mode": f"{ma}–{mb} (×{mc})" if mc >= 2 else None}
 
 
 def harvest_pickem(db, gm, mid):

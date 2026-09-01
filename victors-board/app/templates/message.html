@@ -49,6 +49,11 @@
   {% if game %}
   <div class="poll-box">
     <p><b>Pick 'em:</b> {{ game['team_a'] }} vs {{ game['team_b'] }}</p>
+    {% if game_consensus %}
+    <p class="hint">Board consensus ({{ game_consensus.n }} picks):
+      mean {{ game_consensus.mean }} &middot; median {{ game_consensus.median }}
+      {%- if game_consensus.mode %} &middot; most popular {{ game_consensus.mode }}{% endif %}</p>
+    {% endif %}
     {% if game['final_a'] is not none %}
       <p><b>FINAL:</b> {{ game['team_a'] }} {{ game['final_a'] }} &mdash;
          {{ game['team_b'] }} {{ game['final_b'] }}</p>
