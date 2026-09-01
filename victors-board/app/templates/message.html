@@ -35,12 +35,13 @@
         loading="lazy" allowfullscreen></iframe></div>
       {% elif msg['image_url'].lower().endswith(('.mp4', '.mov', '.webm')) %}
       <p><video controls playsinline preload="metadata" class="clip"
+           referrerpolicy="no-referrer"
            src="{{ msg['image_url'] }}"></video></p>
       {% elif msg['image_size'] in ('small', 'medium', 'large') %}
-      <p><a href="{{ msg['image_url'] }}" target="_blank" title="Click for full size"><img
+      <p><a href="{{ msg['image_url'] }}" target="_blank" title="Click for full size"><img referrerpolicy="no-referrer"
         class="img-{{ msg['image_size'] }}" src="{{ msg['image_url'] }}" alt=""></a></p>
       {% else %}
-      <p><img src="{{ msg['image_url'] }}" alt=""></p>
+      <p><img referrerpolicy="no-referrer" src="{{ msg['image_url'] }}" alt=""></p>
       {% endif %}
     {% endif %}
   </div>

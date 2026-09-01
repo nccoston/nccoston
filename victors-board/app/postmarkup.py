@@ -55,7 +55,8 @@ def _linkify(url):
     if IMAGE_RE.match(url):
         # a bare picture/GIF link shows the picture itself
         return (f'<a href="{esc}" rel="nofollow noopener" target="_blank">'
-                f'<img src="{esc}" alt="" loading="lazy"></a>')
+                f'<img src="{esc}" alt="" loading="lazy" '
+                f'referrerpolicy="no-referrer"></a>')
     if REDDIT_RE.match(url):
         return (f'<blockquote class="reddit-embed-bq" data-embed-height="500">'
                 f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a></blockquote>')
@@ -92,6 +93,9 @@ class _Renderer(HTMLParser):
                 kept.append(f'{name}="{escape(value, quote=True)}"')
         attr_str = (" " + " ".join(kept)) if kept else ""
         extra = ""
+        if tag == "img":
+            # GIF/image hosts hotlink-block by Referer; send none
+            extra = ' referrerpolicy="no-referrer"'
         if tag == "a":
             external = any(n == "href" and v and v.strip().lower().startswith("http")
                            for n, v in attrs)
