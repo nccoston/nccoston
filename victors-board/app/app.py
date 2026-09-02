@@ -1405,8 +1405,36 @@ def fetch_latest_pod():
         return None
 
 
+def pod_stream_window(video_id):
+    """'upcoming' if the video is a scheduled stream, 'today' if its
+    broadcast started within the last 24 hours, else None. The RSS feed
+    dates a scheduled stream by when the schedule was CREATED — days
+    before showtime — so feed freshness alone can't see anticipation.
+    The watch page can."""
+    import requests
+    try:
+        html = requests.get(
+            f"https://www.youtube.com/watch?v={video_id}", timeout=6,
+            headers={"User-Agent": "Mozilla/5.0"}).text
+        if '"isUpcoming":true' in html:
+            return "upcoming"
+        m = re.search(r'"startTimestamp":"([^"]+)"', html)
+        if m:
+            started = datetime.fromisoformat(m.group(1))
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            if timedelta() <= datetime.now(timezone.utc) - started \
+                    <= timedelta(hours=24):
+                return "today"
+    except Exception:
+        pass
+    return None
+
+
 def pod_box():
-    """The homepage pod box, or None. Strictly Wednesdays, board time."""
+    """The homepage pod box, or None. Strictly Wednesdays, board time.
+    Shows a fresh upload — or the scheduled/live stream, so the box goes
+    up the morning of the show in anticipation."""
     if datetime.now(timezone.utc).astimezone(BOARD_TZ).weekday() != 2:
         return None
     now = time.monotonic()
@@ -1414,14 +1442,15 @@ def pod_box():
         # 15-minute cache: fetches only happen on Wednesdays, and the box
         # should flip to the new episode soon after it uploads
         if now - POD_CACHE["at"] > 900:
-            POD_CACHE["video"] = fetch_latest_pod()
+            video = fetch_latest_pod()
+            if video:
+                fresh = (datetime.now(timezone.utc) - video["published"]
+                         <= timedelta(hours=48))
+                if not fresh and pod_stream_window(video["video_id"]) is None:
+                    video = None   # genuinely stale: a skipped week
+            POD_CACHE["video"] = video
             POD_CACHE["at"] = now
-        video = POD_CACHE["video"]
-    if not video:
-        return None
-    if datetime.now(timezone.utc) - video["published"] > timedelta(hours=48):
-        return None   # no fresh episode this week
-    return video
+        return POD_CACHE["video"]
 
 
 @app.route("/scores/live.json")
@@ -1469,6 +1498,7 @@ def pod_check():
     if best:
         best = dict(best, published=best["published"].isoformat(),
                     playable=pod_playable(best["video_id"]),
+                    stream_window=pod_stream_window(best["video_id"]),
                     fresh_enough=(datetime.now(timezone.utc)
                                   - best["published"]) <= timedelta(hours=48))
     return {
@@ -1478,9 +1508,8 @@ def pod_check():
         "feed_entries": entries,
         "chosen_episode": best,
         "box_shown_now": bool(pod_box()),
-        "note": "box needs: Wednesday + filter match + published <48h; "
-                "scheduled streams count (anticipation is the feature); "
-                "playable is informational only",
+        "note": "box needs: Wednesday + filter match + (published <48h "
+                "OR stream_window upcoming/today); playable is info only",
     }
 
 
