@@ -1368,7 +1368,8 @@ def pod_playable(video_id):
 
 
 def fetch_latest_pod():
-    """Newest playable OUR-SHOW upload on the pod channel:
+    """Newest OUR-SHOW entry on the pod channel (uploads and
+    scheduled streams alike):
     dict(video_id, title, published). The channel hosts several shows,
     so entries are filtered by title (podcast_title_filter setting);
     blank filter = whole channel."""
@@ -1395,8 +1396,10 @@ def fetch_latest_pod():
             when = datetime.fromisoformat(pub)
             if best is None or when > best["published"]:
                 best = {"video_id": vid, "title": title, "published": when}
-        if best and not pod_playable(best["video_id"]):
-            return None
+        # No playability gate here: a SCHEDULED stream fails the oEmbed
+        # check the same way a removed video does, and the box should go
+        # up Wednesday morning in anticipation of the show. The title
+        # filter already keeps other shows' corpses out.
         return best
     except Exception:
         return None
@@ -1475,8 +1478,9 @@ def pod_check():
         "feed_entries": entries,
         "chosen_episode": best,
         "box_shown_now": bool(pod_box()),
-        "note": "box needs: Wednesday + filter match + published <48h "
-                "+ playable; it appears within 15 min of upload",
+        "note": "box needs: Wednesday + filter match + published <48h; "
+                "scheduled streams count (anticipation is the feature); "
+                "playable is informational only",
     }
 
 
