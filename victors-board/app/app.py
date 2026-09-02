@@ -1426,6 +1426,60 @@ def scores_live():
     return {"games": live_games(), "sru": slippery_rock_line()}
 
 
+@app.route("/admin/pod-check")
+@admin_required
+def pod_check():
+    """One-off: why is the pod box showing (or not) right now?"""
+    import requests
+    import xml.etree.ElementTree as ET
+    cid = (get_setting("podcast_channel_id") or "").strip()
+    show = (get_setting("podcast_title_filter") or "").strip()
+    entries = []
+    try:
+        raw = requests.get(POD_FEED.format(cid=cid), timeout=8).text
+        root = ET.fromstring(raw)
+        ns = {"a": "http://www.w3.org/2005/Atom",
+              "yt": "http://www.youtube.com/xml/schemas/2015"}
+        now = datetime.now(timezone.utc)
+        for entry in root.findall("a:entry", ns)[:10]:
+            title = entry.findtext("a:title", "", ns)
+            pub = entry.findtext("a:published", "", ns)
+            try:
+                age_h = round((now - datetime.fromisoformat(pub))
+                              .total_seconds() / 3600, 1)
+            except ValueError:
+                age_h = None
+            entries.append({
+                "title": title,
+                "video_id": entry.findtext("yt:videoId", "", ns),
+                "published": pub,
+                "age_hours": age_h,
+                "matches_filter": (not show
+                                   or show.lower() in title.lower()),
+                "fresh_enough": age_h is not None and age_h <= 48,
+            })
+    except Exception as e:
+        entries = [{"feed_error": str(e)}]
+    with POD_LOCK:
+        POD_CACHE["at"] = -1e9   # bust the cache so the answer is live
+    best = fetch_latest_pod()
+    if best:
+        best = dict(best, published=best["published"].isoformat(),
+                    playable=pod_playable(best["video_id"]),
+                    fresh_enough=(datetime.now(timezone.utc)
+                                  - best["published"]) <= timedelta(hours=48))
+    return {
+        "is_wednesday_board_time":
+            datetime.now(timezone.utc).astimezone(BOARD_TZ).weekday() == 2,
+        "channel_id": cid, "title_filter": show,
+        "feed_entries": entries,
+        "chosen_episode": best,
+        "box_shown_now": bool(pod_box()),
+        "note": "box needs: Wednesday + filter match + published <48h "
+                "+ playable; it appears within 15 min of upload",
+    }
+
+
 @app.route("/admin/sru-check")
 @admin_required
 def sru_check():
