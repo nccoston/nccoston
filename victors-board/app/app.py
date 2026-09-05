@@ -71,6 +71,19 @@ LOCAL_VIDEO_CAP = 16 * 1024 * 1024  # fallback cap when hosting clips ourselves
 STREAMABLE_EMAIL = os.environ.get("STREAMABLE_EMAIL")
 STREAMABLE_PASSWORD = os.environ.get("STREAMABLE_PASSWORD")
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)  # stay logged in
+
+# Static files and uploads cache for 30 days in browsers AND on Cloudflare's
+# edge, which fronts the site — repeat views stop costing Render bandwidth.
+# Safe because uploads have immutable random names, and every static URL
+# carries ?v=<boot time>, so each deploy busts the cache by itself.
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = timedelta(days=30)
+ASSET_VERSION = int(time.time())
+
+
+@app.url_defaults
+def _version_static_urls(endpoint, values):
+    if endpoint == "static":
+        values.setdefault("v", ASSET_VERSION)
 if os.environ.get("SECRET_KEY"):
     app.secret_key = os.environ["SECRET_KEY"]
 else:
