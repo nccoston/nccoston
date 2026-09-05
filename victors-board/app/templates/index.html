@@ -18,10 +18,17 @@
 {% endmacro %}
 
 {% macro page_row() %}
+{# history is infinite; the row of links is not: first two, last two,
+   current±2, ellipses between #}
 <p class="page-row">
   Page:
+  {% set ns = namespace(last=0) %}
   {% for p in range(1, pages + 1) %}
-    {% if p == page %}{{ p }}{% else %}<a href="{{ url_for('index', board_name=board_name, page=p) }}">{{ p }}</a>{% endif %}
+    {% if p <= 2 or p > pages - 2 or (page - 2 <= p <= page + 2) %}
+      {%- if p - ns.last > 1 %} &hellip;{% endif %}
+      {% if p == page %}{{ p }}{% else %}<a href="{{ url_for('index', board_name=board_name, page=p) }}">{{ p }}</a>{% endif %}
+      {%- set ns.last = p %}
+    {% endif %}
   {% endfor %}
   {% if page < pages %}<a href="{{ url_for('index', board_name=board_name, page=page + 1) }}">Next&gt;&gt;</a>{% endif %}
 </p>
