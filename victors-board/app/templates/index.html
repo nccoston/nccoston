@@ -50,6 +50,47 @@
   <div class="gameday-links">
     <a href="{{ url_for('index', board_name='scores') }}">Scores</a>
   </div>
+  {% if has_song %}
+  <div class="gameday-song">
+    <audio id="victors-audio" preload="none"
+           src="{{ url_for('static', filename='victors.mp3') }}"></audio>
+    &#127930; <a href="#" id="song-play">The Victors &#9654;</a>
+    <label class="song-auto"><input type="checkbox" id="song-auto"> auto</label>
+  </div>
+  <script>
+  (function () {
+    // The fight song. Plays itself at most ONCE per game day per device
+    // (browsers block un-clicked audio anyway; when they do, the button
+    // just waits). The "auto" box is the member's permanent off switch.
+    var audio = document.getElementById("victors-audio");
+    var play = document.getElementById("song-play");
+    var auto = document.getElementById("song-auto");
+    function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+    function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function label() {
+      play.innerHTML = "The Victors " + (audio.paused ? "&#9654;" : "&#9646;&#9646;");
+    }
+    play.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (audio.paused) { audio.play().catch(function () {}); }
+      else { audio.pause(); }
+    });
+    audio.addEventListener("play", label);
+    audio.addEventListener("pause", label);
+    audio.addEventListener("ended", label);
+    auto.checked = load("songAuto") !== "0";
+    auto.addEventListener("change", function () {
+      store("songAuto", auto.checked ? "1" : "0");
+    });
+    var today = new Date().toISOString().slice(0, 10);
+    if (auto.checked && load("songPlayedOn") !== today) {
+      audio.play().then(function () {
+        store("songPlayedOn", today);   // once per game day, win or lose
+      }).catch(function () {});         // browser said no: the button waits
+    }
+  })();
+  </script>
+  {% endif %}
 </div>
 {% elif pickem and pickem.kind == 'pre' %}
 <p class="pickem-line">&#127944; <b>{{ pickem.matchup }}</b>

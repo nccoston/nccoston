@@ -250,6 +250,7 @@ def rendertext(text):
 
 
 FLAG_FILE = APP_DIR / "static" / "goblu-banner.gif"   # waving M, game day only
+SONG_FILE = APP_DIR / "static" / "victors.mp3"        # fight song, game day only
 
 
 @app.context_processor
@@ -263,6 +264,7 @@ def inject_globals():
         "header_html": get_setting("header_html"),
         "links_html": get_setting("links_html"),
         "has_flag": FLAG_FILE.exists(),
+        "has_song": SONG_FILE.exists(),
         "pinned_threads": pinned,
     }
 

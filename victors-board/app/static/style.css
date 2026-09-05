@@ -345,6 +345,12 @@ table.admin-table td, table.admin-table th {
 /* the quiet Monday-to-kickoff pick 'em pointer (game day gets the banner) */
 .pickem-line { text-align: center; font-size: 13px; margin: 10px 0; }
 
+/* fight song controls inside the game day banner */
+.gameday-song { font-size: 12.5px; margin-top: 4px; }
+.gameday-song a { color: inherit; font-weight: bold; }
+.song-auto { font-weight: normal; margin-left: 8px; font-size: 11px; }
+.song-auto input { vertical-align: -2px; }
+
 /* maize-and-blue banner on the homepage whenever Michigan plays today */
 .gameday {
   background: #FFCB05;
