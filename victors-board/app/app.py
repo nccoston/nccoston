@@ -539,13 +539,31 @@ def message(message_id):
 
 
 def upload_to_streamable(path):
-    """Forward a clip to Streamable; returns its page URL."""
+    """Forward a clip to Streamable; returns its page URL.
+
+    The multipart body is assembled in a spooled temp file and streamed,
+    never held in RAM — requests' files= builds the whole body in memory,
+    which is how a big Sunday highlight clip OOMed the 512MB instance."""
     import requests
-    with open(path, "rb") as fh:
+    import shutil
+    import tempfile
+    import uuid
+    boundary = uuid.uuid4().hex
+    with tempfile.TemporaryFile() as body:
+        body.write(
+            f"--{boundary}\r\nContent-Disposition: form-data; "
+            f'name="file"; filename="{path.name}"\r\n'
+            "Content-Type: application/octet-stream\r\n\r\n".encode())
+        with open(path, "rb") as fh:
+            shutil.copyfileobj(fh, body, 256 * 1024)
+        body.write(f"\r\n--{boundary}--\r\n".encode())
+        body.seek(0)
         resp = requests.post(
             "https://api.streamable.com/upload",
             auth=(STREAMABLE_EMAIL, STREAMABLE_PASSWORD),
-            files={"file": (path.name, fh)},
+            data=body,
+            headers={"Content-Type":
+                     f"multipart/form-data; boundary={boundary}"},
             timeout=180)
     resp.raise_for_status()
     code = resp.json().get("shortcode")
@@ -620,19 +638,23 @@ def _save_one_upload(f):
     if ext != ".gif":
         try:
             from PIL import Image, ImageOps
-            img = Image.open(path)
-            # apply the EXIF orientation flag so portrait phone photos stay
-            # upright after recompression strips the metadata
-            img = ImageOps.exif_transpose(img)
-            img.thumbnail((1600, 1600))
-            if img.mode in ("RGBA", "LA", "P"):
-                img.save(path)  # keep transparency in original format
-            else:
-                jpg_path = path.with_suffix(".jpg")
-                img.convert("RGB").save(jpg_path, "JPEG", quality=85)
-                if jpg_path != path:
-                    path.unlink()
-                    path, name = jpg_path, jpg_path.name
+            # at most two decodes at once: a 48MP photo is ~150MB decoded,
+            # and unbounded concurrency OOMed the 512MB instance
+            with IMG_WORK:
+                img = Image.open(path)
+                # JPEG: decode at reduced DCT scale — a fraction of the memory
+                img.draft("RGB", (3200, 3200))
+                img.thumbnail((1600, 1600))
+                # EXIF rotation AFTER shrinking: transposing 1600px, not 8000px
+                img = ImageOps.exif_transpose(img)
+                if img.mode in ("RGBA", "LA", "P"):
+                    img.save(path)  # keep transparency in original format
+                else:
+                    jpg_path = path.with_suffix(".jpg")
+                    img.convert("RGB").save(jpg_path, "JPEG", quality=85)
+                    if jpg_path != path:
+                        path.unlink()
+                        path, name = jpg_path, jpg_path.name
         except Exception:
             pass  # unreadable as an image? keep the file as uploaded
     return url_for("uploads", filename=name)
@@ -1838,6 +1860,7 @@ def register():
 # that address waits out LOGIN_COOLDOWN before trying again
 LOGIN_FAILS = {}          # ip -> [monotonic times of recent failures]
 LOGIN_LOCK = threading.Lock()
+IMG_WORK = threading.Semaphore(2)   # bound concurrent PIL decodes
 LOGIN_MAX_FAILS = 5
 LOGIN_WINDOW = 900        # failures older than this stop counting
 LOGIN_COOLDOWN = 900
