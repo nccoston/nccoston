@@ -351,7 +351,7 @@ table.admin-table td, table.admin-table th {
 :root[data-textsize="huge"] body { zoom: 1.35; }
 
 /* Victard Bowl: the canvas is 320x180 logical pixels, scaled crisp */
-.bowl-wrap { max-width: 640px; margin: 8px auto; }
+.bowl-wrap { max-width: 960px; margin: 8px auto; }
 #bowl {
   display: block;
   width: 100%;

@@ -15,6 +15,9 @@
 
   var canvas = document.getElementById("bowl");
   var ctx = canvas.getContext("2d");
+  var RES = 2;                          // backing pixels per logical pixel
+  canvas.width = W * RES; canvas.height = H * RES;
+  ctx.scale(RES, RES);
   ctx.imageSmoothingEnabled = false;
 
   var CFG = window.BOWL || {};
@@ -185,10 +188,10 @@
     var lbs = [P("O", "LB", los + 28, fieldY(0.38), 48), P("O", "LB", los + 28, fieldY(0.62), 48)];
     lbs[0].zone = { x: los + 30, y: fieldY(0.35) }; lbs[1].zone = { x: los + 30, y: fieldY(0.65) };
     wrs.forEach(function (w, k) {
-      var cb = P("O", "CB", los + 26, w.y, 54 + oppRating * 7);
+      var cb = P("O", "CB", los + 40, w.y + (w.y < H / 2 ? 3 : -3), 54 + oppRating * 7);
       cb.mark = w;
     });
-    var s = P("O", "S", los + 60, fieldY(0.5), 60 + oppRating * 4); s.role = "S";
+    var s = P("O", "S", los + 72, fieldY(0.5), 60 + oppRating * 4); s.role = "S";
     ball = { x: qb.x, y: qb.y, z: 0, flying: false, tx: 0, ty: 0, t: 0, dur: 0, holder: qb };
     carrier = qb;
   }
@@ -260,11 +263,11 @@
         else if (isRun()) { // come get the ball
           if (dist(p, qb) > 3) stepToward(p, qb, p.spd * 0.9, dt);
         } else if (ball.flying && ball.target === p) { stepToward(p, { x: ball.tx, y: ball.ty }, p.spd, dt); }
-        else if (p.route) { var v = routeVel(p, playT); p.x += v.vx * dt; p.y += v.vy * dt; p.anim += dt * 10; }
+        else if (p.route) { var v = routeVel(p, playT); p.x += v.vx * dt; p.y += v.vy * dt; p.anim += dt * 8; }
       } else if (p.role === "WR") {
         if (carrier === p) moveCarrier(p, dt);
         else if (ball.flying && ball.target === p) { stepToward(p, { x: ball.tx, y: ball.ty }, p.spd, dt); }
-        else { var v2 = routeVel(p, playT); p.x += v2.vx * dt; p.y += v2.vy * dt; p.anim += dt * 10; }
+        else { var v2 = routeVel(p, playT); p.x += v2.vx * dt; p.y += v2.vy * dt; p.anim += dt * 8; }
       } else if (p.role === "OL") {
         p.x += 6 * dt; // lean forward
       }
@@ -282,12 +285,12 @@
     } else if (ball.holder) { ball.x = ball.holder.x; ball.y = ball.holder.y - 2; }
 
     // --- defense ---
-    if (carrier !== lastCarrier) { lastCarrier = carrier; reactT = 0.35; }   // "who has it?"
+    if (carrier !== lastCarrier) { lastCarrier = carrier; reactT = 0.5; }    // "who has it?"
     if (ball.flying && !ball.reacted) { ball.reacted = true; reactT = 0.4; }  // "ball's up"
     if (reactT > 0) reactT -= dt;
     var chasers = [];
     if (carrier && carrier !== qb) {
-      chasers = players.filter(function (q) { return q.team === "O"; })
+      chasers = players.filter(function (q) { return q.team === "O" && !(q.role === "DL" && q.engaged > 0); })
         .sort(function (a, b) { return dist(a, carrier) - dist(b, carrier); }).slice(0, 4);
     }
     players.forEach(function (d) {
@@ -305,8 +308,13 @@
       } else if (d.role === "CB") {
         // stay on your man (a step behind him, a step inside) until someone
         // has the ball — corners don't race the throw to the landing spot
-        target = (carrier && carrier !== qb) ? carrier
-               : { x: d.mark.x - 8, y: d.mark.y + (d.mark.y < H / 2 ? 3 : -3) };
+        // ...but never INTO the backfield: at the snap the receiver is on
+        // the line, and "behind him" would put the corner on the runner
+        // corners play five yards off until their man passes them, and
+        // keep covering through the reaction window before they commit
+        var chasing = carrier && carrier !== qb && reactT <= 0;
+        target = chasing ? carrier
+               : { x: Math.max(d.mark.x - 8, los + 36), y: d.mark.y + (d.mark.y < H / 2 ? 3 : -3) };
       } else if (d.role === "LB") {
         if (carrier && carrier !== qb) target = carrier;
         else if (ball.flying) target = { x: ball.tx, y: ball.ty };
@@ -351,7 +359,7 @@
   function stepToward(p, t, spd, dt) {
     var dx = t.x - p.x, dy = t.y - p.y, d = Math.sqrt(dx * dx + dy * dy);
     if (d < 0.5) return;
-    p.x += dx / d * spd * dt; p.y += dy / d * spd * dt; p.anim += dt * 10;
+    p.x += dx / d * spd * dt; p.y += dy / d * spd * dt; p.anim += dt * 8;
   }
   function moveCarrier(p, dt) {
     var vx = p.spd, vy = 0;
@@ -363,7 +371,7 @@
       var dx = steer.x - steer.x0, dy = steer.y - steer.y0, d = Math.sqrt(dx * dx + dy * dy);
       if (d > 4) { vx = dx / d * p.spd; vy = dy / d * p.spd; }
     }
-    p.x += vx * dt; p.y += vy * dt; p.anim += dt * 10;
+    p.x += vx * dt; p.y += vy * dt; p.anim += dt * 8;
   }
 
   function throwBall(tx, ty, target) {
@@ -589,46 +597,58 @@
   // offscreen canvases. Michigan: winged helmet, navy jersey, maize pants.
   // Opponent: their color with a white helmet stripe and white pants.
   var SPRITE_ROWS = [
-    "..HHHH..",
-    ".HWWWWH.",
-    ".HHHHHF.",
-    ".HHHHHF.",
-    "...SS...",
-    "JJJJJJJ.",
-    "JJJJJJJ.",
-    ".JJJJJ..",
-    ".SJJJS..",
-    "..PPP...",
-    "..PPP..."
+    "......HHHH......",
+    "....HHHHHHHH....",
+    "...HHWWWWWWHH...",
+    "...HWWWWWWWWH...",
+    "...HHHWWWHHHHF..",
+    "...HHHHHHHHHHF..",
+    "...HHHHHHHHHFF..",
+    "....HHHHHHHF....",
+    "......SSSS......",
+    "..JJJJJJJJJJJJ..",
+    ".JJJJJJJJJJJJJJ.",
+    ".JJJJNNNNNNJJJJ.",
+    ".JJJJNNNNNNJJJJ.",
+    "..JJJJJJJJJJJJ..",
+    "..SJJJJJJJJJJS..",
+    "...JJJJJJJJJJ...",
+    "....PPPPPPPP....",
+    "....PPPPPPPP....",
+    "....PPPPPPPP....",
+    "....PPP..PPP...."
   ];
+  // a running gait, not a scissor: contact, passing, contact with the
+  // trail leg kicked up, passing — each step asymmetric like a real stride
   var LEG_FRAMES = [
-    ["..P.P...", "..K.K..."],   // standing / mid-stride
-    [".P...P..", ".K...K.."],   // full stride
-    ["..PP....", "..KK...."]    // legs together
+    ["....PPP..PPP....", "...PPP....PPP...", "..OOO......OOO..", "..OOO.......OOO.", ".KKKK.......KKKK", "................"],
+    [".....PPPPPP.....", ".....PPPPP......", ".....OOOOO......", "......OOOO......", ".....KKKKK......", "................"],
+    [".....PPP.PP.....", "....PPP...PP....", "...OOO....OO....", "..OOO......OO...", ".KKKK......KKK..", "................"]
   ];
+  var SW = 16, SH = 26;          // sprite pixels; drawn into an 8x13 logical box
   var SKINS = ["#f1c9a5", "#c68642", "#6b3e22"];
   var spriteCache = {};
   function bakeSprite(team, skin, frame, faceRight) {
     var key = team + skin + frame + (faceRight ? "R" : "L");
     if (spriteCache[key]) return spriteCache[key];
-    var c = document.createElement("canvas"); c.width = 8; c.height = 13;
+    var c = document.createElement("canvas"); c.width = SW; c.height = SH;
     var g = c.getContext("2d");
     var colors = team === "M"
-      ? { H: "#001a38", W: MAIZE, F: "#2a2a2a", S: SKINS[skin], J: BLUE, P: MAIZE, K: "#1a1a1a" }
-      : { H: oppColor, W: "#f4f4f4", F: "#2a2a2a", S: SKINS[skin], J: oppColor, P: "#ececec", K: "#1a1a1a" };
+      ? { H: "#00274C", W: MAIZE, F: "#2b2b2b", S: SKINS[skin], J: BLUE, N: MAIZE, P: MAIZE, O: BLUE, K: "#1a1a1a" }
+      : { H: oppColor, W: "#f4f4f4", F: "#2b2b2b", S: SKINS[skin], J: oppColor, N: "#f4f4f4", P: "#ececec", O: oppColor, K: "#1a1a1a" };
     var rows = SPRITE_ROWS.concat(LEG_FRAMES[frame]);
     for (var r = 0; r < rows.length; r++) {
-      for (var col = 0; col < 8; col++) {
+      for (var col = 0; col < SW; col++) {
         var ch = rows[r][col];
         if (ch === ".") continue;
         g.fillStyle = colors[ch];
-        g.fillRect(faceRight ? col : 7 - col, r, 1, 1);
+        g.fillRect(faceRight ? col : SW - 1 - col, r, 1, 1);
       }
     }
     spriteCache[key] = c;
     return c;
   }
-  var RUN_CYCLE = [0, 1, 0, 2];
+  var RUN_CYCLE = [0, 1, 2, 1];
 
   function drawPlayer(p) {
     var x = Math.round(p.x - camX), y = Math.round(p.y);
@@ -643,7 +663,7 @@
     var frame = moving ? RUN_CYCLE[Math.floor(p.anim) % 4] : 0;
     // shadow
     ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.fillRect(x - 3, y + 2, 7, 2);
-    ctx.drawImage(bakeSprite(p.team, p.skin, frame, faceRight), x - 4, y - 10);
+    ctx.drawImage(bakeSprite(p.team, p.skin, frame, faceRight), x - 4, y - 10, 8, 13);
     if (p === carrier && !ball.flying) {   // marker over the ball carrier
       ctx.fillStyle = MAIZE; ctx.fillRect(x - 1, y - 14, 2, 2); ctx.fillRect(x, y - 13, 1, 1);
     }
