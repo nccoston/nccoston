@@ -325,8 +325,9 @@
         // keep covering through the reaction window before they commit
         // a corner stays on his man — who is running downfield, taking the
         // corner with him — until the runner is near him or clearly loose
+        // on a pass, once it's caught the receiver IS the play — everyone goes
         var chasing = carrier && carrier !== qb && reactT <= 0 &&
-                      (dist(d, carrier) < 30 || playT - carrierAt > 1.8);
+                      (!isRun() || dist(d, carrier) < 30 || playT - carrierAt > 1.8);
         target = chasing ? carrier
                : { x: Math.max(d.mark.x - 8, los + 28), y: d.mark.y + (d.mark.y < H / 2 ? 3 : -3) };
       } else if (d.role === "LB") {
