@@ -38,12 +38,25 @@
     for (var k in RATINGS) if (n.indexOf(k) !== -1) return RATINGS[k];
     return 0.5;
   }
-  // opponent color from the name, so the same team always looks the same
+  // opponent color: the school's real color where we know it, otherwise a
+  // stable pick from a palette with no blues — nobody gets to look like us
+  var TEAM_COLORS = {
+    "ohio state": "#bb0000", "michigan state": "#18453b", "western michigan": "#6c4023",
+    "central michigan": "#6a0032", "eastern michigan": "#046a38", "oklahoma": "#841617",
+    "usc": "#990000", "washington": "#4b2e83", "wisconsin": "#c5050c", "nebraska": "#d00000",
+    "penn state": "#1e407c", "maryland": "#e03a3e", "purdue": "#cfb991", "northwestern": "#4e2a84",
+    "oregon": "#154733", "minnesota": "#7a0019", "iowa": "#000000", "illinois": "#e84a27",
+    "indiana": "#990000", "rutgers": "#cc0033", "ucla": "#2d68c4", "texas": "#bf5700",
+    "alabama": "#9e1b32", "georgia": "#ba0c2f", "new mexico": "#ba0c2f", "toledo": "#ffb20f",
+    "notre dame": "#0c2340", "florida": "#fa4616", "arkansas state": "#cc092f"
+  };
   function colorFor(name) {
+    var n = (name || "").toLowerCase();
+    for (var k in TEAM_COLORS) if (n.indexOf(k) !== -1) return TEAM_COLORS[k];
     var h = 0;
     for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
     var palette = ["#b3272d", "#8c1d40", "#cc0000", "#2d5f2e", "#4a1a70", "#c8102e",
-                   "#0b3d91", "#e07000", "#5b2c6f", "#7a0019"];
+                   "#e07000", "#5b2c6f", "#7a0019", "#154733"];
     return palette[h % palette.length];
   }
 
