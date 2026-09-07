@@ -167,31 +167,38 @@
     function P(team, role, x, y, spd) {
       var p = { team: team, role: role, x: x, y: y, vx: 0, vy: 0, spd: spd,
                 anim: Math.random() * 10, engaged: 0, stun: 0, route: null, t: 0,
-                mark: null, zone: null, home: null };
+                mark: null, zone: null, home: null, block: null, blockT: 0, held: 0, holdMax: 0 };
       players.push(p); return p;
     }
     // offense (Michigan, drives left -> right)
     qb = P("M", "QB", los - 20, fieldY(0.5), 46);
     var rbY = play.f === "iform" ? 0.5 : (play.dir && play.dir[1] > 0 ? 0.42 : 0.58);
     var rb = P("M", "RB", los - (play.f === "iform" ? 34 : 28), fieldY(rbY), 60);
-    var wrs = FORMATIONS[play.f].map(function (spot) { return P("M", "WR", los + spot[1], fieldY(spot[0]), 62); });
-    for (var i = 0; i < 5; i++) P("M", "OL", los - 4, fieldY(0.38 + i * 0.06), 30);
+    var wrs = FORMATIONS[play.f].map(function (spot) { return P("M", "WR", los + spot[1], fieldY(spot[0]), 60); });
+    var ols = [];
+    for (var i = 0; i < 5; i++) ols.push(P("M", "OL", los - 4, fieldY(0.38 + i * 0.06), 44));
     wrs.forEach(function (w, k) { w.route = play.routes[k]; w.home = { x: w.x, y: w.y }; });
     rb.route = play.rb; rb.home = { x: rb.x, y: rb.y };
     // defense
     var dls = [];
-    for (var j = 0; j < 4; j++) {
-      var d = P("O", "DL", los + 5, fieldY(0.36 + j * 0.09), 36);
-      d.engaged = rnd(2.2, 4.2) * (1.2 - oppRating * 0.5);   // the line holds this long
-      dls.push(d);
-    }
-    var lbs = [P("O", "LB", los + 28, fieldY(0.38), 48), P("O", "LB", los + 28, fieldY(0.62), 48)];
+    for (var j = 0; j < 4; j++) dls.push(P("O", "DL", los + 5, fieldY(0.36 + j * 0.09), 38));
+    var lbs = [P("O", "LB", los + 28, fieldY(0.38), 46), P("O", "LB", los + 28, fieldY(0.62), 46)];
+    // blocking assignments: four linemen on the four down linemen; the
+    // fifth pulls to a linebacker on runs (the lane) or doubles on passes
+    for (var b = 0; b < 4; b++) { ols[b].block = dls[b]; }
+    ols[4].block = play.type === "run"
+      ? (play.dir && play.dir[1] < 0 ? lbs[0] : lbs[1])
+      : dls[1];
+    ols.forEach(function (o) {
+      o.holdMax = rnd(1.8, 3.4) * (1.2 - oppRating * 0.5);   // how long the block holds
+      o.held = 0;
+    });
     lbs[0].zone = { x: los + 30, y: fieldY(0.35) }; lbs[1].zone = { x: los + 30, y: fieldY(0.65) };
     wrs.forEach(function (w, k) {
-      var cb = P("O", "CB", los + 40, w.y + (w.y < H / 2 ? 3 : -3), 54 + oppRating * 7);
+      var cb = P("O", "CB", los + 32, w.y + (w.y < H / 2 ? 3 : -3), 57 + oppRating * 6);
       cb.mark = w;
     });
-    var s = P("O", "S", los + 72, fieldY(0.5), 60 + oppRating * 4); s.role = "S";
+    var s = P("O", "S", los + 64, fieldY(0.5), 62 + oppRating * 3); s.role = "S";
     ball = { x: qb.x, y: qb.y, z: 0, flying: false, tx: 0, ty: 0, t: 0, dur: 0, holder: qb };
     carrier = qb;
   }
@@ -269,7 +276,11 @@
         else if (ball.flying && ball.target === p) { stepToward(p, { x: ball.tx, y: ball.ty }, p.spd, dt); }
         else { var v2 = routeVel(p, playT); p.x += v2.vx * dt; p.y += v2.vy * dt; p.anim += dt * 8; }
       } else if (p.role === "OL") {
-        p.x += 6 * dt; // lean forward
+        var t = p.block;
+        if (t && p.held < p.holdMax) {
+          if (dist(p, t) > 6) stepToward(p, t, p.spd, dt);
+          else { t.blockT = 0.2; p.held += dt; p.x = t.x - 5; p.y += (t.y - p.y) * 0.5; }
+        }
       }
       p.y = clamp(p.y, FIELD_TOP + 2, FIELD_BOT - 2);
     });
@@ -290,12 +301,13 @@
     if (reactT > 0) reactT -= dt;
     var chasers = [];
     if (carrier && carrier !== qb) {
-      chasers = players.filter(function (q) { return q.team === "O" && !(q.role === "DL" && q.engaged > 0); })
+      chasers = players.filter(function (q) { return q.team === "O" && !(q.blockT > 0); })
         .sort(function (a, b) { return dist(a, carrier) - dist(b, carrier); }).slice(0, 4);
     }
     players.forEach(function (d) {
       if (d.team !== "O") return;
       if (d.stun > 0) { d.stun -= dt; return; }
+      if (d.blockT > 0) { d.blockT -= dt; d.anim += dt * 4; return; }   // held up by a lineman
       var target = null;
       var pace = 1;
       if (carrier && carrier !== qb) {
@@ -303,8 +315,7 @@
         else if (chasers.indexOf(d) === -1) pace = 0.55;   // not your play
       } else if (ball.flying && reactT > 0) pace = 0.3;    // watching the ball
       if (d.role === "DL") {
-        if (d.engaged > 0) { d.engaged -= dt; d.x += rnd(-4, 4) * dt; return; }
-        target = carrier;
+        target = carrier || qb;
       } else if (d.role === "CB") {
         // stay on your man (a step behind him, a step inside) until someone
         // has the ball — corners don't race the throw to the landing spot
@@ -314,7 +325,7 @@
         // keep covering through the reaction window before they commit
         var chasing = carrier && carrier !== qb && reactT <= 0;
         target = chasing ? carrier
-               : { x: Math.max(d.mark.x - 8, los + 36), y: d.mark.y + (d.mark.y < H / 2 ? 3 : -3) };
+               : { x: Math.max(d.mark.x - 8, los + 28), y: d.mark.y + (d.mark.y < H / 2 ? 3 : -3) };
       } else if (d.role === "LB") {
         if (carrier && carrier !== qb) target = carrier;
         else if (ball.flying) target = { x: ball.tx, y: ball.ty };
@@ -336,7 +347,7 @@
         if (carrier === qb) { endPlay("sack"); }
         else if (Math.random() < 0.18 * (1 - oppRating * 0.4)) { d.stun = 0.7; } // broke it
         else {
-          G.lastEnd = { by: d.role, dEngaged: d.engaged, dx: Math.round(d.x - yardToPx(G.spot)), dy: Math.round(d.y),
+          G.lastEnd = { by: d.role, dx: Math.round(d.x - yardToPx(G.spot)), dy: Math.round(d.y),
                         cx: Math.round(carrier.x - yardToPx(G.spot)), cy: Math.round(carrier.y),
                         who: carrier.role, t: Math.round(playT * 100) / 100, pace: pace };
           endPlay("tackle");
