@@ -362,12 +362,17 @@ def resolve_reddit_links(text):
     return REDDIT_SHARE_RE.sub(swap, text)
 
 
-def user_read_ids(db, u):
-    """Message ids this member has opened on any device (empty for guests)."""
-    if not u:
+def user_read_ids(db, u, ids):
+    """Which of THESE message ids the member has opened on any device.
+    Scoped to the page being rendered — a regular's full read history is
+    tens of thousands of rows, and loading it per request added up."""
+    ids = list(ids)
+    if not u or not ids:
         return set()
+    marks = ",".join("?" * len(ids))
     return {r["message_id"] for r in db.execute(
-        "SELECT message_id FROM message_reads WHERE user_id = ?", (u["id"],))}
+        f"SELECT message_id FROM message_reads WHERE user_id = ?"
+        f" AND message_id IN ({marks})", [u["id"]] + ids)}
 
 
 # ----------------------------------------------------------- traffic counts
@@ -428,11 +433,12 @@ def index(board_name):
         "SELECT id FROM messages WHERE parent_id IS NULL AND board = ? "
         "ORDER BY created_at DESC LIMIT ? OFFSET ?",
         (board_name, THREADS_PER_PAGE, offset))]
-    threads = []
+    threads, rows = [], []
     if root_ids:
         marks = ",".join("?" * len(root_ids))
         rows = db.execute(
-            f"SELECT * FROM messages WHERE thread_id IN ({marks})", root_ids).fetchall()
+            f"SELECT id, thread_id, parent_id, subject, author_name, created_at, hof_at, pinned FROM messages"
+            f" WHERE thread_id IN ({marks})", root_ids).fetchall()
         by_thread = {}
         for root in build_tree(rows):
             by_thread[root["id"]] = root
@@ -463,7 +469,8 @@ def index(board_name):
                            gameday=gameday, pickem=pickem,
                            pod=pod_box() if board_name == "main" else None,
                            rocking=chat_rocking(),
-                           read_ids=user_read_ids(db, current_user()))
+                           read_ids=user_read_ids(db, current_user(),
+                                                  (r["id"] for r in rows)))
 
 
 @app.route("/message/<int:message_id>")
@@ -473,7 +480,8 @@ def message(message_id):
     if msg is None:
         abort(404)
     thread_rows = db.execute(
-        "SELECT * FROM messages WHERE thread_id = ?", (msg["thread_id"],)).fetchall()
+        "SELECT id, thread_id, parent_id, subject, author_name, created_at, hof_at, pinned FROM messages"
+        " WHERE thread_id = ?", (msg["thread_id"],)).fetchall()
     roots = build_tree(thread_rows)
     thread = roots[0] if roots else None
     reply_subject = msg["subject"]
@@ -526,7 +534,7 @@ def message(message_id):
                    " VALUES (?, ?)", (u["id"], message_id))
         db.commit()
     return render_template("message.html", msg=msg, thread=thread,
-                           read_ids=user_read_ids(db, u),
+                           read_ids=user_read_ids(db, u, (r["id"] for r in thread_rows)),
                            hof_votes=hof_votes, my_hof_vote=my_hof_vote,
                            hof_threshold=int(get_setting("hof_threshold") or 5),
                            reply_subject=reply_subject, poll=poll,
