@@ -1703,6 +1703,15 @@ def story():
                            chart_max=chart_max, loc=loc)
 
 
+@app.route("/settings")
+def settings():
+    # Every control here is a per-device browser preference (theme, text
+    # size) stored in localStorage — no account, no server state. Works
+    # for guests, and inside the Android/iOS home-screen install where
+    # there's no browser chrome to lean on.
+    return render_template("settings.html")
+
+
 @app.route("/stats")
 def stats():
     db = get_db()

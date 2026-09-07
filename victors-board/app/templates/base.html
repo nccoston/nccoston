@@ -14,6 +14,10 @@
   if (saved === "dark" || saved === "goblue") {
     document.documentElement.dataset.theme = saved;
   }
+  var ts = localStorage.getItem("textsize");
+  if (ts === "large" || ts === "huge") {
+    document.documentElement.dataset.textsize = ts;
+  }
 })();
 </script>
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
@@ -59,30 +63,8 @@
     <span class="nb">| <a href="{{ url_for('login') }}">Login</a></span>
     <span class="nb">| <a href="{{ url_for('register') }}">Register</a></span>
   {% endif %}
-  <span class="nb">| <a href="#" id="theme-toggle">Dark Mode</a></span>
+  <span class="nb">| <a href="{{ url_for('settings') }}">Settings</a></span>
 </p>
-<script>
-(function () {
-  var link = document.getElementById("theme-toggle");
-  function label() {
-    link.textContent =
-      document.documentElement.dataset.theme === "dark" ? "Light Mode" : "Dark Mode";
-  }
-  link.addEventListener("click", function (e) {
-    e.preventDefault();
-    var dark = document.documentElement.dataset.theme === "dark";
-    if (dark) {
-      delete document.documentElement.dataset.theme;
-      localStorage.setItem("theme", "light");
-    } else {
-      document.documentElement.dataset.theme = "dark";
-      localStorage.setItem("theme", "dark");
-    }
-    label();
-  });
-  label();
-})();
-</script>
 
 {% with msgs = get_flashed_messages(with_categories=true) %}
   {% for category, m in msgs %}

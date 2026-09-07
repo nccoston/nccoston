@@ -345,6 +345,34 @@ table.admin-table td, table.admin-table th {
 /* the quiet Monday-to-kickoff pick 'em pointer (game day gets the banner) */
 .pickem-line { text-align: center; font-size: 13px; margin: 10px 0; }
 
+/* per-device text size (Settings) — scales the whole page like ctrl-plus,
+   for phones and the home-screen install where browser zoom isn't handy */
+:root[data-textsize="large"] body { zoom: 1.15; }
+:root[data-textsize="huge"] body { zoom: 1.35; }
+
+/* the settings page */
+.settings-box { max-width: 560px; }
+.setting-group { margin: 18px 0; }
+.setting-group h3 { margin: 0 0 8px; font-size: 15px; }
+.setting-choices { display: flex; gap: 8px; flex-wrap: wrap; }
+.setting-choices button {
+  font-weight: normal;
+  padding: 6px 16px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 1px solid var(--border);
+}
+.setting-choices button.chosen {
+  background: #00274C;
+  color: #FFCB05;
+  border-color: #FFCB05;
+  font-weight: bold;
+}
+.setting-choices .size-normal { font-size: 13px; }
+.setting-choices .size-large { font-size: 16px; }
+.setting-choices .size-huge { font-size: 20px; }
+.setting-choices button span { font-size: 11px; vertical-align: middle; }
+
 /* fight song button inside the game day banner */
 .gameday-song { font-size: 12.5px; margin-top: 4px; }
 .gameday-song a { color: inherit; font-weight: bold; }
