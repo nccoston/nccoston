@@ -372,6 +372,9 @@ table.admin-table td, table.admin-table th {
 .setting-choices .size-large { font-size: 16px; }
 .setting-choices .size-huge { font-size: 20px; }
 .setting-choices button span { font-size: 11px; vertical-align: middle; }
+/* feedback radios: one per line, plain weight (outranks board-form's bold block labels) */
+form.board-form label.fb-kind { font-weight: normal; margin-top: 4px; }
+form.board-form label.fb-kind input { margin-right: 4px; }
 
 /* fight song button inside the game day banner */
 .gameday-song { font-size: 12.5px; margin-top: 4px; }

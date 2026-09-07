@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Pervert - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>You clicked the big titties button.</h2>
+  <p>You pervert.</p>
+  <p class="hint"><a href="{{ url_for('settings') }}">&laquo; Back to Settings</a>
+    &middot; <a href="{{ url_for('index', board_name='main') }}">Back to the board</a></p>
+</div>
+{% endblock %}

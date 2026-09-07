@@ -10,6 +10,26 @@
     The disk holds 1000 MB and can be enlarged anytime in Render
     (service &rarr; Disk).</p>
 
+  <h3>Feedback</h3>
+  {% if feedback_rows %}
+  <p class="hint">Notes sent from the Settings page (newest first). &#9993;
+    means it was also emailed; otherwise SMTP isn't set up and this is the
+    only copy.</p>
+  <table class="admin-table user-table">
+    {% for f in feedback_rows %}
+    <tr>
+      <td class="nb">{{ f['created_at'] | boarddate }}</td>
+      <td class="nb"><b>{{ f['handle'] }}</b><br>
+        <span class="legacy-tag">to the {{ 'mods' if f['kind'] == 'mods' else 'builder' }}{% if f['emailed'] %} &#9993;{% endif %}</span>
+        {% if f['reply_email'] %}<br><span class="legacy-tag">{{ f['reply_email'] }}</span>{% endif %}</td>
+      <td>{{ f['body'] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="hint">Nothing yet. Notes from the Settings page land here.</p>
+  {% endif %}
+
   <h3>Backups</h3>
   <p class="hint">The database is snapshotted automatically every night (last
     {{ snapshots|length if snapshots else 0 }} of 7 shown below, kept on the

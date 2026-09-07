@@ -57,7 +57,7 @@
   <a href="{{ url_for('index', board_name='main') }}">Home</a>
   <span class="nb">| <a href="{{ url_for('search') }}">Search</a></span>
   {% if user %}
-    <span class="nb">| <a href="{{ url_for('logout') }}">Logout</a> [ {{ user['handle'] }} ]</span>
+    <span class="nb">| [ {{ user['handle'] }} ]</span>
     {% if user['is_admin'] %}<span class="nb">| <a href="{{ url_for('admin') }}">Admin</a></span>{% endif %}
   {% else %}
     <span class="nb">| <a href="{{ url_for('login') }}">Login</a></span>

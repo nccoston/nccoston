@@ -22,6 +22,30 @@
     </div>
   </div>
 
+  {% if user %}
+  <div class="setting-group">
+    <h3>Feedback</h3>
+    <form class="board-form" method="post" action="{{ url_for('feedback') }}">
+      <label class="fb-kind"><input type="radio" name="kind" value="mods" checked>
+        To the mods <span class="hint">&mdash; complaints, registration, board politics</span></label>
+      <label class="fb-kind"><input type="radio" name="kind" value="builder">
+        To the builder <span class="hint">&mdash; bugs, features, how the site works</span></label>
+      <textarea name="body" required></textarea>
+      <input type="text" name="reply_email" placeholder="your email, if you want a reply (optional)">
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <div class="setting-group">
+    <h3>Account</h3>
+    <button type="button" onclick="location.href='{{ url_for('logout') }}'">Log out</button>
+  </div>
+  {% endif %}
+
+  <div class="setting-group">
+    <button type="button" onclick="location.href='{{ url_for('pervert') }}'">Big Titties</button>
+  </div>
+
   <p class="hint"><a href="{{ url_for('index', board_name='main') }}">&laquo; Back to the board</a></p>
 </div>
 

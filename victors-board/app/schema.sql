@@ -107,3 +107,16 @@ CREATE TABLE IF NOT EXISTS game_picks (
     created_at TEXT NOT NULL,
     UNIQUE(game_id, user_id)   -- one pick per member, changeable until final
 );
+
+-- Feedback from the Settings page: routed to the mods or the builder by
+-- email when SMTP is configured, and always kept here as a backstop
+CREATE TABLE IF NOT EXISTS feedback (
+    id          INTEGER PRIMARY KEY,
+    kind        TEXT NOT NULL,           -- 'mods' or 'builder'
+    user_id     INTEGER REFERENCES users(id),
+    handle      TEXT NOT NULL,
+    reply_email TEXT,
+    body        TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    emailed     INTEGER NOT NULL DEFAULT 0
+);

@@ -70,6 +70,39 @@ LOCAL_VIDEO_CAP = 16 * 1024 * 1024  # fallback cap when hosting clips ourselves
 # with Streamable credentials set, video uploads forward there instead of disk
 STREAMABLE_EMAIL = os.environ.get("STREAMABLE_EMAIL")
 STREAMABLE_PASSWORD = os.environ.get("STREAMABLE_PASSWORD")
+
+# Feedback from Settings goes to one of two inboxes.
+ADMIN_EMAIL = "victardgoblue@gmail.com"   # mods: complaints, registration, politics
+BUILDER_EMAIL = "nccoston@gmail.com"      # the builder: bugs, features, how it works
+# Outbound mail needs SMTP_USER + SMTP_PASS (a Gmail app password works).
+# Without them, feedback still lands in the admin panel — just not an inbox.
+SMTP_USER = os.environ.get("SMTP_USER")
+SMTP_PASS = os.environ.get("SMTP_PASS")
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+
+
+def send_email(to_addr, subject, body, reply_to=None):
+    """True if the mail went out; False if SMTP isn't set up or hiccuped."""
+    if not (SMTP_USER and SMTP_PASS):
+        return False
+    import smtplib
+    from email.message import EmailMessage
+    msg = EmailMessage()
+    msg["From"] = SMTP_USER
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    msg.set_content(body)
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
+            smtp.starttls()
+            smtp.login(SMTP_USER, SMTP_PASS)
+            smtp.send_message(msg)
+        return True
+    except Exception:
+        return False
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)  # stay logged in
 
 # Static files and uploads cache for 30 days in browsers AND on Cloudflare's
@@ -1712,6 +1745,51 @@ def settings():
     return render_template("settings.html")
 
 
+@app.route("/feedback", methods=["POST"])
+@login_required
+def feedback():
+    """Settings-page note to the mods or the builder. Emailed when SMTP is
+    configured; always stored, so nothing is lost either way."""
+    u = current_user()
+    kind = request.form.get("kind", "")
+    body = request.form.get("body", "").strip()[:5000]
+    reply_email = request.form.get("reply_email", "").strip()[:200]
+    if kind not in ("mods", "builder") or not body:
+        flash("Pick who it's for and say something.")
+        return redirect(url_for("settings"))
+    db = get_db()
+    # a gentle throttle: five notes an hour per member
+    hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)) \
+        .replace(tzinfo=None).isoformat(timespec="seconds")
+    n = db.execute("SELECT COUNT(*) c FROM feedback"
+                   " WHERE user_id = ? AND created_at > ?",
+                   (u["id"], hour_ago)).fetchone()["c"]
+    if n >= 5:
+        flash("That's plenty for one hour. They'll get back to you.")
+        return redirect(url_for("settings"))
+    to_addr = ADMIN_EMAIL if kind == "mods" else BUILDER_EMAIL
+    who = "the mods" if kind == "mods" else "the builder"
+    subject = (f"[The Victors] {'Board' if kind == 'mods' else 'Site'} "
+               f"feedback from {u['handle']}")
+    text = (f"From: {u['handle']}\n"
+            + (f"Reply to: {reply_email}\n" if reply_email else "")
+            + f"\n{body}\n")
+    sent = send_email(to_addr, subject, text, reply_to=reply_email or None)
+    db.execute(
+        "INSERT INTO feedback (kind, user_id, handle, reply_email, body,"
+        " created_at, emailed) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (kind, u["id"], u["handle"], reply_email or None, body,
+         now_utc_iso(), int(sent)))
+    db.commit()
+    flash(f"Sent to {who}. Thanks.")
+    return redirect(url_for("settings"))
+
+
+@app.route("/pervert")
+def pervert():
+    return render_template("pervert.html")
+
+
 @app.route("/stats")
 def stats():
     db = get_db()
@@ -2044,7 +2122,10 @@ def admin():
     }
     snapshots = sorted(BACKUP_DIR.glob("board-*.db.gz"), reverse=True) \
         if BACKUP_DIR.exists() else []
+    feedback_rows = db.execute(
+        "SELECT * FROM feedback ORDER BY created_at DESC LIMIT 50").fetchall()
     return render_template("admin.html", users=users, counts=counts, disk=disk,
+                           feedback_rows=feedback_rows,
                            hof_threshold=get_setting("hof_threshold"),
                            podcast_channel_id=get_setting("podcast_channel_id"),
                            snapshots=[{"name": p.name,
