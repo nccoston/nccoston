@@ -4,173 +4,20 @@
 {% block content %}
 <div class="message-box">
   <h2>Admin</h2>
-  <p>{{ counts['total'] or 0 }} messages on the board.</p>
+  {% include "_admin_nav.html" %}
+  <p>{{ counts['total'] or 0 }} messages &middot; {{ members }} members.</p>
   <p class="hint">Disk: database {{ disk['db_mb'] }} MB &middot;
     uploads {{ disk['uploads_mb'] }} MB ({{ disk['upload_count'] }} pictures).
     The disk holds 1000 MB and can be enlarged anytime in Render
     (service &rarr; Disk).</p>
 
-  <h3>Feedback</h3>
-  {% if feedback_rows %}
-  <p class="hint">Notes sent from the Settings page (newest first). &#9993;
-    means it was also emailed; otherwise SMTP isn't set up and this is the
-    only copy.</p>
-  <table class="admin-table user-table">
-    {% for f in feedback_rows %}
-    <tr>
-      <td class="nb">{{ f['created_at'] | boarddate }}</td>
-      <td class="nb"><b>{{ f['handle'] }}</b><br>
-        <span class="legacy-tag">to the {{ 'mods' if f['kind'] == 'mods' else 'builder' }}{% if f['emailed'] %} &#9993;{% endif %}</span>
-        {% if f['reply_email'] %}<br><span class="legacy-tag">{{ f['reply_email'] }}</span>{% endif %}</td>
-      <td>{{ f['body'] }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-  {% else %}
-  <p class="hint">Nothing yet. Notes from the Settings page land here.</p>
-  {% endif %}
-
-  <h3>Backups</h3>
-  <p class="hint">The database is snapshotted automatically every night (last
-    {{ snapshots|length if snapshots else 0 }} of 7 shown below, kept on the
-    server disk). Those protect against corruption &mdash; they do NOT protect
-    against losing the disk itself. For that, download the full backup now and
-    then &mdash; it's everything needed to rebuild the board from nothing.</p>
-  <p><b><a href="{{ url_for('admin_backup') }}">&#11015;&#65039; Download full
-    backup</a></b> <span class="hint">(database + every photo &mdash; can take a
-    minute; keep the file somewhere safe like your own computer or Drive)</span></p>
-  {% if snapshots %}
+  <h3>Diagnostics</h3>
   <p class="hint">
-    Nightly:
-    {% for s in snapshots %}
-    <a href="{{ url_for('admin_backup_nightly', name=s['name']) }}">{{ s['name'] }}</a>
-    ({{ s['mb'] }} MB){% if not loop.last %} &middot;{% endif %}
-    {% endfor %}
+    <a href="{{ url_for('pod_check') }}">Pod box check</a> &middot;
+    <a href="{{ url_for('sru_check') }}">Slippery Rock check</a>
+    &mdash; each answers "why is this showing (or not) right now" as raw JSON.
   </p>
-  {% endif %}
 
-  <h3>Board settings</h3>
-  <form class="board-form" method="post">
-    <input type="hidden" name="action" value="settings">
-    <label>Board title
-      <input type="text" name="site_title" value="{{ site_title }}">
-    </label>
-    <label>Header HTML <span class="hint">(rules, admin list — raw HTML)</span>
-      <textarea name="header_html">{{ header_html }}</textarea>
-    </label>
-    <label>Links row HTML
-      <textarea name="links_html" style="height:60px">{{ links_html }}</textarea>
-    </label>
-    <label>
-      <input type="checkbox" name="registration_open" {% if registration_open %}checked{% endif %}>
-      Registration open
-    </label>
-    <label>Hall of Fame votes needed to enshrine
-      <input type="text" name="hof_threshold" value="{{ hof_threshold }}" style="width:60px">
-    </label>
-    <label>Pod YouTube channel ID <span class="hint">(the UC&hellip; id; the
-      homepage shows the newest episode on Wednesdays. Blank turns the
-      pod box off)</span>
-      <input type="text" name="podcast_channel_id" value="{{ podcast_channel_id }}">
-    </label>
-    <button type="submit">Save settings</button>
-  </form>
-
-  <h3>Create an account</h3>
-  <p class="hint">For when registration is closed — make the account here and
-    hand the password to the member privately (the old email-the-admin flow).</p>
-  <form class="board-form" method="post">
-    <input type="hidden" name="action" value="create_user">
-    <label>Handle
-      <input type="text" name="handle" maxlength="30" required>
-    </label>
-    <button type="submit">Create account</button>
-  </form>
-
-  <h3>Users</h3>
-  <p><input type="text" id="user-filter" placeholder="find a member..."
-            style="width:200px"> <span class="hint" id="user-count"></span></p>
-  <table class="admin-table user-table">
-    <tr><th>Handle</th><th>Joined</th><th></th></tr>
-    {% for u in users %}
-    <tr>
-      <td>{{ u['handle'] }}
-        {%- if u['is_admin'] %} <span class="user-flag">admin</span>{% endif %}
-        {%- if u['is_banned'] %} <span class="user-flag flag-banned">banned</span>{% endif %}</td>
-      <td>{{ u['created_at'] | boarddate }}</td>
-      <td class="row-actions">
-        {% if u['is_banned'] %}
-        <form class="inline-form" method="post">
-          <input type="hidden" name="action" value="unban">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Unban</button>
-        </form>
-        {% else %}
-        <form class="inline-form" method="post"
-              onsubmit="return confirm('Ban {{ u['handle'] }}?')">
-          <input type="hidden" name="action" value="ban">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Ban</button>
-        </form>
-        {% endif %}
-        &middot;
-        <form class="inline-form" method="post"
-              onsubmit="return confirm('Reset password for {{ u['handle'] }}?')">
-          <input type="hidden" name="action" value="reset_password">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Reset password</button>
-        </form>
-        {% if not u['is_admin'] %}
-        &middot;
-        <form class="inline-form" method="post"
-              onsubmit="return confirm('Make {{ u['handle'] }} an admin?')">
-          <input type="hidden" name="action" value="make_admin">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Make admin</button>
-        </form>
-        &middot;
-        <form class="inline-form" method="post"
-              onsubmit="return confirm('Delete account {{ u['handle'] }}? Their posts stay; the handle frees up.')">
-          <input type="hidden" name="action" value="delete_user">
-          <input type="hidden" name="user_id" value="{{ u['id'] }}">
-          <button type="submit">Delete account</button>
-        </form>
-        {% endif %}
-        &middot;
-        <details class="manage-details">
-          <summary>Rename</summary>
-          <form class="inline-form" method="post">
-            <input type="hidden" name="action" value="rename">
-            <input type="hidden" name="user_id" value="{{ u['id'] }}">
-            <input type="text" name="new_handle" value="{{ u['handle'] }}"
-                   maxlength="30" style="width:110px">
-            <button type="submit">Save</button>
-          </form>
-        </details>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-  <script>
-  (function () {
-    var filter = document.getElementById("user-filter");
-    var count = document.getElementById("user-count");
-    var rows = Array.prototype.slice.call(
-      document.querySelectorAll(".user-table tr")).slice(1);
-    function apply() {
-      var q = filter.value.toLowerCase();
-      var shown = 0;
-      rows.forEach(function (tr) {
-        var hit = tr.cells[0].textContent.toLowerCase().indexOf(q) !== -1;
-        tr.style.display = hit ? "" : "none";
-        if (hit) shown++;
-      });
-      count.textContent = q ? shown + " of " + rows.length : rows.length + " members";
-    }
-    filter.addEventListener("input", apply);
-    apply();
-  })();
-  </script>
   <p class="hint">To delete a message, open it and use the Delete button
     (removes the message and all its replies).</p>
 </div>

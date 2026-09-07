@@ -1,0 +1,7 @@
+<p class="admin-nav">
+  {% for endpoint, label in admin_nav %}
+    {%- if request.endpoint == endpoint %}<b>{{ label }}</b>
+    {%- else %}<a href="{{ url_for(endpoint) }}">{{ label }}</a>{% endif %}
+    {%- if not loop.last %} &middot; {% endif %}
+  {% endfor %}
+</p>

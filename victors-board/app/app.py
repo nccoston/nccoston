@@ -74,35 +74,6 @@ STREAMABLE_PASSWORD = os.environ.get("STREAMABLE_PASSWORD")
 # Feedback from Settings goes to one of two inboxes.
 ADMIN_EMAIL = "victardgoblue@gmail.com"   # mods: complaints, registration, politics
 BUILDER_EMAIL = "nccoston@gmail.com"      # the builder: bugs, features, how it works
-# Outbound mail needs SMTP_USER + SMTP_PASS (a Gmail app password works).
-# Without them, feedback still lands in the admin panel — just not an inbox.
-SMTP_USER = os.environ.get("SMTP_USER")
-SMTP_PASS = os.environ.get("SMTP_PASS")
-SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-
-
-def send_email(to_addr, subject, body, reply_to=None):
-    """True if the mail went out; False if SMTP isn't set up or hiccuped."""
-    if not (SMTP_USER and SMTP_PASS):
-        return False
-    import smtplib
-    from email.message import EmailMessage
-    msg = EmailMessage()
-    msg["From"] = SMTP_USER
-    msg["To"] = to_addr
-    msg["Subject"] = subject
-    if reply_to:
-        msg["Reply-To"] = reply_to
-    msg.set_content(body)
-    try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
-            smtp.starttls()
-            smtp.login(SMTP_USER, SMTP_PASS)
-            smtp.send_message(msg)
-        return True
-    except Exception:
-        return False
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)  # stay logged in
 
 # Static files and uploads cache for 30 days in browsers AND on Cloudflare's
@@ -1742,47 +1713,9 @@ def settings():
     # size) stored in localStorage — no account, no server state. Works
     # for guests, and inside the Android/iOS home-screen install where
     # there's no browser chrome to lean on.
-    return render_template("settings.html")
-
-
-@app.route("/feedback", methods=["POST"])
-@login_required
-def feedback():
-    """Settings-page note to the mods or the builder. Emailed when SMTP is
-    configured; always stored, so nothing is lost either way."""
-    u = current_user()
-    kind = request.form.get("kind", "")
-    body = request.form.get("body", "").strip()[:5000]
-    reply_email = request.form.get("reply_email", "").strip()[:200]
-    if kind not in ("mods", "builder") or not body:
-        flash("Pick who it's for and say something.")
-        return redirect(url_for("settings"))
-    db = get_db()
-    # a gentle throttle: five notes an hour per member
-    hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)) \
-        .replace(tzinfo=None).isoformat(timespec="seconds")
-    n = db.execute("SELECT COUNT(*) c FROM feedback"
-                   " WHERE user_id = ? AND created_at > ?",
-                   (u["id"], hour_ago)).fetchone()["c"]
-    if n >= 5:
-        flash("That's plenty for one hour. They'll get back to you.")
-        return redirect(url_for("settings"))
-    to_addr = ADMIN_EMAIL if kind == "mods" else BUILDER_EMAIL
-    who = "the mods" if kind == "mods" else "the builder"
-    subject = (f"[The Victors] {'Board' if kind == 'mods' else 'Site'} "
-               f"feedback from {u['handle']}")
-    text = (f"From: {u['handle']}\n"
-            + (f"Reply to: {reply_email}\n" if reply_email else "")
-            + f"\n{body}\n")
-    sent = send_email(to_addr, subject, text, reply_to=reply_email or None)
-    db.execute(
-        "INSERT INTO feedback (kind, user_id, handle, reply_email, body,"
-        " created_at, emailed) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (kind, u["id"], u["handle"], reply_email or None, body,
-         now_utc_iso(), int(sent)))
-    db.commit()
-    flash(f"Sent to {who}. Thanks.")
-    return redirect(url_for("settings"))
+    return render_template("settings.html",
+                           admin_email=ADMIN_EMAIL,
+                           builder_email=BUILDER_EMAIL)
 
 
 @app.route("/pervert")
@@ -2013,125 +1946,164 @@ def logout():
 
 # -------------------------------------------------------------------- admin
 
-@app.route("/admin", methods=["GET", "POST"])
+def _admin_post(db):
+    """The admin actions, shared by every admin subpage's form."""
+    action = request.form.get("action")
+    if action == "settings":
+        set_setting("site_title", request.form.get("site_title", "The Victors"))
+        set_setting("header_html", request.form.get("header_html", ""))
+        set_setting("links_html", request.form.get("links_html", ""))
+        set_setting("registration_open",
+                    "1" if request.form.get("registration_open") else "0")
+        threshold = request.form.get("hof_threshold", type=int)
+        if threshold and 1 <= threshold <= 99:
+            set_setting("hof_threshold", str(threshold))
+        set_setting("podcast_channel_id",
+                    request.form.get("podcast_channel_id", "").strip())
+        set_setting("podcast_title_filter",
+                    request.form.get("podcast_title_filter", "").strip())
+        flash("Settings saved.")
+    elif action == "create_user":
+        handle = request.form.get("handle", "").strip()
+        if not re.fullmatch(HANDLE_RE, handle or ""):
+            flash("Handle must be 2-30 characters (letters, numbers, basic punctuation).")
+        elif db.execute("SELECT 1 FROM users WHERE handle = ?", (handle,)).fetchone():
+            flash("That handle is taken.")
+        else:
+            new_pw = secrets.token_urlsafe(8)
+            db.execute(
+                "INSERT INTO users (handle, password_hash, created_at) VALUES (?, ?, ?)",
+                (handle, generate_password_hash(new_pw),
+                 now_utc_iso()))
+            db.commit()
+            flash(f"Created {handle} with password: {new_pw} "
+                  f"(share it with them privately; they can keep it or you can "
+                  f"reset it later)")
+    elif action == "delete_user":
+        uid = request.form.get("user_id", type=int)
+        target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+        if target is None:
+            flash("No such user.")
+        elif target["is_admin"]:
+            flash("Admins can't be deleted.")
+        else:
+            # posts keep their author name; the handle becomes free again
+            db.execute("UPDATE messages SET user_id = NULL WHERE user_id = ?", (uid,))
+            db.execute("DELETE FROM message_reads WHERE user_id = ?", (uid,))
+            db.execute("DELETE FROM users WHERE id = ?", (uid,))
+            db.commit()
+            flash(f"Deleted account {target['handle']} (their posts remain, "
+                  f"the handle is free to register again).")
+    elif action == "rename":
+        uid = request.form.get("user_id", type=int)
+        new = request.form.get("new_handle", "").strip()
+        target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+        if target is None:
+            flash("No such user.")
+        elif not re.fullmatch(HANDLE_RE, new):
+            flash("Handle must be 2-30 characters (letters, numbers, "
+                  "basic punctuation).")
+        elif db.execute("SELECT 1 FROM users WHERE handle = ? AND id != ?",
+                        (new, uid)).fetchone():
+            flash("That handle is taken.")
+        elif new == target["handle"]:
+            flash("That's already their handle.")
+        else:
+            db.execute("UPDATE users SET handle = ? WHERE id = ?", (new, uid))
+            # their posts carry the handle denormalized — bring history along
+            db.execute("UPDATE messages SET author_name = ? WHERE user_id = ?",
+                       (new, uid))
+            db.commit()
+            flash(f"Renamed {target['handle']} to {new} — all their posts "
+                  f"now show the new handle; password and login unchanged.")
+    elif action in ("ban", "unban", "make_admin", "reset_password"):
+        uid = request.form.get("user_id", type=int)
+        target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+        if target is None:
+            flash("No such user.")
+        elif action == "ban":
+            db.execute("UPDATE users SET is_banned = 1 WHERE id = ?", (uid,))
+            db.commit()
+            flash(f"Banned {target['handle']}.")
+        elif action == "unban":
+            db.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (uid,))
+            db.commit()
+            flash(f"Unbanned {target['handle']}.")
+        elif action == "make_admin":
+            db.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (uid,))
+            db.commit()
+            flash(f"{target['handle']} is now an admin.")
+        elif action == "reset_password":
+            new_pw = secrets.token_urlsafe(8)
+            # rotating the session token logs the user out everywhere
+            db.execute("UPDATE users SET password_hash = ?, session_token = ?"
+                       " WHERE id = ?",
+                       (generate_password_hash(new_pw), secrets.token_hex(16), uid))
+            db.commit()
+            flash(f"New password for {target['handle']}: {new_pw} "
+                  f"(share it with them privately). Their existing logins "
+                  f"were signed out.")
+
+def _admin_nav():
+    return [("admin", "Overview"), ("admin_settings", "Settings"),
+            ("admin_users", "Members"), ("admin_backups", "Backups")]
+
+
+@app.route("/admin")
 @admin_required
 def admin():
     db = get_db()
-    if request.method == "POST":
-        action = request.form.get("action")
-        if action == "settings":
-            set_setting("site_title", request.form.get("site_title", "The Victors"))
-            set_setting("header_html", request.form.get("header_html", ""))
-            set_setting("links_html", request.form.get("links_html", ""))
-            set_setting("registration_open",
-                        "1" if request.form.get("registration_open") else "0")
-            threshold = request.form.get("hof_threshold", type=int)
-            if threshold and 1 <= threshold <= 99:
-                set_setting("hof_threshold", str(threshold))
-            set_setting("podcast_channel_id",
-                        request.form.get("podcast_channel_id", "").strip())
-            flash("Settings saved.")
-        elif action == "create_user":
-            handle = request.form.get("handle", "").strip()
-            if not re.fullmatch(HANDLE_RE, handle or ""):
-                flash("Handle must be 2-30 characters (letters, numbers, basic punctuation).")
-            elif db.execute("SELECT 1 FROM users WHERE handle = ?", (handle,)).fetchone():
-                flash("That handle is taken.")
-            else:
-                new_pw = secrets.token_urlsafe(8)
-                db.execute(
-                    "INSERT INTO users (handle, password_hash, created_at) VALUES (?, ?, ?)",
-                    (handle, generate_password_hash(new_pw),
-                     now_utc_iso()))
-                db.commit()
-                flash(f"Created {handle} with password: {new_pw} "
-                      f"(share it with them privately; they can keep it or you can "
-                      f"reset it later)")
-        elif action == "delete_user":
-            uid = request.form.get("user_id", type=int)
-            target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
-            if target is None:
-                flash("No such user.")
-            elif target["is_admin"]:
-                flash("Admins can't be deleted.")
-            else:
-                # posts keep their author name; the handle becomes free again
-                db.execute("UPDATE messages SET user_id = NULL WHERE user_id = ?", (uid,))
-                db.execute("DELETE FROM message_reads WHERE user_id = ?", (uid,))
-                db.execute("DELETE FROM users WHERE id = ?", (uid,))
-                db.commit()
-                flash(f"Deleted account {target['handle']} (their posts remain, "
-                      f"the handle is free to register again).")
-        elif action == "rename":
-            uid = request.form.get("user_id", type=int)
-            new = request.form.get("new_handle", "").strip()
-            target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
-            if target is None:
-                flash("No such user.")
-            elif not re.fullmatch(HANDLE_RE, new):
-                flash("Handle must be 2-30 characters (letters, numbers, "
-                      "basic punctuation).")
-            elif db.execute("SELECT 1 FROM users WHERE handle = ? AND id != ?",
-                            (new, uid)).fetchone():
-                flash("That handle is taken.")
-            elif new == target["handle"]:
-                flash("That's already their handle.")
-            else:
-                db.execute("UPDATE users SET handle = ? WHERE id = ?", (new, uid))
-                # their posts carry the handle denormalized — bring history along
-                db.execute("UPDATE messages SET author_name = ? WHERE user_id = ?",
-                           (new, uid))
-                db.commit()
-                flash(f"Renamed {target['handle']} to {new} — all their posts "
-                      f"now show the new handle; password and login unchanged.")
-        elif action in ("ban", "unban", "make_admin", "reset_password"):
-            uid = request.form.get("user_id", type=int)
-            target = db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
-            if target is None:
-                flash("No such user.")
-            elif action == "ban":
-                db.execute("UPDATE users SET is_banned = 1 WHERE id = ?", (uid,))
-                db.commit()
-                flash(f"Banned {target['handle']}.")
-            elif action == "unban":
-                db.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (uid,))
-                db.commit()
-                flash(f"Unbanned {target['handle']}.")
-            elif action == "make_admin":
-                db.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (uid,))
-                db.commit()
-                flash(f"{target['handle']} is now an admin.")
-            elif action == "reset_password":
-                new_pw = secrets.token_urlsafe(8)
-                # rotating the session token logs the user out everywhere
-                db.execute("UPDATE users SET password_hash = ?, session_token = ?"
-                           " WHERE id = ?",
-                           (generate_password_hash(new_pw), secrets.token_hex(16), uid))
-                db.commit()
-                flash(f"New password for {target['handle']}: {new_pw} "
-                      f"(share it with them privately). Their existing logins "
-                      f"were signed out.")
-        return redirect(url_for("admin"))
-    users = db.execute("SELECT * FROM users ORDER BY handle COLLATE NOCASE").fetchall()
     counts = db.execute("SELECT COUNT(*) total FROM messages").fetchone()
+    # humans only: the reserved Skeeps account (hash '!') isn't a member
+    members = db.execute("SELECT COUNT(*) c FROM users"
+                         " WHERE password_hash != '!'").fetchone()["c"]
     upload_files = [p for p in UPLOAD_DIR.glob("*") if p.is_file()]
     disk = {
         "db_mb": round(DB_PATH.stat().st_size / 1e6, 1) if DB_PATH.exists() else 0,
         "uploads_mb": round(sum(p.stat().st_size for p in upload_files) / 1e6, 1),
         "upload_count": len(upload_files),
     }
-    snapshots = sorted(BACKUP_DIR.glob("board-*.db.gz"), reverse=True) \
-        if BACKUP_DIR.exists() else []
-    feedback_rows = db.execute(
-        "SELECT * FROM feedback ORDER BY created_at DESC LIMIT 50").fetchall()
-    return render_template("admin.html", users=users, counts=counts, disk=disk,
-                           feedback_rows=feedback_rows,
+    return render_template("admin.html", admin_nav=_admin_nav(),
+                           counts=counts, members=members, disk=disk)
+
+
+@app.route("/admin/settings", methods=["GET", "POST"])
+@admin_required
+def admin_settings():
+    db = get_db()
+    if request.method == "POST":
+        _admin_post(db)
+        return redirect(url_for("admin_settings"))
+    return render_template("admin_settings.html", admin_nav=_admin_nav(),
                            hof_threshold=get_setting("hof_threshold"),
                            podcast_channel_id=get_setting("podcast_channel_id"),
+                           podcast_title_filter=get_setting("podcast_title_filter"),
+                           registration_open=get_setting("registration_open") == "1")
+
+
+@app.route("/admin/users", methods=["GET", "POST"])
+@admin_required
+def admin_users():
+    db = get_db()
+    if request.method == "POST":
+        _admin_post(db)
+        return redirect(url_for("admin_users"))
+    # Skeeps stays off this list: a stray "reset password" would give the
+    # robot a real hash and the pick 'em engine would stop posting as it
+    users = db.execute("SELECT * FROM users WHERE password_hash != '!'"
+                       " ORDER BY handle COLLATE NOCASE").fetchall()
+    return render_template("admin_users.html", admin_nav=_admin_nav(), users=users)
+
+
+@app.route("/admin/backups")
+@admin_required
+def admin_backups():
+    snapshots = sorted(BACKUP_DIR.glob("board-*.db.gz"), reverse=True) \
+        if BACKUP_DIR.exists() else []
+    return render_template("admin_backups.html", admin_nav=_admin_nav(),
                            snapshots=[{"name": p.name,
                                        "mb": round(p.stat().st_size / 1e6, 2)}
-                                      for p in snapshots],
-                           registration_open=get_setting("registration_open") == "1")
+                                      for p in snapshots])
 
 
 @app.route("/admin/backup")

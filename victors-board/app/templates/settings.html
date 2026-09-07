@@ -25,15 +25,13 @@
   {% if user %}
   <div class="setting-group">
     <h3>Feedback</h3>
-    <form class="board-form" method="post" action="{{ url_for('feedback') }}">
-      <label class="fb-kind"><input type="radio" name="kind" value="mods" checked>
-        To the mods <span class="hint">&mdash; complaints, registration, board politics</span></label>
-      <label class="fb-kind"><input type="radio" name="kind" value="builder">
-        To the builder <span class="hint">&mdash; bugs, features, how the site works</span></label>
-      <textarea name="body" required></textarea>
-      <input type="text" name="reply_email" placeholder="your email, if you want a reply (optional)">
-      <button type="submit">Send</button>
-    </form>
+    {# plain email: opens the member's own mail app, addressed and subject-lined #}
+    <p class="fb-row"><button type="button"
+        onclick="location.href='mailto:{{ admin_email }}?subject={{ ('[The Victors] Board feedback from ' ~ user['handle']) | urlencode }}'">Email the mods</button>
+      <span class="hint">&mdash; complaints, registration, board politics</span></p>
+    <p class="fb-row"><button type="button"
+        onclick="location.href='mailto:{{ builder_email }}?subject={{ ('[The Victors] Site feedback from ' ~ user['handle']) | urlencode }}'">Email the builder</button>
+      <span class="hint">&mdash; bugs, features, how the site works</span></p>
   </div>
 
   <div class="setting-group">
