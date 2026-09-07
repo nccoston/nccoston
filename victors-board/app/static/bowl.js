@@ -113,7 +113,7 @@
   };
 
   var players = [], ball = null, carrier = null, qb = null, camX = 0;
-  var lastCarrier = null, reactT = 0;
+  var lastCarrier = null, reactT = 0, carrierAt = 0;
   var aim = null;            // {x0,y0,x,y} while aiming a pass
   var steer = null;          // {x0,y0,x,y} while steering a runner
   var playT = 0;
@@ -161,7 +161,7 @@
 
   function buildFormation() {
     players = []; ball = null; carrier = null; aim = null; steer = null; playT = 0;
-    lastCarrier = null; reactT = 0;
+    lastCarrier = null; reactT = 0; carrierAt = 0;
     var los = yardToPx(G.spot);
     var play = G.play;
     function P(team, role, x, y, spd) {
@@ -296,7 +296,7 @@
     } else if (ball.holder) { ball.x = ball.holder.x; ball.y = ball.holder.y - 2; }
 
     // --- defense ---
-    if (carrier !== lastCarrier) { lastCarrier = carrier; reactT = 0.5; }    // "who has it?"
+    if (carrier !== lastCarrier) { lastCarrier = carrier; reactT = 0.5; carrierAt = playT; }  // "who has it?"
     if (ball.flying && !ball.reacted) { ball.reacted = true; reactT = 0.4; }  // "ball's up"
     if (reactT > 0) reactT -= dt;
     var chasers = [];
@@ -323,7 +323,10 @@
         // the line, and "behind him" would put the corner on the runner
         // corners play five yards off until their man passes them, and
         // keep covering through the reaction window before they commit
-        var chasing = carrier && carrier !== qb && reactT <= 0;
+        // a corner stays on his man — who is running downfield, taking the
+        // corner with him — until the runner is near him or clearly loose
+        var chasing = carrier && carrier !== qb && reactT <= 0 &&
+                      (dist(d, carrier) < 30 || playT - carrierAt > 1.8);
         target = chasing ? carrier
                : { x: Math.max(d.mark.x - 8, los + 28), y: d.mark.y + (d.mark.y < H / 2 ? 3 : -3) };
       } else if (d.role === "LB") {
