@@ -283,6 +283,7 @@
 
     // --- defense ---
     if (carrier !== lastCarrier) { lastCarrier = carrier; reactT = 0.45; }   // "who has it?"
+    if (ball.flying && !ball.reacted) { ball.reacted = true; reactT = 0.4; }  // "ball's up"
     if (reactT > 0) reactT -= dt;
     var chasers = [];
     if (carrier && carrier !== qb) {
@@ -297,15 +298,15 @@
       if (carrier && carrier !== qb) {
         if (reactT > 0) pace = 0.25;                       // still reading it
         else if (chasers.indexOf(d) === -1) pace = 0.55;   // not your play
-      }
+      } else if (ball.flying && reactT > 0) pace = 0.3;    // watching the ball
       if (d.role === "DL") {
         if (d.engaged > 0) { d.engaged -= dt; d.x += rnd(-4, 4) * dt; return; }
         target = carrier;
       } else if (d.role === "CB") {
-        target = (carrier && carrier !== qb) ? carrier : (ball.flying ? { x: ball.tx, y: ball.ty } : d.mark);
-        if (target === d.mark) { // trail the receiver, a step behind
-          target = { x: d.mark.x + 9, y: d.mark.y };
-        }
+        // stay on your man (a step behind him, a step inside) until someone
+        // has the ball — corners don't race the throw to the landing spot
+        target = (carrier && carrier !== qb) ? carrier
+               : { x: d.mark.x - 8, y: d.mark.y + (d.mark.y < H / 2 ? 3 : -3) };
       } else if (d.role === "LB") {
         if (carrier && carrier !== qb) target = carrier;
         else if (ball.flying) target = { x: ball.tx, y: ball.ty };
@@ -362,7 +363,7 @@
 
   function throwBall(tx, ty, target) {
     if (!qb || carrier !== qb || ball.flying) return;
-    ball.target = target || null; G.stats.att++;
+    ball.target = target || null; ball.reacted = false; G.stats.att++;
     tx = clamp(tx, qb.x - 10, yardToPx(112)); ty = clamp(ty, FIELD_TOP + 1, FIELD_BOT - 1);
     var d = dist(qb, { x: tx, y: ty });
     ball.flying = true; ball.holder = null; carrier = null;
@@ -422,7 +423,7 @@
       case "tackle":
       default:
         gain = Math.round(endYd - spotBefore);
-        if (gain > 0) { G.stats.yards += gain; G.stats.longest = Math.max(G.stats.longest, 0); }
+        if (gain > 0) { G.stats.yards += gain; G.stats.longest = Math.max(G.stats.longest, gain); }
         text = (gain >= 0 ? "+" : "") + gain + " YDS";
         nextDown(gain);
     }
