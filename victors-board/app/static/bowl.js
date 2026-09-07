@@ -33,10 +33,28 @@
     "ucla": 0.5, "western michigan": 0.25, "central michigan": 0.2,
     "eastern michigan": 0.2, "new mexico": 0.2, "toledo": 0.3
   };
-  function ratingFor(name) {
+  // ESPN's feed says "W Michigan", "Michigan St", "Ohio St": match on the
+  // abbreviation first, then on any long-name substring
+  var ABBR_KEY = {
+    WMU: "western michigan", CMU: "central michigan", EMU: "eastern michigan",
+    MSU: "michigan state", OSU: "ohio state", PSU: "penn state", NEB: "nebraska",
+    WIS: "wisconsin", USC: "usc", WASH: "washington", MD: "maryland", PUR: "purdue",
+    NW: "northwestern", NU: "northwestern", ORE: "oregon", MINN: "minnesota",
+    IOWA: "iowa", ILL: "illinois", IND: "indiana", RUTG: "rutgers", UCLA: "ucla",
+    TEX: "texas", ALA: "alabama", UGA: "georgia", UNM: "new mexico", TOL: "toledo",
+    ND: "notre dame", OU: "oklahoma", OKLA: "oklahoma", FLA: "florida"
+  };
+  function teamKey(name, abbr) {
+    var a = (abbr || "").toUpperCase();
+    if (ABBR_KEY[a]) return ABBR_KEY[a];
     var n = (name || "").toLowerCase();
-    for (var k in RATINGS) if (n.indexOf(k) !== -1) return RATINGS[k];
-    return 0.5;
+    for (var k in RATINGS) if (n.indexOf(k) !== -1) return k;
+    for (var k2 in TEAM_COLORS) if (n.indexOf(k2) !== -1) return k2;
+    return n;
+  }
+  function ratingFor(name, abbr) {
+    var k = teamKey(name, abbr);
+    return RATINGS[k] !== undefined ? RATINGS[k] : 0.5;
   }
   // opponent color: the school's real color where we know it, otherwise a
   // stable pick from a palette with no blues — nobody gets to look like us
@@ -50,9 +68,9 @@
     "alabama": "#9e1b32", "georgia": "#ba0c2f", "new mexico": "#ba0c2f", "toledo": "#ffb20f",
     "notre dame": "#0c2340", "florida": "#fa4616", "arkansas state": "#cc092f"
   };
-  function colorFor(name) {
-    var n = (name || "").toLowerCase();
-    for (var k in TEAM_COLORS) if (n.indexOf(k) !== -1) return TEAM_COLORS[k];
+  function colorFor(name, abbr) {
+    var k = teamKey(name, abbr);
+    if (TEAM_COLORS[k]) return TEAM_COLORS[k];
     var h = 0;
     for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
     var palette = ["#b3272d", "#8c1d40", "#cc0000", "#2d5f2e", "#4a1a70", "#c8102e",
@@ -77,8 +95,8 @@
 
   // ------------------------------------------------------------ game state
   var opp = schedule[week];
-  var oppRating = ratingFor(opp.name);
-  var oppColor = colorFor(opp.name);
+  var oppRating = ratingFor(opp.name, opp.abbr);
+  var oppColor = colorFor(opp.name, opp.abbr);
   var G = {
     mode: "presnap",       // presnap | play | dead | oppdrive | gameover
     score: [0, 0],         // [Michigan, opponent]
@@ -92,6 +110,7 @@
   };
 
   var players = [], ball = null, carrier = null, qb = null, camX = 0;
+  var lastCarrier = null, reactT = 0;
   var aim = null;            // {x0,y0,x,y} while aiming a pass
   var steer = null;          // {x0,y0,x,y} while steering a runner
   var playT = 0;
@@ -139,6 +158,7 @@
 
   function buildFormation() {
     players = []; ball = null; carrier = null; aim = null; steer = null; playT = 0;
+    lastCarrier = null; reactT = 0;
     var los = yardToPx(G.spot);
     var play = G.play;
     function P(team, role, x, y, spd) {
@@ -150,25 +170,25 @@
     // offense (Michigan, drives left -> right)
     qb = P("M", "QB", los - 20, fieldY(0.5), 46);
     var rbY = play.f === "iform" ? 0.5 : (play.dir && play.dir[1] > 0 ? 0.42 : 0.58);
-    var rb = P("M", "RB", los - (play.f === "iform" ? 34 : 28), fieldY(rbY), 58);
-    var wrs = FORMATIONS[play.f].map(function (spot) { return P("M", "WR", los + spot[1], fieldY(spot[0]), 62); });
+    var rb = P("M", "RB", los - (play.f === "iform" ? 34 : 28), fieldY(rbY), 62);
+    var wrs = FORMATIONS[play.f].map(function (spot) { return P("M", "WR", los + spot[1], fieldY(spot[0]), 64); });
     for (var i = 0; i < 5; i++) P("M", "OL", los - 4, fieldY(0.38 + i * 0.06), 30);
     wrs.forEach(function (w, k) { w.route = play.routes[k]; w.home = { x: w.x, y: w.y }; });
     rb.route = play.rb; rb.home = { x: rb.x, y: rb.y };
     // defense
     var dls = [];
     for (var j = 0; j < 4; j++) {
-      var d = P("O", "DL", los + 5, fieldY(0.36 + j * 0.09), 44);
-      d.engaged = rnd(1.4, 3.0) * (1.15 - oppRating * 0.5);   // blocked this long
+      var d = P("O", "DL", los + 5, fieldY(0.36 + j * 0.09), 36);
+      d.engaged = rnd(2.2, 4.2) * (1.2 - oppRating * 0.5);   // the line holds this long
       dls.push(d);
     }
-    var lbs = [P("O", "LB", los + 28, fieldY(0.38), 50), P("O", "LB", los + 28, fieldY(0.62), 50)];
+    var lbs = [P("O", "LB", los + 28, fieldY(0.38), 42), P("O", "LB", los + 28, fieldY(0.62), 42)];
     lbs[0].zone = { x: los + 30, y: fieldY(0.35) }; lbs[1].zone = { x: los + 30, y: fieldY(0.65) };
     wrs.forEach(function (w, k) {
-      var cb = P("O", "CB", los + 26, w.y, 58 + oppRating * 8);
+      var cb = P("O", "CB", los + 26, w.y, 48 + oppRating * 8);
       cb.mark = w;
     });
-    var s = P("O", "S", los + 60, fieldY(0.5), 56 + oppRating * 6); s.role = "S";
+    var s = P("O", "S", los + 60, fieldY(0.5), 46 + oppRating * 6); s.role = "S";
     ball = { x: qb.x, y: qb.y, z: 0, flying: false, tx: 0, ty: 0, t: 0, dur: 0, holder: qb };
     carrier = qb;
   }
@@ -213,7 +233,7 @@
   // ------------------------------------------------------------ simulation
   // pace: the whole game runs at 3/4 speed, and while you're pulling back
   // to throw it drops to 40% — bullet-time for reading the field
-  var BASE_PACE = 0.75, AIM_PACE = 0.4;
+  var BASE_PACE = 0.6, AIM_PACE = 0.33;
   function update(dt) {
     if (G.bannerT > 0) { G.bannerT -= dt; if (G.bannerT <= 0) G.banner = null; }
     if (G.mode === "oppdrive") { G.cardT -= dt; if (G.cardT <= 0) endOppDrive(); return; }
@@ -262,10 +282,22 @@
     } else if (ball.holder) { ball.x = ball.holder.x; ball.y = ball.holder.y - 2; }
 
     // --- defense ---
+    if (carrier !== lastCarrier) { lastCarrier = carrier; reactT = 0.45; }   // "who has it?"
+    if (reactT > 0) reactT -= dt;
+    var chasers = [];
+    if (carrier && carrier !== qb) {
+      chasers = players.filter(function (q) { return q.team === "O"; })
+        .sort(function (a, b) { return dist(a, carrier) - dist(b, carrier); }).slice(0, 3);
+    }
     players.forEach(function (d) {
       if (d.team !== "O") return;
       if (d.stun > 0) { d.stun -= dt; return; }
       var target = null;
+      var pace = 1;
+      if (carrier && carrier !== qb) {
+        if (reactT > 0) pace = 0.25;                       // still reading it
+        else if (chasers.indexOf(d) === -1) pace = 0.55;   // not your play
+      }
       if (d.role === "DL") {
         if (d.engaged > 0) { d.engaged -= dt; d.x += rnd(-4, 4) * dt; return; }
         target = carrier;
@@ -288,18 +320,18 @@
           target = deep ? { x: deep.x + 24, y: (deep.y + H / 2) / 2 } : d;
         }
       }
-      if (target) stepToward(d, target, d.spd, dt);
+      if (target) stepToward(d, target, d.spd * pace, dt);
       d.y = clamp(d.y, FIELD_TOP + 2, FIELD_BOT - 2);
       // tackles and sacks
       if (carrier && !ball.flying && dist(d, carrier) < TACKLE_R) {
         if (carrier === qb) { endPlay("sack"); }
-        else if (Math.random() < 0.14 * (1 - oppRating * 0.4)) { d.stun = 0.7; } // broke it
+        else if (Math.random() < 0.28 * (1 - oppRating * 0.4)) { d.stun = 0.8; } // broke it
         else endPlay("tackle");
       }
     });
 
     // pocket collapses eventually even if the line holds
-    if (carrier === qb && isPass() && playT > 5.5) endPlay("sack");
+    if (carrier === qb && isPass() && playT > 7) endPlay("sack");
 
     // scoring / boundaries for a live carrier
     if (carrier && !ball.flying && G.mode === "play") {
@@ -704,27 +736,46 @@
       ctx.fillText(G.banner, W / 2, 89);
     }
   }
+  function routeLine(points, color) {
+    if (points.length < 2) return;
+    ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(Math.round(points[0].x - camX) + 0.5, Math.round(points[0].y) + 0.5);
+    for (var i = 1; i < points.length; i++) ctx.lineTo(Math.round(points[i].x - camX) + 0.5, Math.round(points[i].y) + 0.5);
+    ctx.stroke();
+    // arrowhead in the direction of the last segment
+    var a = points[points.length - 2], b = points[points.length - 1];
+    var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
+    dx /= len; dy /= len;
+    var tx = Math.round(b.x - camX) + 0.5, ty = Math.round(b.y) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - dx * 4 - dy * 3, ty - dy * 4 + dx * 3);
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - dx * 4 + dy * 3, ty - dy * 4 - dx * 3);
+    ctx.stroke();
+  }
   function drawRouteGhosts() {
     players.forEach(function (p) {
       if (p.team !== "M" || !p.route || p.route === "block") return;
       var sim = { x: p.x, y: p.y, spd: p.spd, route: p.route, home: p.home };
-      ctx.fillStyle = p.role === "RB" ? "rgba(255,203,5,0.9)" : "rgba(255,255,255,0.85)";
-      for (var t = 0; t < 2.2; t += 0.1) {
+      var pts = [{ x: sim.x, y: sim.y }];
+      for (var t = 0; t < 2.0; t += 0.1) {
         var v = routeVel(sim, t);
         sim.x += v.vx * 0.1; sim.y += v.vy * 0.1;
-        if (Math.round(t * 10) % 2 === 0) ctx.fillRect(Math.round(sim.x - camX), Math.round(sim.y), 1, 1);
+        pts.push({ x: sim.x, y: sim.y });
       }
+      routeLine(pts, p.role === "RB" ? "rgba(255,203,5,0.95)" : "rgba(255,255,255,0.9)");
     });
     if (isRun()) {  // the back's opening lane
       var rb = players.filter(function (q) { return q.role === "RB"; })[0];
       if (rb) {
-        var d = G.play.dir, x = rb.x, y = rb.y;
-        ctx.fillStyle = "rgba(255,203,5,0.9)";
-        for (var k = 0; k < 14; k++) {
-          if (G.play.cut && k > 6) d = G.play.cut;
-          x += d[0] * 4; y += d[1] * 4;
-          if (k % 2 === 0) ctx.fillRect(Math.round(x - camX), Math.round(y), 1, 1);
+        var d = G.play.dir, x = rb.x, y = rb.y, pts2 = [{ x: x, y: y }];
+        for (var k = 0; k < 12; k++) {
+          if (G.play.cut && k > 5) d = G.play.cut;
+          x += d[0] * 4; y += d[1] * 4; pts2.push({ x: x, y: y });
         }
+        routeLine(pts2, "rgba(255,203,5,0.95)");
       }
     }
   }
@@ -832,5 +883,7 @@
   enterPresnap();
   G.banner = "WEEK " + (week + 1) + ": vs " + opp.name.toUpperCase(); G.bannerT = 2.2;
   window.__bowl = G;   // read-only peek for playtests
+  window.__bowlTeam = { key: teamKey, color: colorFor, rating: ratingFor, opp: { color: oppColor, rating: oppRating } };
+  window.__bowlPeek = function () { return { players: players, qb: qb, camX: camX, carrier: carrier, mode: G.mode, playT: playT }; };
   requestAnimationFrame(frame);
 })();
