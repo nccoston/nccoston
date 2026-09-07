@@ -11,7 +11,7 @@
   var MAIZE = "#FFCB05", BLUE = "#00274C";
   var GRASS_A = "#3f8f3a", GRASS_B = "#3a8535", LINE = "#dfeedb";
   var QUARTER_SECS = 300;               // game clock per quarter
-  var CATCH_R = 11, TACKLE_R = 5;
+  var CATCH_R = 16, TACKLE_R = 5, ASSIST_R = 26;
 
   var canvas = document.getElementById("bowl");
   var ctx = canvas.getContext("2d");
@@ -87,7 +87,7 @@
     play: null,            // "pass" | "run"
     banner: null, bannerT: 0,
     card: null, cardT: 0,  // opponent-drive card
-    stats: { yards: 0, tds: 0, longest: 0, ints: 0, sacks: 0 },
+    stats: { yards: 0, tds: 0, longest: 0, ints: 0, sacks: 0, comp: 0, att: 0 },
     result: null
   };
 
@@ -96,30 +96,65 @@
   var steer = null;          // {x0,y0,x,y} while steering a runner
   var playT = 0;
 
+  // ------------------------------------------------------------ playbook
+  // Each play: a formation (receiver spots, as fractions of field width,
+  // with a small x offset), a route per receiver, and what the back does.
+  // Runs carry an opening direction the back takes before you steer.
+  var FORMATIONS = {
+    spread: [[0.12, -2], [0.88, -2], [0.30, -8]],
+    trips:  [[0.10, -2], [0.22, -8], [0.34, -2]],
+    twins:  [[0.12, -2], [0.24, -8], [0.88, -2]],
+    iform:  [[0.14, -2], [0.86, -2], [0.36, -3]]
+  };
+  var PLAYBOOK = [
+    { name: "VERTICALS", type: "pass", f: "spread", routes: ["go", "go", "post"], rb: "flat" },
+    { name: "SLANTS",    type: "pass", f: "spread", routes: ["slant", "slant", "out"], rb: "flat" },
+    { name: "FLOOD",     type: "pass", f: "trips",  routes: ["corner", "out", "drag"], rb: "flat" },
+    { name: "MESH",      type: "pass", f: "spread", routes: ["drag", "drag", "go"], rb: "wheel" },
+    { name: "CURL FLAT", type: "pass", f: "twins",  routes: ["curl", "out", "curl"], rb: "flat" },
+    { name: "SCREEN",    type: "pass", f: "iform",  routes: ["go", "go", "go"], rb: "screen" },
+    { name: "DIVE",      type: "run",  f: "iform",  routes: ["go", "go", "block"], rb: null, dir: [1, 0] },
+    { name: "SWEEP R",   type: "run",  f: "twins",  routes: ["go", "block", "go"], rb: null, dir: [0.6, 0.8] },
+    { name: "SWEEP L",   type: "run",  f: "trips",  routes: ["block", "go", "go"], rb: null, dir: [0.6, -0.8] },
+    { name: "COUNTER",   type: "run",  f: "spread", routes: ["go", "go", "block"], rb: null, dir: [0.3, -0.9], cut: [0.8, 0.6] }
+  ];
+  var offered = [], chosen = 0;
+  function isRun() { return G.play && G.play.type === "run"; }
+  function isPass() { return G.play && G.play.type === "pass"; }
+
+  function enterPresnap() {
+    G.mode = "presnap";
+    // four fresh plays each down: mostly passes, at least one run
+    var passes = PLAYBOOK.filter(function (x) { return x.type === "pass"; }).sort(function () { return Math.random() - 0.5; });
+    var runs = PLAYBOOK.filter(function (x) { return x.type === "run"; }).sort(function () { return Math.random() - 0.5; });
+    var nPass = G.down === 4 ? 1 : 2 + (Math.random() < 0.5 ? 1 : 0);
+    var nRun = (G.down === 4 ? 2 : 4) - nPass;
+    offered = passes.slice(0, nPass).concat(runs.slice(0, nRun)).sort(function () { return Math.random() - 0.5; });
+    chosen = 0; G.play = offered[0];
+    buildFormation();
+  }
+
   // ------------------------------------------------------------ setup a play
   function fieldY(frac) { return FIELD_TOP + (FIELD_BOT - FIELD_TOP) * frac; }
 
-  function setupPlay() {
+  function buildFormation() {
     players = []; ball = null; carrier = null; aim = null; steer = null; playT = 0;
     var los = yardToPx(G.spot);
+    var play = G.play;
     function P(team, role, x, y, spd) {
       var p = { team: team, role: role, x: x, y: y, vx: 0, vy: 0, spd: spd,
                 anim: Math.random() * 10, engaged: 0, stun: 0, route: null, t: 0,
-                mark: null, zone: null };
+                mark: null, zone: null, home: null };
       players.push(p); return p;
     }
     // offense (Michigan, drives left -> right)
     qb = P("M", "QB", los - 20, fieldY(0.5), 46);
-    var rb = P("M", "RB", los - 28, fieldY(0.56), 58);
-    var wrs = [P("M", "WR", los - 2, fieldY(0.12), 62),
-               P("M", "WR", los - 2, fieldY(0.88), 62),
-               P("M", "WR", los - 8, fieldY(0.30), 60)];
-    var ols = [];
-    for (var i = 0; i < 5; i++) ols.push(P("M", "OL", los - 4, fieldY(0.38 + i * 0.06), 30));
-    // routes
-    var ROUTES = ["go", "out", "in", "post", "curl"];
-    wrs.forEach(function (w) { w.route = ROUTES[Math.floor(Math.random() * ROUTES.length)]; });
-    rb.route = G.play === "pass" ? "flat" : null;
+    var rbY = play.f === "iform" ? 0.5 : (play.dir && play.dir[1] > 0 ? 0.42 : 0.58);
+    var rb = P("M", "RB", los - (play.f === "iform" ? 34 : 28), fieldY(rbY), 58);
+    var wrs = FORMATIONS[play.f].map(function (spot) { return P("M", "WR", los + spot[1], fieldY(spot[0]), 62); });
+    for (var i = 0; i < 5; i++) P("M", "OL", los - 4, fieldY(0.38 + i * 0.06), 30);
+    wrs.forEach(function (w, k) { w.route = play.routes[k]; w.home = { x: w.x, y: w.y }; });
+    rb.route = play.rb; rb.home = { x: rb.x, y: rb.y };
     // defense
     var dls = [];
     for (var j = 0; j < 4; j++) {
@@ -134,30 +169,56 @@
       cb.mark = w;
     });
     var s = P("O", "S", los + 60, fieldY(0.5), 56 + oppRating * 6); s.role = "S";
-    G.mode = "play";
     ball = { x: qb.x, y: qb.y, z: 0, flying: false, tx: 0, ty: 0, t: 0, dur: 0, holder: qb };
     carrier = qb;
+  }
+  function snapBall() {
+    if (G.mode !== "presnap") return;
+    G.mode = "play"; playT = 0;
+    G.banner = G.play.name; G.bannerT = 0.7;
   }
 
   // route running: returns velocity for a receiver at time t
   function routeVel(p, t) {
     var s = p.spd;
+    var side = (p.home ? p.home.y : p.y) < H / 2 ? -1 : 1;   // -1: top sideline is nearer
     switch (p.route) {
-      case "go":   return { vx: s, vy: 0 };
-      case "out":  return t < 0.9 ? { vx: s, vy: 0 } : { vx: s * 0.4, vy: (p.y < H / 2 ? -1 : 1) * s * 0.9 };
-      case "in":   return t < 1.1 ? { vx: s, vy: 0 } : { vx: s * 0.5, vy: (p.y < H / 2 ? 1 : -1) * s * 0.85 };
-      case "post": return t < 1.2 ? { vx: s, vy: 0 } : { vx: s * 0.8, vy: (p.y < H / 2 ? 1 : -1) * s * 0.5 };
-      case "curl": return t < 1.3 ? { vx: s, vy: 0 } : t < 1.7 ? { vx: -s * 0.4, vy: 0 } : { vx: 0, vy: 0 };
-      case "flat": return t < 0.5 ? { vx: s * 0.3, vy: (p.y < H / 2 ? -1 : 1) * s * 0.6 } : { vx: s * 0.7, vy: 0 };
+      case "go":     return { vx: s, vy: 0 };
+      case "slant":  return t < 0.35 ? { vx: s, vy: 0 } : { vx: s * 0.7, vy: -side * s * 0.7 };
+      case "out":    return t < 0.7 ? { vx: s, vy: 0 } : { vx: s * 0.35, vy: side * s * 0.9 };
+      case "in":     return t < 0.8 ? { vx: s, vy: 0 } : { vx: s * 0.5, vy: -side * s * 0.85 };
+      case "drag":   return t < 0.25 ? { vx: s * 0.8, vy: 0 } : { vx: s * 0.35, vy: -side * s * 0.9 };
+      case "post":   return t < 1.0 ? { vx: s, vy: 0 } : { vx: s * 0.8, vy: -side * s * 0.5 };
+      case "corner": return t < 1.0 ? { vx: s, vy: 0 } : { vx: s * 0.75, vy: side * s * 0.6 };
+      case "curl":   return t < 1.1 ? { vx: s, vy: 0 } : t < 1.45 ? { vx: -s * 0.45, vy: 0 } : { vx: 0, vy: 0 };
+      case "flat":   return t < 0.5 ? { vx: s * 0.3, vy: side * s * 0.6 } : { vx: s * 0.7, vy: 0 };
+      case "wheel":  return t < 0.5 ? { vx: s * 0.3, vy: side * s * 0.7 } : { vx: s, vy: 0 };
+      case "screen": return t < 0.6 ? { vx: -s * 0.4, vy: side * s * 0.5 } : { vx: 0, vy: 0 };
+      case "block":  return t < 0.4 ? { vx: s * 0.5, vy: 0 } : { vx: 0, vy: 0 };
     }
     return { vx: 0, vy: 0 };
   }
 
+  function projectReceiver(p, T) {
+    var sim = { x: p.x, y: p.y, spd: p.spd, route: p.route, home: p.home };
+    for (var t = playT; t < playT + T; t += 0.05) {
+      var v = routeVel(sim, t); sim.x += v.vx * 0.05; sim.y += v.vy * 0.05;
+    }
+    return sim;
+  }
+  function receivers() {
+    return players.filter(function (q) { return q.team === "M" && (q.role === "WR" || q.role === "RB") && q.route && q.route !== "block"; });
+  }
+
   // ------------------------------------------------------------ simulation
+  // pace: the whole game runs at 3/4 speed, and while you're pulling back
+  // to throw it drops to 40% — bullet-time for reading the field
+  var BASE_PACE = 0.75, AIM_PACE = 0.4;
   function update(dt) {
     if (G.bannerT > 0) { G.bannerT -= dt; if (G.bannerT <= 0) G.banner = null; }
     if (G.mode === "oppdrive") { G.cardT -= dt; if (G.cardT <= 0) endOppDrive(); return; }
     if (G.mode !== "play") return;
+    dt *= (aim && carrier === qb) ? AIM_PACE : BASE_PACE;
     playT += dt;
     var los = yardToPx(G.spot);
 
@@ -168,7 +229,7 @@
         if (carrier === p) {
           // drop back, then stand in the pocket
           if (playT < 0.5) { p.x -= 30 * dt; }
-          if (G.play === "run" && playT > 0.3) {
+          if (isRun() && playT > 0.3) {
             // handoff
             var rb = players.filter(function (q) { return q.role === "RB"; })[0];
             carrier = rb; ball.holder = rb;
@@ -176,11 +237,13 @@
         }
       } else if (p.role === "RB") {
         if (carrier === p) moveCarrier(p, dt);
-        else if (G.play === "run") { // come get the ball
+        else if (isRun()) { // come get the ball
           if (dist(p, qb) > 3) stepToward(p, qb, p.spd * 0.9, dt);
-        } else if (p.route) { var v = routeVel(p, playT); p.x += v.vx * dt; p.y += v.vy * dt; }
+        } else if (ball.flying && ball.target === p) { stepToward(p, { x: ball.tx, y: ball.ty }, p.spd, dt); }
+        else if (p.route) { var v = routeVel(p, playT); p.x += v.vx * dt; p.y += v.vy * dt; p.anim += dt * 10; }
       } else if (p.role === "WR") {
         if (carrier === p) moveCarrier(p, dt);
+        else if (ball.flying && ball.target === p) { stepToward(p, { x: ball.tx, y: ball.ty }, p.spd, dt); }
         else { var v2 = routeVel(p, playT); p.x += v2.vx * dt; p.y += v2.vy * dt; p.anim += dt * 10; }
       } else if (p.role === "OL") {
         p.x += 6 * dt; // lean forward
@@ -209,7 +272,7 @@
       } else if (d.role === "CB") {
         target = (carrier && carrier !== qb) ? carrier : (ball.flying ? { x: ball.tx, y: ball.ty } : d.mark);
         if (target === d.mark) { // trail the receiver, a step behind
-          target = { x: d.mark.x + 6, y: d.mark.y };
+          target = { x: d.mark.x + 9, y: d.mark.y };
         }
       } else if (d.role === "LB") {
         if (carrier && carrier !== qb) target = carrier;
@@ -236,7 +299,7 @@
     });
 
     // pocket collapses eventually even if the line holds
-    if (carrier === qb && G.play === "pass" && playT > 5.5) endPlay("sack");
+    if (carrier === qb && isPass() && playT > 5.5) endPlay("sack");
 
     // scoring / boundaries for a live carrier
     if (carrier && !ball.flying && G.mode === "play") {
@@ -245,6 +308,7 @@
     }
     camX = clamp((ball.x) - 130, 0, yardToPx(110) - W);
   }
+  function presnapCamera() { if (G.mode === "presnap") camX = clamp(yardToPx(G.spot) - 130, 0, yardToPx(110) - W); }
 
   function stepToward(p, t, spd, dt) {
     var dx = t.x - p.x, dy = t.y - p.y, d = Math.sqrt(dx * dx + dy * dy);
@@ -253,6 +317,10 @@
   }
   function moveCarrier(p, dt) {
     var vx = p.spd, vy = 0;
+    if (!steer && p.role === "RB" && isRun() && G.play.dir && playT < 1.3) {
+      var d = (G.play.cut && playT > 0.75) ? G.play.cut : G.play.dir;
+      vx = d[0] * p.spd; vy = d[1] * p.spd;
+    }
     if (steer) {
       var dx = steer.x - steer.x0, dy = steer.y - steer.y0, d = Math.sqrt(dx * dx + dy * dy);
       if (d > 4) { vx = dx / d * p.spd; vy = dy / d * p.spd; }
@@ -260,8 +328,9 @@
     p.x += vx * dt; p.y += vy * dt; p.anim += dt * 10;
   }
 
-  function throwBall(tx, ty) {
+  function throwBall(tx, ty, target) {
     if (!qb || carrier !== qb || ball.flying) return;
+    ball.target = target || null; G.stats.att++;
     tx = clamp(tx, qb.x - 10, yardToPx(112)); ty = clamp(ty, FIELD_TOP + 1, FIELD_BOT - 1);
     var d = dist(qb, { x: tx, y: ty });
     ball.flying = true; ball.holder = null; carrier = null;
@@ -278,13 +347,13 @@
     });
     if (rcv && rd < CATCH_R) {
       var r = Math.random();
-      var pInt = dd < 5 ? 0.35 : dd < 10 ? 0.15 : 0.02;
-      var pInc = dd < 5 ? 0.40 : dd < 10 ? 0.30 : 0.08;
+      var pInt = dd < 4 ? 0.30 : dd < 9 ? 0.08 : 0.01;
+      var pInc = dd < 4 ? 0.40 : dd < 9 ? 0.22 : 0.04;
       if (r < pInt) { endPlay("int", land); return; }
       if (r < pInt + pInc) { endPlay("incomplete"); return; }
       carrier = rcv; ball.holder = rcv; rcv.route = null;
-      G.banner = "CAUGHT"; G.bannerT = 0.5;
-    } else if (def && dd < 5 && Math.random() < 0.25) {
+      G.stats.comp++; G.banner = "CAUGHT"; G.bannerT = 0.5;
+    } else if (def && dd < 4 && Math.random() < 0.2) {
       endPlay("int", land);
     } else endPlay("incomplete");
   }
@@ -340,7 +409,7 @@
     else { G.down++; G.toGo -= Math.max(0, gain); if (gain < 0) G.toGo -= gain; }
     if (G.down > 4) { G.banner = "TURNOVER ON DOWNS"; G.bannerT = 1.6;
       after(1.6, function () { startOppDrive(100 - G.spot); }); return; }
-    after(1.2, function () { G.mode = "presnap"; });
+    after(1.2, enterPresnap);
   }
 
   function tickQuarter() {
@@ -418,7 +487,7 @@
   function endOppDrive() {
     G.card = null;
     if (G.pendingEnd) { finishGame(); return; }
-    G.spot = G.nextSpot || 25; G.down = 1; G.toGo = 10; G.mode = "presnap";
+    G.spot = G.nextSpot || 25; G.down = 1; G.toGo = 10; enterPresnap();
   }
 
   function finishGame() {
@@ -580,21 +649,24 @@
     BTNS = [];
     ctx.textAlign = "center";
     if (G.mode === "presnap") {
+      drawRouteGhosts();
       var inRange = (100 - G.spot + 17) <= 55;
+      var y = FIELD_BOT + 3, slots = [];
+      offered.forEach(function (pl, i) { slots.push({ label: pl.name, act: "play" + i, hot: i === chosen }); });
       if (G.down === 4) {
-        var y = FIELD_BOT + 3;
-        BTNS.push({ x: 8, y: y, w: 70, h: 11, label: "PASS", act: "pass" });
-        BTNS.push({ x: 86, y: y, w: 70, h: 11, label: "RUN", act: "run" });
-        BTNS.push({ x: 164, y: y, w: 70, h: 11, label: "PUNT", act: "punt" });
-        if (inRange) BTNS.push({ x: 242, y: y, w: 70, h: 11, label: "FG", act: "fg" });
-      } else {
-        BTNS.push({ x: 70, y: FIELD_BOT + 3, w: 80, h: 11, label: "PASS", act: "pass" });
-        BTNS.push({ x: 170, y: FIELD_BOT + 3, w: 80, h: 11, label: "RUN", act: "run" });
+        slots.push({ label: "PUNT", act: "punt" });
+        if (inRange) slots.push({ label: "FG", act: "fg" });
       }
-      BTNS.forEach(function (b) { button(b.x, b.y, b.w, b.h, b.label, false); });
+      var bw = Math.floor((W - 8 - 6 * (slots.length - 1)) / slots.length);
+      slots.forEach(function (sl, i) {
+        var b = { x: 4 + i * (bw + 6), y: y, w: bw, h: 11, label: sl.label, act: sl.act, hot: sl.hot };
+        BTNS.push(b); button(b.x, b.y, b.w, b.h, b.label, !!b.hot);
+      });
+      ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.font = "7px monospace"; ctx.textAlign = "center";
+      ctx.fillText("tap a play · tap the field to snap", W / 2, FIELD_TOP + 8);
     } else if (G.mode === "play") {
       ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "7px monospace";
-      var hint = carrier === qb && G.play === "pass" ? "drag to aim · release to throw"
+      var hint = carrier === qb && isPass() ? "drag to aim · release to throw"
                : carrier ? "drag to steer" : "";
       ctx.fillText(hint, W / 2, H - 4);
       if (aim && carrier === qb) {
@@ -603,6 +675,10 @@
         ctx.beginPath(); ctx.moveTo(qb.x - camX, qb.y); ctx.lineTo(ax - camX, ay); ctx.stroke();
         ctx.setLineDash([]);
         ctx.fillStyle = MAIZE; ctx.fillRect(ax - camX - 2, ay - 2, 4, 4);
+        if (aim.snap) {
+          ctx.strokeStyle = MAIZE; ctx.lineWidth = 1;
+          ctx.strokeRect(Math.round(aim.snap.x - camX) - 6.5, Math.round(aim.snap.y) - 12.5, 13, 17);
+        }
       }
     } else if (G.mode === "oppdrive" && G.card) {
       ctx.fillStyle = "rgba(0,0,0,0.72)"; ctx.fillRect(0, 60, W, 60);
@@ -626,6 +702,30 @@
       ctx.fillStyle = G.banner.indexOf("TOUCHDOWN") !== -1 || G.banner.indexOf("FIRST") !== -1 ? MAIZE : "#fff";
       ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
       ctx.fillText(G.banner, W / 2, 89);
+    }
+  }
+  function drawRouteGhosts() {
+    players.forEach(function (p) {
+      if (p.team !== "M" || !p.route || p.route === "block") return;
+      var sim = { x: p.x, y: p.y, spd: p.spd, route: p.route, home: p.home };
+      ctx.fillStyle = p.role === "RB" ? "rgba(255,203,5,0.9)" : "rgba(255,255,255,0.85)";
+      for (var t = 0; t < 2.2; t += 0.1) {
+        var v = routeVel(sim, t);
+        sim.x += v.vx * 0.1; sim.y += v.vy * 0.1;
+        if (Math.round(t * 10) % 2 === 0) ctx.fillRect(Math.round(sim.x - camX), Math.round(sim.y), 1, 1);
+      }
+    });
+    if (isRun()) {  // the back's opening lane
+      var rb = players.filter(function (q) { return q.role === "RB"; })[0];
+      if (rb) {
+        var d = G.play.dir, x = rb.x, y = rb.y;
+        ctx.fillStyle = "rgba(255,203,5,0.9)";
+        for (var k = 0; k < 14; k++) {
+          if (G.play.cut && k > 6) d = G.play.cut;
+          x += d[0] * 4; y += d[1] * 4;
+          if (k % 2 === 0) ctx.fillRect(Math.round(x - camX), Math.round(y), 1, 1);
+        }
+      }
     }
   }
   function wrapText(text, x, y, maxW, lh) {
@@ -662,7 +762,7 @@
     return null;
   }
   function act(a) {
-    if (a === "pass" || a === "run") { G.play = a; setupPlay(); }
+    if (a.indexOf("play") === 0) { chosen = parseInt(a.slice(4), 10); G.play = offered[chosen]; buildFormation(); }
     else if (a === "punt") { G.mode = "dead"; punt(); }
     else if (a === "fg") { fieldGoal(); }
     else if (a === "next") { location.reload(); }
@@ -674,9 +774,10 @@
     var b = hitButton(pt);
     if (b) { act(b.act); return; }
     if (G.mode === "oppdrive") { G.cardT = 0; return; }
+    if (G.mode === "presnap") { if (pt.y > FIELD_TOP && pt.y < FIELD_BOT) snapBall(); return; }
     if (G.mode !== "play") return;
     down = true;
-    if (carrier === qb && G.play === "pass") aim = { x0: pt.x, y0: pt.y, x: pt.x + camX, y: pt.y };
+    if (carrier === qb && isPass()) aim = { x0: pt.x, y0: pt.y, x: pt.x + camX, y: pt.y };
     else steer = { x0: pt.x, y0: pt.y, x: pt.x, y: pt.y };
   }
   function onMove(e) {
@@ -686,7 +787,16 @@
     if (aim) {
       // throw vector: from the QB, in the direction and distance of the drag
       var dx = (pt.x - aim.x0) * 1.6, dy = (pt.y - aim.y0) * 1.6;
-      aim.x = qb.x + dx; aim.y = qb.y + dy;
+      aim.x = qb.x + dx; aim.y = qb.y + dy; aim.snap = null;
+      // assist: if the aim is near where a receiver WILL be, throw to him
+      var best = null, bd = ASSIST_R;
+      receivers().forEach(function (r) {
+        var T = Math.max(0.35, dist(qb, r) / 150);
+        var pr = projectReceiver(r, T);
+        var q = dist(pr, { x: aim.x, y: aim.y });
+        if (q < bd) { bd = q; best = { p: r, x: pr.x, y: pr.y }; }
+      });
+      if (best) { aim.snap = best.p; aim.x = best.x; aim.y = best.y; }
     } else if (steer) { steer.x = pt.x; steer.y = pt.y; }
     else if (carrier && carrier !== qb) steer = { x0: pt.x, y0: pt.y, x: pt.x, y: pt.y };
   }
@@ -695,7 +805,7 @@
     down = false;
     if (aim && carrier === qb) {
       var dx = aim.x - qb.x, dy = aim.y - qb.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 8) throwBall(aim.x, aim.y);
+      if (Math.sqrt(dx * dx + dy * dy) > 8) throwBall(aim.x, aim.y, aim.snap);
     }
     aim = null; steer = null;
   }
@@ -713,11 +823,14 @@
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     runTimers(dt);
     update(dt);
+    presnapCamera();
     render();
     requestAnimationFrame(frame);
   }
   // initial camera at the ball
   camX = clamp(yardToPx(G.spot) - 130, 0, yardToPx(110) - W);
+  enterPresnap();
   G.banner = "WEEK " + (week + 1) + ": vs " + opp.name.toUpperCase(); G.bannerT = 2.2;
+  window.__bowl = G;   // read-only peek for playtests
   requestAnimationFrame(frame);
 })();
