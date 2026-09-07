@@ -327,7 +327,12 @@
       if (carrier && !ball.flying && dist(d, carrier) < TACKLE_R) {
         if (carrier === qb) { endPlay("sack"); }
         else if (Math.random() < 0.18 * (1 - oppRating * 0.4)) { d.stun = 0.7; } // broke it
-        else endPlay("tackle");
+        else {
+          G.lastEnd = { by: d.role, dEngaged: d.engaged, dx: Math.round(d.x - yardToPx(G.spot)), dy: Math.round(d.y),
+                        cx: Math.round(carrier.x - yardToPx(G.spot)), cy: Math.round(carrier.y),
+                        who: carrier.role, t: Math.round(playT * 100) / 100, pace: pace };
+          endPlay("tackle");
+        }
       }
     });
 
