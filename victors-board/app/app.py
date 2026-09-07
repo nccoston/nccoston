@@ -1707,6 +1707,69 @@ def story():
                            chart_max=chart_max, loc=loc)
 
 
+# ---------------------------------------------------------- Victard Bowl
+#
+# A pixel football game (static canvas JS) for members. The only server
+# work is handing it Michigan's schedule so the opponents are real.
+
+SCHED_URL = ("https://site.api.espn.com/apis/site/v2/sports/football/"
+             "college-football/teams/130/schedule")     # 130 = Michigan
+SCHED_CACHE = {"at": -1e9, "games": None}
+SCHED_LOCK = threading.Lock()
+FALLBACK_SCHEDULE = [
+    {"name": "Western Michigan", "abbr": "WMU", "home": True},
+    {"name": "Oklahoma", "abbr": "OU", "home": True},
+    {"name": "Central Michigan", "abbr": "CMU", "home": True},
+    {"name": "Nebraska", "abbr": "NEB", "home": False},
+    {"name": "Wisconsin", "abbr": "WIS", "home": True},
+    {"name": "USC", "abbr": "USC", "home": False},
+    {"name": "Washington", "abbr": "WASH", "home": True},
+    {"name": "Michigan State", "abbr": "MSU", "home": False},
+    {"name": "Purdue", "abbr": "PUR", "home": True},
+    {"name": "Northwestern", "abbr": "NW", "home": False},
+    {"name": "Maryland", "abbr": "MD", "home": False},
+    {"name": "Ohio State", "abbr": "OSU", "home": True},
+]
+
+
+def fetch_michigan_schedule():
+    """Michigan's regular-season opponents in order, from ESPN's team
+    schedule feed; the fallback list if that fails."""
+    import requests
+    try:
+        data = requests.get(SCHED_URL, timeout=6).json()
+        games = []
+        for ev in data.get("events", []):
+            comp = ev["competitions"][0]
+            them = next(c for c in comp["competitors"] if c["team"].get("id") != "130")
+            us = next(c for c in comp["competitors"] if c["team"].get("id") == "130")
+            games.append({
+                "name": them["team"].get("shortDisplayName")
+                        or them["team"].get("displayName", "Opponent"),
+                "abbr": them["team"].get("abbreviation", "OPP"),
+                "home": us.get("homeAway") == "home",
+            })
+        return games or FALLBACK_SCHEDULE
+    except Exception:
+        return FALLBACK_SCHEDULE
+
+
+def michigan_schedule():
+    now = time.monotonic()
+    with SCHED_LOCK:
+        if SCHED_CACHE["games"] is None or now - SCHED_CACHE["at"] > 86400:
+            SCHED_CACHE["games"] = fetch_michigan_schedule()
+            SCHED_CACHE["at"] = now
+        return SCHED_CACHE["games"]
+
+
+@app.route("/bowl")
+@login_required
+def bowl():
+    return render_template("bowl.html",
+                           bowl_cfg={"schedule": michigan_schedule()})
+
+
 @app.route("/settings")
 def settings():
     # Every control here is a per-device browser preference (theme, text

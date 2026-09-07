@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Victard Bowl - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="bowl-wrap">
+  <canvas id="bowl" width="320" height="180"></canvas>
+  <p class="hint bowl-help">Tap PASS or RUN to snap. Passing: drag from anywhere
+    to aim, let go to throw. Running (and after a catch): drag to steer.
+    On 4th down, choose. The other team's drives play themselves.</p>
+</div>
+<script>window.BOWL = {{ bowl_cfg | tojson }};</script>
+<script src="{{ url_for('static', filename='bowl.js') }}"></script>
+{% endblock %}

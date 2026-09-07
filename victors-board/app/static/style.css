@@ -350,6 +350,22 @@ table.admin-table td, table.admin-table th {
 :root[data-textsize="large"] body { zoom: 1.15; }
 :root[data-textsize="huge"] body { zoom: 1.35; }
 
+/* Victard Bowl: the canvas is 320x180 logical pixels, scaled crisp */
+.bowl-wrap { max-width: 640px; margin: 8px auto; }
+#bowl {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  touch-action: none;
+  background: #1c2a1c;
+  border: 2px solid #00274C;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.bowl-help { text-align: center; margin: 6px 0; }
+
 /* the settings page */
 .settings-box { max-width: 560px; }
 .setting-group { margin: 18px 0; }
