@@ -313,6 +313,7 @@
       if (carrier && carrier !== qb) {
         if (reactT > 0) pace = 0.25;                       // still reading it
         else if (chasers.indexOf(d) === -1) pace = 0.55;   // not your play
+        else pace = 1.15;                                  // pursuit angle: a step closes
       } else if (ball.flying && reactT > 0) pace = 0.3;    // watching the ball
       if (d.role === "DL") {
         target = carrier || qb;
