@@ -170,8 +170,8 @@
     // offense (Michigan, drives left -> right)
     qb = P("M", "QB", los - 20, fieldY(0.5), 46);
     var rbY = play.f === "iform" ? 0.5 : (play.dir && play.dir[1] > 0 ? 0.42 : 0.58);
-    var rb = P("M", "RB", los - (play.f === "iform" ? 34 : 28), fieldY(rbY), 62);
-    var wrs = FORMATIONS[play.f].map(function (spot) { return P("M", "WR", los + spot[1], fieldY(spot[0]), 64); });
+    var rb = P("M", "RB", los - (play.f === "iform" ? 34 : 28), fieldY(rbY), 60);
+    var wrs = FORMATIONS[play.f].map(function (spot) { return P("M", "WR", los + spot[1], fieldY(spot[0]), 62); });
     for (var i = 0; i < 5; i++) P("M", "OL", los - 4, fieldY(0.38 + i * 0.06), 30);
     wrs.forEach(function (w, k) { w.route = play.routes[k]; w.home = { x: w.x, y: w.y }; });
     rb.route = play.rb; rb.home = { x: rb.x, y: rb.y };
@@ -182,13 +182,13 @@
       d.engaged = rnd(2.2, 4.2) * (1.2 - oppRating * 0.5);   // the line holds this long
       dls.push(d);
     }
-    var lbs = [P("O", "LB", los + 28, fieldY(0.38), 42), P("O", "LB", los + 28, fieldY(0.62), 42)];
+    var lbs = [P("O", "LB", los + 28, fieldY(0.38), 48), P("O", "LB", los + 28, fieldY(0.62), 48)];
     lbs[0].zone = { x: los + 30, y: fieldY(0.35) }; lbs[1].zone = { x: los + 30, y: fieldY(0.65) };
     wrs.forEach(function (w, k) {
-      var cb = P("O", "CB", los + 26, w.y, 48 + oppRating * 8);
+      var cb = P("O", "CB", los + 26, w.y, 54 + oppRating * 7);
       cb.mark = w;
     });
-    var s = P("O", "S", los + 60, fieldY(0.5), 46 + oppRating * 6); s.role = "S";
+    var s = P("O", "S", los + 60, fieldY(0.5), 60 + oppRating * 4); s.role = "S";
     ball = { x: qb.x, y: qb.y, z: 0, flying: false, tx: 0, ty: 0, t: 0, dur: 0, holder: qb };
     carrier = qb;
   }
@@ -282,13 +282,13 @@
     } else if (ball.holder) { ball.x = ball.holder.x; ball.y = ball.holder.y - 2; }
 
     // --- defense ---
-    if (carrier !== lastCarrier) { lastCarrier = carrier; reactT = 0.45; }   // "who has it?"
+    if (carrier !== lastCarrier) { lastCarrier = carrier; reactT = 0.35; }   // "who has it?"
     if (ball.flying && !ball.reacted) { ball.reacted = true; reactT = 0.4; }  // "ball's up"
     if (reactT > 0) reactT -= dt;
     var chasers = [];
     if (carrier && carrier !== qb) {
       chasers = players.filter(function (q) { return q.team === "O"; })
-        .sort(function (a, b) { return dist(a, carrier) - dist(b, carrier); }).slice(0, 3);
+        .sort(function (a, b) { return dist(a, carrier) - dist(b, carrier); }).slice(0, 4);
     }
     players.forEach(function (d) {
       if (d.team !== "O") return;
@@ -326,7 +326,7 @@
       // tackles and sacks
       if (carrier && !ball.flying && dist(d, carrier) < TACKLE_R) {
         if (carrier === qb) { endPlay("sack"); }
-        else if (Math.random() < 0.28 * (1 - oppRating * 0.4)) { d.stun = 0.8; } // broke it
+        else if (Math.random() < 0.18 * (1 - oppRating * 0.4)) { d.stun = 0.7; } // broke it
         else endPlay("tackle");
       }
     });
