@@ -1989,7 +1989,9 @@ def _rest_lead_image(title):
     if "/thumb/" in src:                     # .../thumb/a/ab/Name.jpg/800px-Name.jpg
         name = src.split("/thumb/", 1)[1].split("/")[2]
     from urllib.parse import unquote
-    return unquote(name), data.get("title") or title
+    co = data.get("coordinates") or {}
+    return (unquote(name), data.get("title") or title,
+            co.get("lat"), co.get("lon"))
 
 
 def _resolved(data):
@@ -2012,21 +2014,43 @@ def _resolved(data):
     return find
 
 
+STADIUM_NEAR = 25.0     # miles an article may sit from the stadium we mean
+
+
 def _lead_images(titles):
-    """{requested title: lead image file name} for a whole batch in one call."""
+    """{requested title: (file, article title, lat, lon)} for a whole batch.
+
+    Coordinates come back in the same call and cost nothing extra. They are
+    what tells Memorial Stadium in Champaign from Memorial Stadium in
+    Lincoln — four schools use that name and a search will happily hand you
+    the wrong one.
+    """
     out = {}
     for i in range(0, len(titles), WIKI_TITLES):
         chunk = titles[i:i + WIKI_TITLES]
         data = _wiki_get(WIKI_API, {"action": "query", "format": "json",
-                                    "formatversion": "2", "prop": "pageimages",
+                                    "formatversion": "2",
+                                    "prop": "pageimages|coordinates",
                                     "piprop": "name", "redirects": "1",
+                                    "colimit": "max",
                                     "titles": "|".join(chunk)})
         find = _resolved(data)
         for t in chunk:
             page = find(t)
-            if page and page.get("pageimage"):
-                out[t] = (page["pageimage"], page.get("title") or t)
+            if not page or not page.get("pageimage"):
+                continue
+            co = (page.get("coordinates") or [{}])[0]
+            out[t] = (page["pageimage"], page.get("title") or t,
+                      co.get("lat"), co.get("lon"))
     return out
+
+
+def _article_fits(hit, s, need_coords):
+    """Is this article really about this stadium? Ask the map, not the name."""
+    lat, lon = hit[2], hit[3]
+    if lat is None or lon is None:
+        return not need_coords      # an exact name match can stand alone
+    return haversine_miles(lat, lon, s["lat"], s["lon"]) <= STADIUM_NEAR
 
 
 def _commons_info(names, width=1400):
@@ -2093,30 +2117,42 @@ def fetch_stadium_photos(wanted, budget=20.0):
     if not wanted:
         return found, failures, 0
 
-    titles = [s["stadium"] for s in wanted]
+    # leads are keyed by TEAM, never by stadium name: four schools call
+    # their ground Memorial Stadium, and keying by name had all four of them
+    # sharing one slot and overwriting each other.
+    titles = sorted({s["stadium"] for s in wanted})
     try:
-        leads = _lead_images(titles)
+        by_title = _lead_images(titles)
     except Throttled as exc:
         # the batch query is barred; the CDN summary endpoint usually is not
-        leads = {}
-        for s in wanted:
+        by_title = {}
+        for t in titles:
             if time.time() - started > budget * 0.6:
                 break
             try:
-                hit = _rest_lead_image(s["stadium"])
+                hit = _rest_lead_image(t)
             except Throttled:
                 return found, ["%s" % exc], 0     # both doors shut; say so once
             except Exception:
                 continue
             if hit:
-                leads[s["stadium"]] = hit
-        if not leads:
+                by_title[t] = hit
+        if not by_title:
             return found, ["%s" % exc], 0
     except Exception as exc:
         return found, ["%s" % exc], 0
 
-    # names that are shared or missing an article get one search each
-    misses = [s for s in wanted if s["stadium"] not in leads]
+    # An exact-title hit still has to be in the right place: "Memorial
+    # Stadium" may well resolve to somebody else's Memorial Stadium.
+    leads = {}
+    for s in wanted:
+        hit = by_title.get(s["stadium"])
+        if hit and _article_fits(hit, s, False):
+            leads[stadium_key(s)] = hit
+
+    # anything unresolved gets a search, and several candidates to choose from
+    misses = [s for s in wanted if stadium_key(s) not in leads]
+    candidates = {}
     for s in misses:
         if time.time() - started > budget * 0.5:
             break
@@ -2124,21 +2160,41 @@ def fetch_stadium_photos(wanted, budget=20.0):
         try:
             sr = _wiki_get(WIKI_API, {"action": "query", "format": "json",
                                       "formatversion": "2", "list": "search",
-                                      "srsearch": query, "srlimit": "1"})
-            hits = (sr.get("query") or {}).get("search") or []
-            if not hits:
-                failures.append("%s (%s) — no article found" % (s["stadium"], s["team"]))
-                continue
-            more = _lead_images([hits[0]["title"]])
-            if more:
-                leads[s["stadium"]] = list(more.values())[0]
+                                      "srsearch": query, "srlimit": "5"})
+            hits = [h["title"] for h in (sr.get("query") or {}).get("search") or []]
+            if hits:
+                candidates[stadium_key(s)] = hits
             else:
-                failures.append("%s (%s) — \u201c%s\u201d has no lead picture"
-                                % (s["stadium"], s["team"], hits[0]["title"]))
+                failures.append("%s (%s) - no article found"
+                                % (s["stadium"], s["team"]))
         except Throttled:
             break                     # stop asking; the rest wait for later
         except Exception as exc:
-            failures.append("%s (%s) — %s" % (s["stadium"], s["team"], exc))
+            failures.append("%s (%s) - %s" % (s["stadium"], s["team"], exc))
+
+    if candidates:
+        every = sorted({t for hits in candidates.values() for t in hits})
+        try:
+            looked = _lead_images(every)
+        except Exception:
+            looked = {}
+        for s in misses:
+            hits = candidates.get(stadium_key(s)) or []
+            # the nearest article that is actually near the stadium, rather
+            # than whatever the search engine put at the top
+            best, bestd = None, STADIUM_NEAR
+            for t in hits:
+                hit = looked.get(t)
+                if not hit or hit[2] is None:
+                    continue
+                d = haversine_miles(hit[2], hit[3], s["lat"], s["lon"])
+                if d <= bestd:
+                    best, bestd = hit, d
+            if best:
+                leads[stadium_key(s)] = best
+            elif hits:
+                failures.append("%s (%s) - no article found near %s, %s"
+                                % (s["stadium"], s["team"], s["city"], s["state"]))
 
     try:
         info = _commons_info(sorted({v[0] for v in leads.values()}))
@@ -2147,13 +2203,13 @@ def fetch_stadium_photos(wanted, budget=20.0):
 
     done = 0
     for s in wanted:
-        if s["stadium"] not in leads:
+        if stadium_key(s) not in leads:
             done += 1
             continue
         if time.time() - started > budget:
             break                     # the rest wait for the next click
         done += 1
-        name, article = leads[s["stadium"]]
+        name, article, alat, alon = leads[stadium_key(s)]
         meta = info.get(name)
         if not meta or not meta.get("url"):
             failures.append("%s — %s is not on Commons" % (s["stadium"], name))
@@ -2171,8 +2227,51 @@ def fetch_stadium_photos(wanted, budget=20.0):
             "file": fn, "credit": meta["credit"][:160],
             "license": meta["license"][:60], "source": meta["source"],
             "wiki": article, "commons_file": name,
-            "team": s["team"], "stadium": s["stadium"]}
+            "team": s["team"], "stadium": s["stadium"],
+            "miles_off": (round(haversine_miles(alat, alon, s["lat"], s["lon"]), 1)
+                          if alat is not None else None)}
     return found, failures, done
+
+
+def recheck_stadium_photos(budget=20.0):
+    """Verify what's already on the shelf against the map.
+
+    Anything fetched before the coordinate check went in was matched on
+    name alone, which is how Illinois and Indiana both ended up with
+    Nebraska's Memorial Stadium. Ask each stored article where it is and
+    drop the ones that are somewhere else.
+    """
+    started = time.time()
+    have = stadium_photos()
+    by_key = {stadium_key(s): s for s in load_stadiums()}
+    todo = [(k, v) for k, v in have.items()
+            if v.get("miles_off") is None and v.get("wiki") and k in by_key]
+    if not todo:
+        return 0, 0, len(have)
+    titles = sorted({v["wiki"] for _, v in todo})[:WIKI_TITLES]
+    try:
+        looked = _lead_images(titles)
+    except Exception:
+        return 0, 0, len(have)
+    checked = dropped = 0
+    keep = {}
+    for key, entry in todo:
+        if time.time() - started > budget:
+            break
+        hit = looked.get(entry["wiki"])
+        if not hit or hit[2] is None:
+            continue                  # no coordinates to judge it by
+        s = by_key[key]
+        miles = haversine_miles(hit[2], hit[3], s["lat"], s["lon"])
+        checked += 1
+        if miles > STADIUM_NEAR:
+            drop_stadium_photo(key)
+            dropped += 1
+        else:
+            keep[key] = dict(entry, miles_off=round(miles, 1))
+    if keep:
+        save_stadium_photos(keep)
+    return checked, dropped, len(stadium_photos())
 
 
 def save_stadium_photos(found):
@@ -2845,6 +2944,16 @@ def admin_games():
                   "success" if found else "message")
             for f in failed[:6]:
                 flash("No picture: " + f)
+        elif action == "recheck_photos":
+            checked, dropped, total = recheck_stadium_photos()
+            if not checked:
+                flash("Nothing left to re-check &mdash; every picture on the "
+                      "shelf has already been matched against the map.")
+            else:
+                flash("Checked %d against the map, dropped %d that were "
+                      "somewhere else. %d left on the shelf."
+                      % (checked, dropped, total),
+                      "success" if dropped else "message")
         elif action == "drop_photo":
             key = request.form.get("key") or ""
             if drop_stadium_photo(key):
@@ -2884,7 +2993,8 @@ def admin_games():
                           "credit": p.get("credit", ""),
                           "license": p.get("license", ""),
                           "source": p.get("source", ""),
-                          "wiki": p.get("wiki", "")})
+                          "wiki": p.get("wiki", ""),
+                          "miles_off": p.get("miles_off")})
     return render_template("admin_games.html", admin_nav=_admin_nav(),
                            bowl_rows=bowl_rows, bowl=bowl,
                            sg_rows=sg_rows, sg=sg, shelf=shelf,

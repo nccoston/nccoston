@@ -63,12 +63,18 @@
   <p class="hint">Pulled from the stadium's Wikipedia article and credited to
     whoever took it. Matching an article to a stadium is a guess, so check
     them: if one isn't the right stadium, drop it and the next fetch will
-    look again. The game needs {{ needed }} to be playable. Each click takes
+    look again &mdash; every match is now checked against the stadium's real
+    coordinates, so an article about a different stadium of the same name is
+    rejected. The game needs {{ needed }} to be playable. Each click takes
     about twenty seconds and stops itself there, so it will take several
     &mdash; Wikimedia rate-limits anyone who goes faster.</p>
   <form class="inline-form" method="post">
     <input type="hidden" name="action" value="fetch_photos">
     <button type="submit" class="fetch-btn">Fetch the next batch</button>
+  </form>
+  <form class="inline-form" method="post">
+    <input type="hidden" name="action" value="recheck_photos">
+    <button type="submit" class="fetch-btn">Re-check against the map</button>
   </form>
 
   {% if shelf %}
@@ -80,7 +86,9 @@
         <span class="hint">{{ p.team }} &middot; {{ p.city }}</span></p>
       <p class="hint">{{ p.credit }}{% if p.license %} &middot; {{ p.license }}{% endif %}
         {%- if p.source %} <a href="{{ p.source }}" target="_blank" rel="noopener">file</a>{% endif %}
-        {%- if p.wiki %}<br>from &ldquo;{{ p.wiki }}&rdquo;{% endif %}</p>
+        {%- if p.wiki %}<br>from &ldquo;{{ p.wiki }}&rdquo;{% endif %}
+        {%- if p.miles_off is not none %} &middot; {{ p.miles_off }} mi from the
+          map pin{% endif %}</p>
       <form class="inline-form" method="post"
             onsubmit="return confirm('Drop the picture for {{ p.stadium }}?')">
         <input type="hidden" name="action" value="drop_photo">
