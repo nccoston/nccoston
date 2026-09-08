@@ -64,7 +64,9 @@
     <span class="nb">| <a href="{{ url_for('register') }}">Register</a></span>
   {% endif %}
   <span class="nb">| <a href="{{ url_for('settings') }}">Settings</a></span>
-  <span class="nb">| <a href="{{ url_for('bowl') }}">Victard Bowl</a></span>
+  {# "Games", not "Victard Bowl" — there will be more than one, and when
+     there are this link becomes the index instead of the game itself #}
+  <span class="nb">| <a href="{{ url_for('bowl') }}">Games</a></span>
 </p>
 
 {% with msgs = get_flashed_messages(with_categories=true) %}
