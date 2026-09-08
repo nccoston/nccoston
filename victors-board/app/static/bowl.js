@@ -586,6 +586,23 @@
     G.spot = G.nextSpot || 25; G.down = 1; G.toGo = 10; enterPresnap();
   }
 
+  function postScore() {
+    // hand the result to the board for the leaderboard; failures are silent
+    try {
+      var rec = seasonRecord();
+      fetch("/bowl/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          us: G.score[0], them: G.score[1],
+          longest: G.stats.longest,
+          season_done: season.week >= schedule.length,
+          season_w: rec.w, season_l: rec.l
+        })
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
   function finishGame() {
     G.mode = "gameover";
     G.result = G.score[0] > G.score[1] ? "W"
@@ -598,6 +615,7 @@
       saveSeason();
       var best = parseInt(load("bowlLongest") || "0", 10);
       if (G.stats.longest > best) store("bowlLongest", String(G.stats.longest));
+      postScore();
     }
     G.record = seasonRecord();
     G.lastOfSeason = (week + 1 >= schedule.length);
@@ -1038,8 +1056,10 @@
     ctx.textAlign = "center";
     if (G.mode === "recap") {
       drawRecap();
-      BTNS.push({ x: W / 2 - 55, y: FIELD_BOT + 3, w: 110, h: 11,
+      BTNS.push({ x: 46, y: FIELD_BOT + 3, w: 108, h: 11,
                   label: "NEW SEASON", act: "new" });
+      BTNS.push({ x: 166, y: FIELD_BOT + 3, w: 108, h: 11,
+                  label: "LEADERBOARD", act: "board" });
       BTNS.forEach(function (b) { button(b.x, b.y, b.w, b.h, b.label, true); });
       return;
     }
@@ -1083,8 +1103,9 @@
       ctx.font = "8px monospace"; ctx.fillStyle = "#ccc";
       ctx.fillText(G.stats.yards + " yds · " + G.stats.tds + " TD · " + G.stats.ints + " INT · " + G.stats.sacks + " sacks · long " + G.stats.longest, W / 2, 84);
       if (G.record) ctx.fillText("Season: " + G.record.text + "  ·  week " + (week + 1) + " of " + schedule.length, W / 2, 98);
-      BTNS.push({ x: 100, y: 118, w: 120, h: 13,
+      BTNS.push({ x: 52, y: 118, w: 104, h: 13,
                   label: G.lastOfSeason ? "SEASON RECAP" : "NEXT GAME", act: "next" });
+      BTNS.push({ x: 164, y: 118, w: 104, h: 13, label: "LEADERBOARD", act: "board" });
       BTNS.forEach(function (b) { button(b.x, b.y, b.w, b.h, b.label, true); });
     }
     if (G.banner && G.bannerT > 0) {
@@ -1217,6 +1238,7 @@
     else if (a === "punt") { G.mode = "dead"; punt(); }
     else if (a === "fg") { fieldGoal(); }
     else if (a === "next") { location.reload(); }
+    else if (a === "board") { location.href = "/bowl/leaderboard"; }
     else if (a === "new") {
       season = { year: (season.year || 1) + 1, week: 0, results: [] };
       saveSeason(); location.reload();

@@ -1770,6 +1770,58 @@ def bowl():
                            bowl_cfg={"schedule": michigan_schedule()})
 
 
+@app.route("/bowl/score", methods=["POST"])
+@login_required
+def bowl_score():
+    """The game reports a finished game. Only ever raises a member's bests,
+    so a replay can't cost them anything. Values are clamped to what the
+    game can actually produce — this is a message board, not a bank, but
+    nobody gets to post a 900-yard touchdown either."""
+    d = request.get_json(silent=True) or {}
+
+    def num(key, lo, hi):
+        try:
+            return max(lo, min(hi, int(d.get(key, 0))))
+        except (TypeError, ValueError):
+            return lo
+
+    us, them = num("us", 0, 200), num("them", 0, 200)
+    longest = num("longest", 0, 100)
+    season_w, season_l = num("season_w", 0, 20), num("season_l", 0, 20)
+    done = bool(d.get("season_done"))
+    margin = us - them if us > them else 0
+
+    db = get_db()
+    uid = current_user()["id"]
+    db.execute("INSERT OR IGNORE INTO bowl_scores (user_id, updated_at)"
+               " VALUES (?, ?)", (uid, now_utc_iso()))
+    row = db.execute("SELECT * FROM bowl_scores WHERE user_id = ?", (uid,)).fetchone()
+    best_w, best_l = row["best_w"], row["best_l"]
+    if done and (season_w > best_w or (season_w == best_w and season_l < best_l)):
+        best_w, best_l = season_w, season_l
+    db.execute(
+        "UPDATE bowl_scores SET games = games + 1,"
+        " wins = wins + ?, losses = losses + ?, seasons = seasons + ?,"
+        " best_w = ?, best_l = ?,"
+        " biggest_win = MAX(biggest_win, ?), longest_td = MAX(longest_td, ?),"
+        " most_points = MAX(most_points, ?), updated_at = ?"
+        " WHERE user_id = ?",
+        (1 if us > them else 0, 1 if us < them else 0, 1 if done else 0,
+         best_w, best_l, margin, longest, us, now_utc_iso(), uid))
+    db.commit()
+    return {"ok": True}
+
+
+@app.route("/bowl/leaderboard")
+@login_required
+def bowl_leaderboard():
+    rows = get_db().execute(
+        "SELECT b.*, u.handle FROM bowl_scores b JOIN users u ON u.id = b.user_id"
+        " WHERE b.games > 0"
+        " ORDER BY b.best_w DESC, b.best_l ASC, b.wins DESC, b.games ASC").fetchall()
+    return render_template("bowl_leaderboard.html", rows=rows)
+
+
 @app.route("/settings")
 def settings():
     # Every control here is a per-device browser preference (theme, text

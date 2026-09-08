@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Victard Bowl leaderboard - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>&#127944; Victard Bowl</h2>
+  <p class="hint"><a href="{{ url_for('bowl') }}">&laquo; Back to the game</a></p>
+
+  {% if rows %}
+  <table class="admin-table user-table">
+    <tr>
+      <th></th><th>Poster</th><th>Best season</th><th>Record</th>
+      <th>Biggest win</th><th>Longest</th><th>Most points</th>
+    </tr>
+    {% for r in rows %}
+    <tr>
+      <td class="bowl-rank">{{ loop.index }}</td>
+      <td><b>{{ r['handle'] }}</b>
+        {%- if r['best_l'] == 0 and r['best_w'] >= 1 %} &#127942;{% endif %}</td>
+      <td>{% if r['seasons'] %}<b>{{ r['best_w'] }}-{{ r['best_l'] }}</b>
+        <span class="hint">({{ r['seasons'] }} season{{ '' if r['seasons'] == 1 else 's' }})</span>
+        {% else %}<span class="hint">in progress</span>{% endif %}</td>
+      <td>{{ r['wins'] }}-{{ r['losses'] }}
+        <span class="hint">({{ r['games'] }} game{{ '' if r['games'] == 1 else 's' }})</span></td>
+      <td>{% if r['biggest_win'] %}by {{ r['biggest_win'] }}{% else %}&mdash;{% endif %}</td>
+      <td>{% if r['longest_td'] %}{{ r['longest_td'] }} yds{% else %}&mdash;{% endif %}</td>
+      <td>{{ r['most_points'] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>Nobody has finished a game yet.
+    <a href="{{ url_for('bowl') }}">Be the first.</a></p>
+  {% endif %}
+</div>
+{% endblock %}

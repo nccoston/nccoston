@@ -107,3 +107,19 @@ CREATE TABLE IF NOT EXISTS game_picks (
     created_at TEXT NOT NULL,
     UNIQUE(game_id, user_id)   -- one pick per member, changeable until final
 );
+
+-- Victard Bowl: one row per member, holding their bests. Written by the
+-- game after each game; read by /bowl/leaderboard.
+CREATE TABLE IF NOT EXISTS bowl_scores (
+    user_id     INTEGER PRIMARY KEY REFERENCES users(id),
+    games       INTEGER NOT NULL DEFAULT 0,
+    wins        INTEGER NOT NULL DEFAULT 0,
+    losses      INTEGER NOT NULL DEFAULT 0,
+    seasons     INTEGER NOT NULL DEFAULT 0,
+    best_w      INTEGER NOT NULL DEFAULT 0,   -- best completed season
+    best_l      INTEGER NOT NULL DEFAULT 0,
+    biggest_win INTEGER NOT NULL DEFAULT 0,   -- margin, in points
+    longest_td  INTEGER NOT NULL DEFAULT 0,   -- longest gain, in yards
+    most_points INTEGER NOT NULL DEFAULT 0,   -- most scored in one game
+    updated_at  TEXT NOT NULL
+);
