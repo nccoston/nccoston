@@ -576,20 +576,35 @@
   var fieldCanvas = null;
 
   function blockM(g, cx, cy, size, fill, edge) {
-    // Drawn as one thick stroked polyline — two uprights and the V between
-    // them — so the strokes stay even and the corners stay sharp at any
-    // size. A pixel grid at this scale just crumbles.
-    var w = size, h = size * 0.95;
-    var x0 = cx - w / 2, y0 = cy - h / 2;
-    function P(fx, fy) { return [x0 + fx * w, y0 + fy * h]; }
-    var pts = [P(0.14, 1.0), P(0.14, 0.0), P(0.5, 0.58), P(0.86, 0.0), P(0.86, 1.0)];
+    // The letterform as an explicit outline, traced clockwise. Stroking a
+    // polyline can't do this: the uprights need flat tops and truly
+    // vertical outer edges, and the counters have to open downward to the
+    // baseline. Twelve points, in a unit box, y down.
+    var P = [
+      [0.00, 0.00],   // top-left
+      [0.42, 0.00],   // top edge across the left upright and its diagonal
+      [0.50, 0.42],   // down into the notch — inner point of the V
+      [0.58, 0.00],   // back up out of the notch
+      [1.00, 0.00],   // top edge, right half
+      [1.00, 1.00],   // down the right outer edge
+      [0.75, 1.00],   // right foot
+      [0.75, 0.00],   // up the right upright's inner edge
+      [0.50, 0.78],   // down the right diagonal — the point of the V
+      [0.25, 0.00],   // up the left diagonal
+      [0.25, 1.00],   // down the left upright's inner edge
+      [0.00, 1.00]    // left foot
+    ];
+    var x0 = cx - size / 2, y0 = cy - size / 2;
     g.save();
-    g.lineJoin = "miter"; g.miterLimit = 3; g.lineCap = "butt";
     g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
-    g.strokeStyle = edge; g.lineWidth = size * 0.30; g.stroke();
-    g.strokeStyle = fill; g.lineWidth = size * 0.21; g.stroke();
+    for (var i = 0; i < P.length; i++) {
+      var X = x0 + P[i][0] * size, Y = y0 + P[i][1] * size;
+      if (i === 0) g.moveTo(X, Y); else g.lineTo(X, Y);
+    }
+    g.closePath();
+    g.lineJoin = "round"; g.lineCap = "round";
+    g.strokeStyle = edge; g.lineWidth = Math.max(1.5, size * 0.085); g.stroke();
+    g.fillStyle = fill; g.fill();
     g.restore();
   }
 
@@ -684,7 +699,7 @@
     endzone(g, yardToPx(-10), 10 * PX, BLUE, "MICHIGAN", false);
     endzone(g, yardToPx(100), 10 * PX, oppColor, (opp.name || "OPP").toUpperCase().slice(0, 11), true);
 
-    blockM(g, yardToPx(50), (FIELD_TOP + FIELD_BOT) / 2, 36, "rgba(255,203,5,0.62)", "rgba(0,18,42,0.5)");
+    blockM(g, yardToPx(50), (FIELD_TOP + FIELD_BOT) / 2, 40, "rgba(255,203,5,0.66)", "rgba(0,18,42,0.55)");
 
     // yard lines
     for (var y2 = 0; y2 <= 100; y2 += 5) {
