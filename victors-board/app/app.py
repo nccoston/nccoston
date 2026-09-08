@@ -13,7 +13,10 @@ The FIRST account registered automatically becomes an admin.
 """
 
 import hashlib
+import json
+import math
 import os
+import random
 import re
 import sqlite3
 import secrets
@@ -230,6 +233,7 @@ def admin_required(f):
 # ---------------------------------------------------------- template helpers
 
 from postmarkup import render_post
+from stadiums import load as load_stadiums
 
 
 @app.template_filter("boardtime")
@@ -1852,6 +1856,69 @@ def bowl_score():
     return {"ok": True}
 
 
+# ---------------------------------------------------------------- stadiums
+# Guess where a college football stadium is. Five rounds, a photo each, you
+# drop a pin on the lower 48 and score by how close you got.
+#
+# Every round is graded on the server. The browser is never told which
+# stadium it is looking at until after the guess is in, and the game state
+# lives in this process keyed by a random token — the answers are not in a
+# cookie, where a curious member could read them straight out of the jar.
+# Same single-worker assumption the chat and scoreboard caches already make.
+STADIUM_GAMES = {}
+STADIUM_LOCK = threading.Lock()
+STADIUM_ROUNDS = 5
+STADIUM_BULLSEYE = 25.0          # miles; close enough to call it a hit
+PHOTO_DIR = DATA_DIR / "stadium_photos"
+
+
+def stadium_photos():
+    """Which stadiums we have a picture for: key -> {file, credit, ...}.
+
+    Written by the admin fetch below and read on every round, so it is
+    cached until the file changes.
+    """
+    idx = PHOTO_DIR / "index.json"
+    try:
+        stamp = idx.stat().st_mtime
+    except OSError:
+        return {}
+    if PHOTO_CACHE.get("at") != stamp:
+        try:
+            PHOTO_CACHE["data"] = json.loads(idx.read_text())
+            PHOTO_CACHE["at"] = stamp
+        except (OSError, ValueError):
+            return PHOTO_CACHE.get("data") or {}
+    return PHOTO_CACHE.get("data") or {}
+
+
+PHOTO_CACHE = {"at": None, "data": {}}
+
+
+def stadium_key(s):
+    return s["team"].lower().replace(" ", "-").replace("(", "").replace(")", "")
+
+
+def haversine_miles(lat1, lon1, lat2, lon2):
+    p = math.pi / 180
+    h = (math.sin((lat2 - lat1) * p / 2) ** 2
+         + math.cos(lat1 * p) * math.cos(lat2 * p)
+         * math.sin((lon2 - lon1) * p / 2) ** 2)
+    return 7917.5 * math.asin(min(1.0, math.sqrt(h)))
+
+
+def stadium_points(miles):
+    """5000 for a bullseye, falling away fast. Tuned for a country-sized
+    map: 100 miles still scores well, 600 miles barely registers."""
+    return int(round(5000 * math.exp(-miles / 250.0)))
+
+
+def _prune_stadium_games():
+    cutoff = time.time() - 7200
+    for tok in [t for t, g in STADIUM_GAMES.items() if g["at"] < cutoff]:
+        STADIUM_GAMES.pop(tok, None)
+
+
 BOWL_LOCK = threading.Lock()
 
 
@@ -2317,6 +2384,140 @@ def admin_users():
     users = db.execute("SELECT * FROM users WHERE password_hash != '!'"
                        " ORDER BY handle COLLATE NOCASE").fetchall()
     return render_template("admin_users.html", admin_nav=_admin_nav(), users=users)
+
+
+@app.route("/games")
+@login_required
+def games():
+    have = len(stadium_photos())
+    return render_template("games.html", stadium_ready=have >= STADIUM_ROUNDS,
+                           stadium_count=have)
+
+
+@app.route("/games/stadiums")
+@login_required
+def stadium_game():
+    db = get_db()
+    uid = current_user()["id"]
+    now = now_utc_iso()
+    db.execute("INSERT OR IGNORE INTO stadium_scores (user_id, updated_at)"
+               " VALUES (?, ?)", (uid, now))
+    db.execute("UPDATE stadium_scores SET opens = opens + 1,"
+               " first_at = COALESCE(first_at, ?), last_at = ?"
+               " WHERE user_id = ?", (now, now, uid))
+    db.commit()
+    photos = stadium_photos()
+    return render_template("stadium_game.html",
+                           ready=len(photos) >= STADIUM_ROUNDS,
+                           have=len(photos), rounds=STADIUM_ROUNDS)
+
+
+@app.route("/games/stadiums/start", methods=["POST"])
+@login_required
+def stadium_start():
+    photos = stadium_photos()
+    pool = [s for s in load_stadiums() if stadium_key(s) in photos]
+    if len(pool) < STADIUM_ROUNDS:
+        return {"error": "no photos yet"}, 503
+    picks = random.sample(pool, STADIUM_ROUNDS)
+    token = secrets.token_urlsafe(18)
+    with STADIUM_LOCK:
+        _prune_stadium_games()
+        STADIUM_GAMES[token] = {"picks": picks, "i": 0, "rounds": [],
+                                "uid": current_user()["id"], "at": time.time()}
+    return {"token": token, "round": 1, "of": STADIUM_ROUNDS,
+            "photo": _photo_payload(picks[0], photos)}
+
+
+def _photo_payload(s, photos):
+    """What the browser gets before the guess: a picture and a credit, and
+    nothing that names the place. The file is a random hex string precisely
+    so the URL cannot give the answer away."""
+    p = photos[stadium_key(s)]
+    return {"url": url_for("stadium_photo", filename=p["file"]),
+            "credit": p.get("credit") or "", "license": p.get("license") or "",
+            "source": p.get("source") or ""}
+
+
+@app.route("/games/stadiums/photo/<path:filename>")
+@login_required
+def stadium_photo(filename):
+    return send_from_directory(PHOTO_DIR, filename)
+
+
+@app.route("/games/stadiums/guess", methods=["POST"])
+@login_required
+def stadium_guess():
+    d = request.get_json(silent=True) or {}
+    token = d.get("token") or ""
+    with STADIUM_LOCK:
+        game = STADIUM_GAMES.get(token)
+        if not game or game["uid"] != current_user()["id"]:
+            return {"error": "expired"}, 410
+        if game["i"] >= STADIUM_ROUNDS:
+            return {"error": "finished"}, 409
+        try:
+            lat = float(d.get("lat"))
+            lon = float(d.get("lon"))
+        except (TypeError, ValueError):
+            return {"error": "bad guess"}, 400
+        if not (15 <= lat <= 60) or not (-140 <= lon <= -55):
+            return {"error": "bad guess"}, 400
+        s = game["picks"][game["i"]]
+        miles = haversine_miles(lat, lon, s["lat"], s["lon"])
+        points = stadium_points(miles)
+        game["rounds"].append({"miles": miles, "points": points})
+        game["i"] += 1
+        game["at"] = time.time()
+        done = game["i"] >= STADIUM_ROUNDS
+        total = sum(r["points"] for r in game["rounds"])
+        photos = stadium_photos()
+        out = {
+            "answer": {"team": s["team"], "stadium": s["stadium"],
+                       "city": s["city"], "state": s["state"],
+                       "lat": s["lat"], "lon": s["lon"]},
+            "miles": round(miles, 1), "points": points, "total": total,
+            "round": game["i"], "of": STADIUM_ROUNDS, "done": done,
+        }
+        if not done:
+            out["next"] = _photo_payload(game["picks"][game["i"]], photos)
+        else:
+            STADIUM_GAMES.pop(token, None)
+    if done:
+        out["best"] = _record_stadium_game(game)
+    return out
+
+
+def _record_stadium_game(game):
+    """Write the finished game down. Bests only ever improve."""
+    db = get_db()
+    uid = game["uid"]
+    total = sum(r["points"] for r in game["rounds"])
+    closest = min(r["miles"] for r in game["rounds"])
+    hits = sum(1 for r in game["rounds"] if r["miles"] <= STADIUM_BULLSEYE)
+    now = now_utc_iso()
+    db.execute("INSERT OR IGNORE INTO stadium_scores (user_id, updated_at)"
+               " VALUES (?, ?)", (uid, now))
+    db.execute(
+        "UPDATE stadium_scores SET games = games + 1, rounds = rounds + ?,"
+        " best = MAX(best, ?), total = total + ?, bullseyes = bullseyes + ?,"
+        " closest = CASE WHEN closest IS NULL OR closest > ? THEN ? ELSE closest END,"
+        " last_at = ?, updated_at = ? WHERE user_id = ?",
+        (len(game["rounds"]), total, total, hits, closest, closest, now, now, uid))
+    db.commit()
+    row = db.execute("SELECT best FROM stadium_scores WHERE user_id = ?",
+                     (uid,)).fetchone()
+    return row["best"] if row else total
+
+
+@app.route("/games/stadiums/leaderboard")
+@login_required
+def stadium_leaderboard():
+    rows = get_db().execute(
+        "SELECT s.*, u.handle FROM stadium_scores s JOIN users u ON u.id = s.user_id"
+        " WHERE s.games > 0 ORDER BY s.best DESC, s.closest ASC").fetchall()
+    return render_template("stadium_leaderboard.html", rows=rows,
+                           rounds=STADIUM_ROUNDS)
 
 
 @app.route("/admin/bowl")

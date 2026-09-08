@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Stadium Guesser leaderboard - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>&#127943; Stadium Guesser</h2>
+  <p class="hint"><a href="{{ url_for('stadium_game') }}">&laquo; Back to the game</a>
+    &middot; <a href="{{ url_for('games') }}">All games</a></p>
+
+  {% if rows %}
+  <table class="admin-table user-table">
+    <tr>
+      <th></th><th>Poster</th><th>Best round of {{ rounds }}</th>
+      <th>Closest ever</th><th>Bullseyes</th><th>Games</th><th>Average</th>
+    </tr>
+    {% for r in rows %}
+    <tr>
+      <td class="bowl-rank">{{ loop.index }}</td>
+      <td><b>{{ r['handle'] }}</b></td>
+      <td><b>{{ '{:,}'.format(r['best']) }}</b>
+        <span class="hint">of {{ '{:,}'.format(rounds * 5000) }}</span></td>
+      <td>{% if r['closest'] is not none %}
+        {{ '%.1f'|format(r['closest']) }} mi{% else %}&mdash;{% endif %}</td>
+      <td>{{ r['bullseyes'] }}</td>
+      <td>{{ r['games'] }}</td>
+      <td>{% if r['rounds'] %}{{ '{:,}'.format((r['total'] // r['rounds'])) }}
+        <span class="hint">per round</span>{% else %}&mdash;{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="hint">A bullseye is a guess inside 25 miles.</p>
+  {% else %}
+  <p>Nobody has finished a game yet.
+    <a href="{{ url_for('stadium_game') }}">Be the first.</a></p>
+  {% endif %}
+</div>
+{% endblock %}

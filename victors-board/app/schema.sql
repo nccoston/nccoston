@@ -129,3 +129,20 @@ CREATE TABLE IF NOT EXISTS bowl_scores (
     first_at    TEXT,                          -- first time they opened it
     last_at     TEXT                           -- last open or finished game
 );
+
+-- Stadium Guesser: one row per member. Unlike the Bowl, whose season lives
+-- in the browser, every round here is scored on the server, so this is the
+-- only copy — the same account plays the same career from any device.
+CREATE TABLE IF NOT EXISTS stadium_scores (
+    user_id    INTEGER PRIMARY KEY REFERENCES users(id),
+    games      INTEGER NOT NULL DEFAULT 0,
+    rounds     INTEGER NOT NULL DEFAULT 0,
+    best       INTEGER NOT NULL DEFAULT 0,   -- best 5-round total, of 25000
+    total      INTEGER NOT NULL DEFAULT 0,   -- points across every round
+    closest    REAL,                         -- nearest guess ever, in miles
+    bullseyes  INTEGER NOT NULL DEFAULT 0,   -- rounds inside 25 miles
+    opens      INTEGER NOT NULL DEFAULT 0,
+    first_at   TEXT,
+    last_at    TEXT,
+    updated_at TEXT NOT NULL
+);

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Stadium Guesser - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box sg-box">
+  <h2>&#127943; Stadium Guesser</h2>
+
+  {% if not ready %}
+  <p>This one isn't loaded yet &mdash; there are {{ have }} stadium
+    photo{{ '' if have == 1 else 's' }} on the board and it needs at least
+    {{ rounds }}.</p>
+  <p class="hint">An admin can pull them in from Admin &rarr; Games.</p>
+  <p class="hint"><a href="{{ url_for('games') }}">&laquo; Back to the games</a></p>
+  {% else %}
+
+  <div id="sg" class="sg" data-map="{{ url_for('static', filename='usmap.json') }}">
+    <p class="sg-status">Loading the map&hellip;</p>
+  </div>
+
+  <p class="hint"><a href="{{ url_for('stadium_leaderboard') }}">Leaderboard</a>
+    &middot; <a href="{{ url_for('games') }}">All games</a></p>
+  {% endif %}
+</div>
+
+{% if ready %}
+<script src="{{ url_for('static', filename='stadiums.js') }}"></script>
+{% endif %}
+{% endblock %}
