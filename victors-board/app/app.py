@@ -105,6 +105,10 @@ DEFAULT_SETTINGS = {
     "podcast_channel_id": "UCHqmAEJVsfJizpN8wHLI05Q",
     # Blue By Ninety hosts several shows; only this one is ours
     "podcast_title_filter": "Michigan Weekly",
+    # danny asked for a clock on it, Nikos said sure. Blank the date to
+    # take it down; it takes itself down a week after it runs out.
+    "countdown_at": "2027-04-09",
+    "countdown_label": "Probation ends",
     "header_html": (
         "<b>Rules:</b>"
         "<ol>"
@@ -298,6 +302,29 @@ FLAG_FILE = APP_DIR / "static" / "goblu-banner.gif"   # waving M, game day only
 SONG_FILE = APP_DIR / "static" / "victors.mp3"        # fight song, game day only
 
 
+def board_countdown():
+    """The header clock: a date, a label, and the seconds left to it.
+
+    The browser does the ticking, but the remaining time is worked out here
+    so it does not matter what a member's device thinks the time is.
+    """
+    raw = (get_setting("countdown_at") or "").strip()
+    if not raw:
+        return None
+    try:
+        when = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if when.tzinfo is None:               # a bare date means midnight, board time
+        when = when.replace(tzinfo=BOARD_TZ)
+    left = (when - datetime.now(timezone.utc)).total_seconds()
+    if left < -7 * 86400:                 # a week after it lands, it goes away
+        return None
+    return {"label": (get_setting("countdown_label") or "").strip(),
+            "seconds": int(left),
+            "when": when.strftime("%B %-d, %Y").replace(" 0", " ")}
+
+
 @app.context_processor
 def inject_globals():
     pinned = get_db().execute(
@@ -308,6 +335,7 @@ def inject_globals():
         "site_title": get_setting("site_title"),
         "header_html": get_setting("header_html"),
         "links_html": get_setting("links_html"),
+        "countdown": board_countdown(),
         "has_flag": FLAG_FILE.exists(),
         "has_song": SONG_FILE.exists(),
         "pinned_threads": pinned,
@@ -2647,6 +2675,17 @@ def _admin_post(db):
                     request.form.get("podcast_channel_id", "").strip())
         set_setting("podcast_title_filter",
                     request.form.get("podcast_title_filter", "").strip())
+        when = request.form.get("countdown_at", "").strip()
+        if when:
+            try:
+                datetime.fromisoformat(when)
+            except ValueError:
+                flash("That countdown date isn't a date I can read — try "
+                      "2027-04-09, or leave it blank to take the clock down.")
+                when = get_setting("countdown_at") or ""
+        set_setting("countdown_at", when)
+        set_setting("countdown_label",
+                    request.form.get("countdown_label", "").strip())
         flash("Settings saved.")
     elif action == "create_user":
         handle = request.form.get("handle", "").strip()
@@ -2764,6 +2803,8 @@ def admin_settings():
                            hof_threshold=get_setting("hof_threshold"),
                            podcast_channel_id=get_setting("podcast_channel_id"),
                            podcast_title_filter=get_setting("podcast_title_filter"),
+                           countdown_at=get_setting("countdown_at"),
+                           countdown_label=get_setting("countdown_label"),
                            registration_open=get_setting("registration_open") == "1")
 
 

@@ -33,6 +33,16 @@
       shows; only titles containing this count. Blank = whole channel)</span>
       <input type="text" name="podcast_title_filter" value="{{ podcast_title_filter }}">
     </label>
+    <label>Countdown date <span class="hint">(YYYY-MM-DD, board time. Blank
+      takes the clock out of the header; it clears itself a week after it
+      runs out)</span>
+      <input type="text" name="countdown_at" value="{{ countdown_at }}"
+             placeholder="2027-04-09">
+    </label>
+    <label>Countdown label
+      <input type="text" name="countdown_label" value="{{ countdown_label }}"
+             placeholder="Probation ends">
+    </label>
     <button type="submit">Save settings</button>
   </form>
 </div>

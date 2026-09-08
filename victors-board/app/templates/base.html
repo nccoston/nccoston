@@ -42,6 +42,14 @@
 
 <h1 class="board-title"><a href="{{ url_for('index', board_name='main') }}">{{ site_title }}</a></h1>
 
+{% if countdown %}
+<p class="countdown" id="countdown" data-left="{{ countdown.seconds }}"
+   title="{{ countdown.when }}">
+  <span class="countdown-label">{{ countdown.label }}</span>
+  <span class="countdown-clock">&hellip;</span>
+</p>
+{% endif %}
+
 <p class="links-row">{{ links_html | safe }} ||
   <span class="nb"><a href="{{ url_for('index', board_name='scores') }}">Scores</a> ||
   <a href="{{ url_for('index', board_name='cards') }}">Cards</a> ||
@@ -82,6 +90,30 @@
 <p class="footer">Self-hosted <span id="goblue-egg">by</span> Nick Coston &middot;
   <a href="{{ url_for('rss') }}">RSS</a> &middot;
   <a href="{{ url_for('stats') }}">Stats</a></p>
+<script>
+// the header clock. The server hands over the seconds remaining, so a
+// device with the wrong time still shows everyone the same number.
+(function () {
+  var box = document.getElementById("countdown");
+  if (!box) return;
+  var face = box.querySelector(".countdown-clock");
+  var left = parseInt(box.getAttribute("data-left"), 10);
+  var started = Date.now();
+  function tick() {
+    var s = left - Math.floor((Date.now() - started) / 1000);
+    if (s <= 0) {
+      box.classList.add("countdown-done");
+      face.textContent = "\u2014 time served.";
+      return;
+    }
+    var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600);
+    var m = Math.floor(s % 3600 / 60), sec = s % 60;
+    face.textContent = d.toLocaleString() + "d " + h + "h " + m + "m " + sec + "s";
+    setTimeout(tick, 1000 - (Date.now() % 1000));
+  }
+  tick();
+})();
+</script>
 <script>
 // the third theme. you either know or you don't.
 (function () {
