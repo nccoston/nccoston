@@ -230,7 +230,8 @@
       var team = side === "off" ? offUniform() : defUniform();
       var p = { team: team, side: side, role: role, x: x, y: y, vx: 0, vy: 0, spd: spd,
                 anim: Math.random() * 10, engaged: 0, stun: 0, route: null, t: 0,
-                mark: null, zone: null, home: null, block: null, blockT: 0, held: 0, holdMax: 0 };
+                mark: null, zone: null, home: null, block: null, blockT: 0, held: 0, holdMax: 0,
+                guard: null };
       players.push(p); return p;
     }
     // offense (Michigan, drives left -> right)
@@ -249,12 +250,25 @@
     var dls = [];
     for (var j = 0; j < 4; j++) dls.push(P("def", "DL", los + 5 + (j % 2) * 1.5, fieldY(0.355 + j * 0.1), 38));
     var lbs = [P("def", "LB", los + 28, fieldY(0.38), 46), P("def", "LB", los + 28, fieldY(0.62), 46)];
-    // blocking assignments: four linemen on the four down linemen; the
-    // fifth pulls to a linebacker on runs (the lane) or doubles on passes
+    myDef = weHaveBall() ? null
+          : lbs.reduce(function (a, b) {          // you start on a linebacker
+              return Math.abs(a.y - H / 2) < Math.abs(b.y - H / 2) ? a : b; });
+    // blocking assignments: four linemen on the four down linemen; the fifth
+    // pulls to a linebacker on runs (the lane). On a pass he picks up the man
+    // you're steering — your blitz has to beat a block like anyone else's
     for (var b = 0; b < 4; b++) { ols[b].block = dls[b]; }
-    ols[4].block = play.type === "run"
-      ? (play.dir && play.dir[1] < 0 ? lbs[0] : lbs[1])
-      : dls[1];
+    if (play.type === "run") {
+      ols[4].block = play.dir && play.dir[1] < 0 ? lbs[0] : lbs[1];
+    } else if (myDef) {
+      // he doesn't chase the blitz from the line — nobody catches a
+      // linebacker that way. He sets up in front of the quarterback, on
+      // your side, and meets you coming
+      ols[4].block = myDef; ols[4].guard = qb;
+      ols[4].x = qb.x + 13;
+      ols[4].y = qb.y + (myDef.y - qb.y) * 0.5;
+    } else {
+      ols[4].block = dls[1];
+    }
     ols.forEach(function (o) {
       o.holdMax = rnd(1.8, 3.4) * (1.2 - oppRating * 0.5);   // how long the block holds
       o.held = 0;
@@ -269,9 +283,6 @@
     carrier = qb;
     // how long their quarterback holds it — better teams wait for a read
     G.qbClock = rnd(1.3, 2.4) + oppRating * 0.5;
-    myDef = weHaveBall() ? null
-          : lbs.reduce(function (a, b) {          // you start on a linebacker
-              return Math.abs(a.y - H / 2) < Math.abs(b.y - H / 2) ? a : b; });
   }
   function snapBall() {
     if (G.mode !== "presnap") return;
@@ -307,8 +318,9 @@
     }
     return sim;
   }
+  // whoever is on offense this snap — not whoever is wearing maize
   function receivers() {
-    return players.filter(function (q) { return q.team === "M" && (q.role === "WR" || q.role === "RB") && q.route && q.route !== "block"; });
+    return players.filter(function (q) { return q.side === "off" && (q.role === "WR" || q.role === "RB") && q.route && q.route !== "block"; });
   }
 
   // ------------------------------------------------------------ simulation
@@ -350,7 +362,11 @@
       } else if (p.role === "OL") {
         var t = p.block;
         if (t && p.held < p.holdMax) {
-          if (dist(p, t) > 6) stepToward(p, t, p.spd, dt);
+          // a guard protecting the pocket takes the angle, not the man
+          var spot = p.guard
+            ? { x: p.guard.x + (t.x - p.guard.x) * 0.4, y: p.guard.y + (t.y - p.guard.y) * 0.4 }
+            : t;
+          if (dist(p, t) > 6) stepToward(p, spot, p.spd, dt);
           else { t.blockT = 0.2; p.held += dt; p.x = t.x - 5; p.y += (t.y - p.y) * 0.5; }
         }
       }
@@ -380,8 +396,11 @@
       if (d.side !== "def") return;
       if (d.stun > 0) { d.stun -= dt; return; }
       if (d === myDef) {                      // this one is yours
-        moveDefender(d, dt);
+        var engaged = d.blockT > 0;           // a lineman has hold of you
+        if (engaged) d.blockT -= dt;
+        moveDefender(d, dt, engaged ? 0.45 : 1);
         d.y = clamp(d.y, FIELD_TOP + 2, FIELD_BOT - 2);
+        if (engaged) return;                  // you can't make the play from there
         if (carrier && !ball.flying && dist(d, carrier) < TACKLE_R && carrier !== qb) endPlay("tackle");
         else if (carrier === qb && !ball.flying && dist(d, carrier) < TACKLE_R) endPlay("sack");
         return;
@@ -471,7 +490,8 @@
       });
       if (sep > bestSep) { bestSep = sep; best = { p: r, x: pr.x, y: pr.y }; }
     });
-    if (best && bestSep > 9) throwBall(best.x, best.y, best.p);
+    // he wants a window, but he won't stand there all afternoon waiting for one
+    if (best && (bestSep > 7 || playT > G.qbClock + 1.6)) throwBall(best.x, best.y, best.p);
     else G.qbClock = playT + 0.4;          // nobody open; hold it a beat
   }
 
@@ -492,17 +512,28 @@
     return { x: Math.sqrt(Math.max(0.05, 1 - dy * dy)), y: dy };
   }
 
-  // your defender: steered by drag, and he keeps moving when you let go
-  function moveDefender(p, dt) {
+  // your defender: steered by drag, and he keeps moving when you let go.
+  // he runs faster than his rating — a linebacker you're actually steering
+  // has to be able to run a receiver down, or defense is just watching
+  var MY_DEF_BOOST = 1.4;
+  function moveDefender(p, dt, scale) {
+    var spd = p.spd * MY_DEF_BOOST * (scale === undefined ? 1 : scale);
     var vx = 0, vy = 0;
     if (steer) {
       var dx = steer.x - steer.x0, dy2 = steer.y - steer.y0;
       var d = Math.sqrt(dx * dx + dy2 * dy2);
-      if (d > 4) { vx = dx / d * p.spd; vy = dy2 / d * p.spd; }
-    } else if (carrier && carrier !== qb) {
-      var t = carrier, ddx = t.x - p.x, ddy = t.y - p.y;
-      var dd = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
-      vx = ddx / dd * p.spd * 0.55; vy = ddy / dd * p.spd * 0.55;   // drift at the play
+      if (d > 4) { vx = dx / d * spd; vy = dy2 / d * spd; }
+    } else {
+      // hands off: he flows to the ball on his own, at three-quarter speed.
+      // he will not rush the passer unattended — that's your call to make
+      var t = (carrier && carrier !== qb) ? carrier
+            : ball.flying ? { x: ball.tx, y: ball.ty }
+            : p.zone || null;
+      if (t) {
+        var ddx = t.x - p.x, ddy = t.y - p.y;
+        var dd = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+        if (dd > 3) { vx = ddx / dd * spd * 0.7; vy = ddy / dd * spd * 0.7; }
+      }
     }
     p.x += vx * dt; p.y += vy * dt;
     if (vx || vy) p.anim += dt * 10;
@@ -528,7 +559,8 @@
 
   function throwBall(tx, ty, target) {
     if (!qb || carrier !== qb || ball.flying) return;
-    ball.target = target || null; ball.reacted = false; G.stats.att++;
+    ball.target = target || null; ball.reacted = false;
+    if (weHaveBall()) G.stats.att++;
     tx = clamp(tx, qb.x - 10, yardToPx(112)); ty = clamp(ty, FIELD_TOP + 1, FIELD_BOT - 1);
     var d = dist(qb, { x: tx, y: ty });
     ball.flying = true; ball.holder = null; carrier = null;
@@ -540,8 +572,8 @@
     var land = { x: ball.tx, y: ball.ty };
     var rcv = null, rd = 1e9, def = null, dd = 1e9;
     players.forEach(function (p) {
-      if (p.team === "M" && (p.role === "WR" || p.role === "RB")) { var q = dist(p, land); if (q < rd) { rd = q; rcv = p; } }
-      if (p.team === "O") { var q2 = dist(p, land); if (q2 < dd) { dd = q2; def = p; } }
+      if (p.side === "off" && (p.role === "WR" || p.role === "RB")) { var q = dist(p, land); if (q < rd) { rd = q; rcv = p; } }
+      if (p.side === "def") { var q2 = dist(p, land); if (q2 < dd) { dd = q2; def = p; } }
     });
     if (rcv && rd < CATCH_R) {
       var r = Math.random();
@@ -550,7 +582,8 @@
       if (r < pInt) { endPlay("int", land); return; }
       if (r < pInt + pInc) { endPlay("incomplete"); return; }
       carrier = rcv; ball.holder = rcv; rcv.route = null;
-      G.stats.comp++; G.banner = "CAUGHT"; G.bannerT = 0.5;
+      if (weHaveBall()) G.stats.comp++;
+      G.banner = weHaveBall() ? "CAUGHT" : "COMPLETE"; G.bannerT = 0.5;
     } else if (def && dd < 4 && Math.random() < 0.2) {
       endPlay("int", land);
     } else endPlay("incomplete");
@@ -1027,12 +1060,12 @@
     var x = p.x - camX, y = p.y;
     if (p.skin === undefined) p.skin = Math.floor(Math.random() * SKINS.length);
     // facing: carriers by motion, otherwise offense right / defense left
-    var faceRight = p.team === "M";
+    var faceRight = p.side === "off";
     if (p === carrier && steer) {
       var sdx = steer.x - steer.x0;
       if (Math.abs(sdx) > 4) faceRight = sdx > 0;
     }
-    var moving = (p === carrier) || p.team === "O" || (p.route && G.mode === "play");
+    var moving = (p === carrier) || p.side === "def" || (p.route && G.mode === "play");
     var frame = moving ? RUN_CYCLE[Math.floor(p.anim) % 4] : 0;
     // shadow, cast to the low right
     ctx.save();
@@ -1315,7 +1348,7 @@
     ctx.save();
     ctx.beginPath(); ctx.rect(0, FIELD_TOP, W, FIELD_BOT - FIELD_TOP); ctx.clip();
     players.forEach(function (p) {
-      if (p.team !== "M" || !p.route || p.route === "block") return;
+      if (p.side !== "off" || !p.route || p.route === "block") return;
       var sim = { x: p.x, y: p.y, spd: p.spd, route: p.route, home: p.home };
       var pts = [{ x: sim.x, y: sim.y }];
       for (var t = 0; t < 1.7; t += 0.1) {
@@ -1397,7 +1430,9 @@
     if (G.mode === "presnap") { if (pt.y > FIELD_TOP && pt.y < FIELD_BOT) snapBall(); return; }
     if (G.mode !== "play") return;
     down = true;
-    if (carrier === qb && isPass()) aim = { x0: pt.x, y0: pt.y, x: pt.x + camX, y: pt.y };
+    // you only ever throw the ball when it's YOUR ball; on defense a drag
+    // always steers your defender, even while their quarterback is back there
+    if (weHaveBall() && carrier === qb && isPass()) aim = { x0: pt.x, y0: pt.y, x: pt.x + camX, y: pt.y };
     else steer = { x0: pt.x, y0: pt.y, x: pt.x, y: pt.y };
   }
   function onMove(e) {
@@ -1418,12 +1453,12 @@
       });
       if (best) { aim.snap = best.p; aim.x = best.x; aim.y = best.y; }
     } else if (steer) { steer.x = pt.x; steer.y = pt.y; }
-    else if (carrier && carrier !== qb) steer = { x0: pt.x, y0: pt.y, x: pt.x, y: pt.y };
+    else if (!weHaveBall() || (carrier && carrier !== qb)) steer = { x0: pt.x, y0: pt.y, x: pt.x, y: pt.y };
   }
   function onUp(e) {
     if (!down) return;
     down = false;
-    if (aim && carrier === qb) {
+    if (aim && carrier === qb && weHaveBall()) {
       var dx = aim.x - qb.x, dy = aim.y - qb.y;
       if (Math.sqrt(dx * dx + dy * dy) > 8) throwBall(aim.x, aim.y, aim.snap);
     }
@@ -1466,6 +1501,7 @@
   }
   window.__bowl = G;   // read-only peek for playtests
   window.__bowlTeam = { key: teamKey, color: colorFor, rating: ratingFor, opp: { color: oppColor, rating: oppRating } };
-  window.__bowlPeek = function () { return { players: players, qb: qb, camX: camX, carrier: carrier, mode: G.mode, playT: playT, myDef: myDef, offered: offered.map(function (o) { return o.name; }) }; };
+  window.__bowlPeek = function () { return { players: players, qb: qb, camX: camX, carrier: carrier, mode: G.mode, playT: playT, myDef: myDef, aim: aim, steer: steer, ball: ball, ballFlying: !!(ball && ball.flying), offered: offered.map(function (o) { return o.name; }) }; };
+  window.__bowlEnter = enterPresnap;   // playtests: line them up from a set state
   requestAnimationFrame(frame);
 })();
