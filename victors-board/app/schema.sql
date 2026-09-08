@@ -121,5 +121,11 @@ CREATE TABLE IF NOT EXISTS bowl_scores (
     biggest_win INTEGER NOT NULL DEFAULT 0,   -- margin, in points
     longest_td  INTEGER NOT NULL DEFAULT 0,   -- longest gain, in yards
     most_points INTEGER NOT NULL DEFAULT 0,   -- most scored in one game
-    updated_at  TEXT NOT NULL
+    updated_at  TEXT NOT NULL,
+    -- a row exists as soon as somebody OPENS the game, with games = 0.
+    -- The leaderboard and the standings both filter on games > 0, so
+    -- looking and leaving is recorded without putting anyone on a table.
+    opens       INTEGER NOT NULL DEFAULT 0,    -- page loads of /bowl
+    first_at    TEXT,                          -- first time they opened it
+    last_at     TEXT                           -- last open or finished game
 );

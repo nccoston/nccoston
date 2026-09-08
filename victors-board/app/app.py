@@ -157,7 +157,10 @@ def init_db():
                       "ALTER TABLE users ADD COLUMN session_token TEXT",
                       "ALTER TABLE messages ADD COLUMN hof_at TEXT",
                       "ALTER TABLE messages ADD COLUMN image_size TEXT",
-                      "ALTER TABLE games ADD COLUMN kickoff_at TEXT"):
+                      "ALTER TABLE games ADD COLUMN kickoff_at TEXT",
+                      "ALTER TABLE bowl_scores ADD COLUMN opens INTEGER NOT NULL DEFAULT 0",
+                      "ALTER TABLE bowl_scores ADD COLUMN first_at TEXT",
+                      "ALTER TABLE bowl_scores ADD COLUMN last_at TEXT"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -258,6 +261,27 @@ def boarddate(iso):
         dt = dt.replace(tzinfo=timezone.utc)
     out = dt.astimezone(BOARD_TZ).strftime("%B %d, %Y")
     return re.sub(r" 0(\d,)", r" \1", out)
+
+
+@app.template_filter("boardago")
+def boardago(iso):
+    """'20 minutes ago' — for tables where recency is the whole point."""
+    if not iso:
+        return "never"
+    try:
+        dt = datetime.fromisoformat(iso)
+    except ValueError:
+        return iso
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    secs = (datetime.now(timezone.utc) - dt).total_seconds()
+    if secs < 90:
+        return "just now"
+    for size, name in ((60, "minute"), (3600, "hour"), (86400, "day")):
+        n = int(secs // size)
+        if n < (60 if size == 60 else 24 if size == 3600 else 14):
+            return "%d %s%s ago" % (n, name, "" if n == 1 else "s")
+    return boarddate(iso)
 
 
 @app.template_filter("rendertext")
@@ -1770,6 +1794,18 @@ def michigan_schedule():
 @app.route("/bowl")
 @login_required
 def bowl():
+    # Note that they looked. A row here with games = 0 is somebody who
+    # opened the thing and never finished a game — invisible on the
+    # leaderboard, which is the point, but worth knowing about.
+    db = get_db()
+    uid = current_user()["id"]
+    now = now_utc_iso()
+    db.execute("INSERT OR IGNORE INTO bowl_scores (user_id, updated_at)"
+               " VALUES (?, ?)", (uid, now))
+    db.execute("UPDATE bowl_scores SET opens = opens + 1,"
+               " first_at = COALESCE(first_at, ?), last_at = ?"
+               " WHERE user_id = ?", (now, now, uid))
+    db.commit()
     return render_template("bowl.html",
                            bowl_cfg={"schedule": michigan_schedule()})
 
@@ -1808,10 +1844,10 @@ def bowl_score():
         " wins = wins + ?, losses = losses + ?, seasons = seasons + ?,"
         " best_w = ?, best_l = ?,"
         " biggest_win = MAX(biggest_win, ?), longest_td = MAX(longest_td, ?),"
-        " most_points = MAX(most_points, ?), updated_at = ?"
+        " most_points = MAX(most_points, ?), updated_at = ?, last_at = ?"
         " WHERE user_id = ?",
         (1 if us > them else 0, 1 if us < them else 0, 1 if done else 0,
-         best_w, best_l, margin, longest, us, now_utc_iso(), uid))
+         best_w, best_l, margin, longest, us, now_utc_iso(), now_utc_iso(), uid))
     db.commit()
     return {"ok": True}
 
@@ -2233,7 +2269,8 @@ def _admin_post(db):
 
 def _admin_nav():
     return [("admin", "Overview"), ("admin_settings", "Settings"),
-            ("admin_users", "Members"), ("admin_backups", "Backups")]
+            ("admin_users", "Members"), ("admin_bowl", "Bowl"),
+            ("admin_backups", "Backups")]
 
 
 @app.route("/admin")
@@ -2280,6 +2317,31 @@ def admin_users():
     users = db.execute("SELECT * FROM users WHERE password_hash != '!'"
                        " ORDER BY handle COLLATE NOCASE").fetchall()
     return render_template("admin_users.html", admin_nav=_admin_nav(), users=users)
+
+
+@app.route("/admin/bowl")
+@admin_required
+def admin_bowl():
+    """Who has tried the Victard Bowl, and when. Ordered by last seen, so
+    the people playing it right now are at the top."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT b.*, u.handle FROM bowl_scores b JOIN users u ON u.id = b.user_id"
+        " ORDER BY b.last_at DESC NULLS LAST, b.updated_at DESC").fetchall()
+    members = db.execute("SELECT COUNT(*) c FROM users"
+                         " WHERE password_hash != '!'").fetchone()["c"]
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    tally = {
+        "members": members,
+        "opened": len(rows),
+        "played": sum(1 for r in rows if r["games"]),
+        "seasons": sum(1 for r in rows if r["seasons"]),
+        "games": sum(r["games"] for r in rows),
+        "this_week": sum(1 for r in rows if (r["last_at"] or "") >= week_ago),
+        "looked_only": sum(1 for r in rows if not r["games"]),
+    }
+    return render_template("admin_bowl.html", admin_nav=_admin_nav(),
+                           rows=rows, tally=tally)
 
 
 @app.route("/admin/backups")

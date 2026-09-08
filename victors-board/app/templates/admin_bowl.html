@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Admin Victard Bowl - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Admin</h2>
+  {% include "_admin_nav.html" %}
+
+  <h3>Victard Bowl</h3>
+  <p class="bowl-tally">
+    <b>{{ tally.opened }}</b> of {{ tally.members }} member{{ '' if tally.members == 1 else 's' }}
+    ha{{ 's' if tally.opened == 1 else 've' }} opened it &middot;
+    <b>{{ tally.played }}</b> finished a game &middot;
+    <b>{{ tally.seasons }}</b> finished a season
+  </p>
+  <p class="hint">
+    {{ tally.games }} game{{ '' if tally.games == 1 else 's' }} played in total.
+    {{ tally.this_week }} {{ 'person' if tally.this_week == 1 else 'people' }} in the last seven days.
+    {%- if tally.looked_only %}
+    {{ tally.looked_only }} opened it and never finished a game.{% endif %}
+  </p>
+
+  {% if rows %}
+  <table class="admin-table user-table">
+    <tr>
+      <th>Poster</th><th>Last seen</th><th>First tried</th>
+      <th>Opens</th><th>Games</th><th>Record</th><th>Best season</th>
+    </tr>
+    {% for r in rows %}
+    <tr{% if not r['games'] %} class="bowl-looker"{% endif %}>
+      <td><b>{{ r['handle'] }}</b>
+        {%- if r['seasons'] and r['best_l'] == 0 and r['best_w'] >= 1 %} &#127942;{% endif %}</td>
+      <td>{{ r['last_at'] | boardago }}</td>
+      <td>{% if r['first_at'] %}{{ r['first_at'] | boarddate }}
+        {%- else %}<span class="hint">&mdash;</span>{% endif %}</td>
+      <td>{{ r['opens'] }}</td>
+      <td>{{ r['games'] }}</td>
+      <td>{% if r['games'] %}{{ r['wins'] }}-{{ r['losses'] }}
+        {%- else %}<span class="hint">only looked</span>{% endif %}</td>
+      <td>{% if r['seasons'] %}{{ r['best_w'] }}-{{ r['best_l'] }}
+        <span class="hint">({{ r['seasons'] }})</span>
+        {%- elif r['games'] %}<span class="hint">in progress</span>
+        {%- else %}<span class="hint">&mdash;</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="hint">Opens counts page loads, and starting the next game reloads
+    the page &mdash; so for anyone playing a season it runs a little ahead of
+    their game count. What it tells you is who came back.</p>
+  {% else %}
+  <p>Nobody has opened it yet.
+    <a href="{{ url_for('bowl') }}">It's here</a> if you want to be first.</p>
+  {% endif %}
+</div>
+{% endblock %}

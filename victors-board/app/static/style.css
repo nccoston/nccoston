@@ -365,6 +365,9 @@ table.admin-table td, table.admin-table th {
   -webkit-user-select: none;
 }
 .bowl-help { text-align: center; margin: 6px 0; }
+/* admin: who has tried it */
+.bowl-tally { margin: 10px 0 4px; }
+tr.bowl-looker td { opacity: 0.72; }
 
 /* the settings page */
 .settings-box { max-width: 560px; }
