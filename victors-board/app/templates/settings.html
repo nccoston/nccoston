@@ -95,7 +95,7 @@
   // --- Victard Bowl: sim their drives, or take the field for them ---
   var defWrap = document.getElementById("set-defense");
   function markDef() {
-    var cur = load("bowlDefense") === "play" ? "play" : "sim";
+    var cur = load("bowlDefense") === "sim" ? "sim" : "play";
     var btns = defWrap.querySelectorAll("button");
     for (var i = 0; i < btns.length; i++) {
       btns[i].classList.toggle("chosen", btns[i].getAttribute("data-def-choice") === cur);

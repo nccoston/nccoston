@@ -147,9 +147,9 @@
   };
 
   // Who has the ball, and whether the player takes the field when they
-  // don't. "sim" keeps the old behaviour: the opponent's drive resolves as
-  // a card. "play" puts you on defense for it.
-  var defenseMode = (load("bowlDefense") === "play") ? "play" : "sim";
+  // don't. You play defense unless this device has asked for "sim", which
+  // resolves their drive as a card instead.
+  var defenseMode = (load("bowlDefense") === "sim") ? "sim" : "play";
   function weHaveBall() { return G.poss === 0; }
   function offUniform() { return G.poss === 0 ? "M" : "O"; }
   function defUniform() { return G.poss === 0 ? "O" : "M"; }
