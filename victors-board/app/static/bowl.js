@@ -15,10 +15,19 @@
 
   var canvas = document.getElementById("bowl");
   var ctx = canvas.getContext("2d");
-  var RES = 2;                          // backing pixels per logical pixel
+  // Backing pixels per logical pixel. The field is only 320 logical pixels
+  // wide, so at RES 2 a receiver moving 0.6 px a frame stood still for one
+  // frame and jumped a whole pixel the next — the game ran at 60fps and
+  // still looked choppy. At 4 he moves in quarter-pixel steps. It has to
+  // stay an even number: the sprites are baked at 2x and any odd multiple
+  // would scale them unevenly and make the pixels shimmer.
+  var RES = 4;
   canvas.width = W * RES; canvas.height = H * RES;
   ctx.scale(RES, RES);
   ctx.imageSmoothingEnabled = false;
+  // snap a logical coordinate to the nearest backing pixel — everything on
+  // the field uses this, so the field and the men on it move as one
+  function q(v) { return Math.round(v * RES) / RES; }
 
   var CFG = window.BOWL || {};
   var schedule = CFG.schedule || [];
@@ -469,9 +478,9 @@
       if (carrier.x >= yardToPx(100)) endPlay("td");
       else if (carrier !== qb && (carrier.y <= FIELD_TOP + 2 || carrier.y >= FIELD_BOT - 2)) endPlay("oob");
     }
-    camX = clamp((ball.x) - 130, 0, yardToPx(110) - W);
+    camX = q(clamp((ball.x) - 130, 0, yardToPx(110) - W));
   }
-  function presnapCamera() { if (G.mode === "presnap") camX = clamp(yardToPx(G.spot) - 130, 0, yardToPx(110) - W); }
+  function presnapCamera() { if (G.mode === "presnap") camX = q(clamp(yardToPx(G.spot) - 130, 0, yardToPx(110) - W)); }
 
   function stepToward(p, t, spd, dt) {
     var dx = t.x - p.x, dy = t.y - p.y, d = Math.sqrt(dx * dx + dy * dy);
@@ -932,14 +941,24 @@
     goalPost(g, yardToPx(-9), -1);
     goalPost(g, yardToPx(109), 1);
 
-    // turf grain: a fine speckle over everything, so it reads as grass
-    var img = g.getImageData(0, FIELD_TOP * RES, FIELD_W * RES, (FIELD_BOT - FIELD_TOP) * RES);
-    var d = img.data;
-    for (var i = 0; i < d.length; i += 4) {
-      var n = ((i * 2654435761) % 23) - 11;      // cheap deterministic dither
-      d[i] = clamp(d[i] + n, 0, 255);
-      d[i + 1] = clamp(d[i + 1] + n, 0, 255);
-      d[i + 2] = clamp(d[i + 2] + n, 0, 255);
+    // turf grain: a fine speckle over everything, so it reads as grass.
+    // The speckle is one LOGICAL pixel per fleck, not one backing pixel —
+    // tie it to the backing store and raising RES shrinks the grain until
+    // it disappears into a shimmer.
+    var lw = FIELD_W, lh = FIELD_BOT - FIELD_TOP;
+    var noise = new Int8Array(lw * lh);
+    for (var k = 0; k < noise.length; k++) noise[k] = ((k * 2654435761) % 23) - 11;
+    var fw = lw * RES, fh = lh * RES;
+    var img = g.getImageData(0, FIELD_TOP * RES, fw, fh);
+    var d = img.data, i = 0;
+    for (var yy = 0; yy < fh; yy++) {
+      var row = ((yy / RES) | 0) * lw;
+      for (var xx = 0; xx < fw; xx++, i += 4) {
+        var n = noise[row + ((xx / RES) | 0)];
+        d[i] = clamp(d[i] + n, 0, 255);
+        d[i + 1] = clamp(d[i + 1] + n, 0, 255);
+        d[i + 2] = clamp(d[i + 2] + n, 0, 255);
+      }
     }
     g.putImageData(img, 0, FIELD_TOP * RES);
     return c;
@@ -953,10 +972,10 @@
 
     // the two lines that move: scrimmage and the sticks
     if (G.mode === "presnap" || G.mode === "play" || G.mode === "dead") {
-      var sx = Math.round(yardToPx(G.spot) - camX);
+      var sx = q(yardToPx(G.spot) - camX);
       ctx.fillStyle = "rgba(90,150,255,0.30)"; ctx.fillRect(sx - 1, FIELD_TOP, 3, FIELD_BOT - FIELD_TOP);
       ctx.fillStyle = "rgba(150,200,255,0.95)"; ctx.fillRect(sx, FIELD_TOP, 1, FIELD_BOT - FIELD_TOP);
-      var fx = Math.round(yardToPx(Math.min(100, G.spot + G.toGo)) - camX);
+      var fx = q(yardToPx(Math.min(100, G.spot + G.toGo)) - camX);
       ctx.fillStyle = "rgba(255,203,5,0.28)"; ctx.fillRect(fx - 1, FIELD_TOP, 3, FIELD_BOT - FIELD_TOP);
       ctx.fillStyle = "rgba(255,220,60,0.95)"; ctx.fillRect(fx, FIELD_TOP, 1, FIELD_BOT - FIELD_TOP);
     }
@@ -1070,39 +1089,39 @@
     // shadow, cast to the low right
     ctx.save();
     ctx.fillStyle = "rgba(0,0,0,0.30)";
-    ctx.beginPath(); ctx.ellipse(x + 1, y + 3, 4.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(q(x) + 1, q(y) + 3, 4.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     ctx.drawImage(bakeSprite(p.team, p.skin, frame, faceRight),
-                  Math.round(x) - 4.5, Math.round(y) - 10.5, 9, 14);
+                  q(x) - 4.5, q(y) - 10.5, 9, 14);
     if (p === myDef && G.mode !== "recap") {   // the one you're steering
       ctx.save();
       ctx.strokeStyle = "rgba(255,203,5,0.95)"; ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.ellipse(Math.round(x), Math.round(y) + 3, 5.5, 2.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(q(x), q(y) + 3, 5.5, 2.2, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
     if (p === carrier && !ball.flying) {   // a chevron over whoever has it
-      var by = Math.round(y) - 14 + Math.sin(playT * 7) * 0.6;
+      var by = q(y) - 14 + Math.sin(playT * 7) * 0.6;
       ctx.fillStyle = "rgba(0,0,0,0.5)";
       ctx.beginPath();
-      ctx.moveTo(Math.round(x), by + 3.6); ctx.lineTo(Math.round(x) - 2.6, by - 0.4);
-      ctx.lineTo(Math.round(x) + 2.6, by - 0.4); ctx.closePath(); ctx.fill();
+      ctx.moveTo(q(x), by + 3.6); ctx.lineTo(q(x) - 2.6, by - 0.4);
+      ctx.lineTo(q(x) + 2.6, by - 0.4); ctx.closePath(); ctx.fill();
       ctx.fillStyle = MAIZE;
       ctx.beginPath();
-      ctx.moveTo(Math.round(x), by + 2.8); ctx.lineTo(Math.round(x) - 2, by - 0.6);
-      ctx.lineTo(Math.round(x) + 2, by - 0.6); ctx.closePath(); ctx.fill();
+      ctx.moveTo(q(x), by + 2.8); ctx.lineTo(q(x) - 2, by - 0.6);
+      ctx.lineTo(q(x) + 2, by - 0.6); ctx.closePath(); ctx.fill();
     }
   }
 
   function drawBall() {
     if (!ball) return;
     if (ball.holder && !ball.flying) return;    // it's tucked under an arm
-    var x = ball.x - camX, y = ball.y - (ball.z || 0);
+    var x = q(ball.x - camX), y = q(ball.y - (ball.z || 0));
     if (ball.flying) {
       ctx.save();
       ctx.fillStyle = "rgba(0,0,0,0.28)";
-      ctx.beginPath(); ctx.ellipse(ball.x - camX, ball.y + 3, 3, 1.1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(q(ball.x - camX), q(ball.y) + 3, 3, 1.1, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
     ctx.save();
@@ -1257,7 +1276,7 @@
         ctx.fillStyle = MAIZE; ctx.fillRect(ax - camX - 2, ay - 2, 4, 4);
         if (aim.snap) {
           ctx.strokeStyle = MAIZE; ctx.lineWidth = 1;
-          ctx.strokeRect(Math.round(aim.snap.x - camX) - 6.5, Math.round(aim.snap.y) - 12.5, 13, 17);
+          ctx.strokeRect(q(aim.snap.x - camX) - 6.5, q(aim.snap.y) - 12.5, 13, 17);
         }
       }
     } else if (G.mode === "oppdrive" && G.card) {
@@ -1328,14 +1347,14 @@
     if (points.length < 2) return;
     ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.moveTo(Math.round(points[0].x - camX) + 0.5, Math.round(points[0].y) + 0.5);
-    for (var i = 1; i < points.length; i++) ctx.lineTo(Math.round(points[i].x - camX) + 0.5, Math.round(points[i].y) + 0.5);
+    ctx.moveTo(q(points[0].x - camX), q(points[0].y));
+    for (var i = 1; i < points.length; i++) ctx.lineTo(q(points[i].x - camX), q(points[i].y));
     ctx.stroke();
     // arrowhead in the direction of the last segment
     var a = points[points.length - 2], b = points[points.length - 1];
     var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
     dx /= len; dy /= len;
-    var tx = Math.round(b.x - camX) + 0.5, ty = Math.round(b.y) + 0.5;
+    var tx = q(b.x - camX), ty = q(b.y);
     ctx.beginPath();
     ctx.moveTo(tx, ty);
     ctx.lineTo(tx - dx * 4 - dy * 3, ty - dy * 4 + dx * 3);
@@ -1488,7 +1507,7 @@
     requestAnimationFrame(frame);
   }
   // initial camera at the ball
-  camX = clamp(yardToPx(G.spot) - 130, 0, yardToPx(110) - W);
+  camX = q(clamp(yardToPx(G.spot) - 130, 0, yardToPx(110) - W));
   if (seasonOver) {
     G.mode = "recap";
   } else {
@@ -1499,6 +1518,12 @@
              + (season.results.length ? "  (" + rec0.text + ")" : "");
     G.bannerT = 2.6;
   }
+  // Bake the other end of the field now, while the opening banner is up and
+  // nothing is moving. Left to itself it bakes the first time possession
+  // changes, and drops a frame right as they take the ball.
+  setTimeout(function () {
+    for (var s = 0; s < 2; s++) if (!fieldCanvases[s]) fieldCanvases[s] = bakeField(s);
+  }, 700);
   window.__bowl = G;   // read-only peek for playtests
   window.__bowlTeam = { key: teamKey, color: colorFor, rating: ratingFor, opp: { color: oppColor, rating: oppRating } };
   window.__bowlPeek = function () { return { players: players, qb: qb, camX: camX, carrier: carrier, mode: G.mode, playT: playT, myDef: myDef, aim: aim, steer: steer, ball: ball, ballFlying: !!(ball && ball.flying), offered: offered.map(function (o) { return o.name; }) }; };
