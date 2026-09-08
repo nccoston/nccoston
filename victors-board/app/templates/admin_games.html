@@ -63,10 +63,12 @@
   <p class="hint">Pulled from the stadium's Wikipedia article and credited to
     whoever took it. Matching an article to a stadium is a guess, so check
     them: if one isn't the right stadium, drop it and the next fetch will
-    look again. The game needs {{ needed }} to be playable.</p>
+    look again. The game needs {{ needed }} to be playable. Each click takes
+    about twenty seconds and stops itself there, so it will take several
+    &mdash; Wikimedia rate-limits anyone who goes faster.</p>
   <form class="inline-form" method="post">
     <input type="hidden" name="action" value="fetch_photos">
-    <button type="submit" class="fetch-btn">Fetch the next {{ batch }}</button>
+    <button type="submit" class="fetch-btn">Fetch the next batch</button>
   </form>
 
   {% if shelf %}

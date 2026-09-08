@@ -1918,113 +1918,202 @@ COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 # Wikimedia asks callers to identify themselves. The board's name does that;
 # the admin's email address is not theirs to have.
 WIKI_UA = "TheVictorsBoard/1.0 (small self-hosted message board; light use)"
+WIKI_GAP = 1.1          # seconds between calls; their limiter is not a suggestion
+WIKI_TITLES = 40        # titles per query — the API takes up to 50
+_wiki_last = [0.0]
 
 
-def _wiki_get(url, params):
+def _wiki_get(url, params, tries=3):
+    """One paced, retrying call. Wikimedia answers 429 to a tight loop, and
+    asks for serial requests, so hold a gap between them and back off when
+    told to rather than hammering away."""
     import requests
-    r = requests.get(url, params=params, timeout=12,
-                     headers={"User-Agent": WIKI_UA,
-                              "Accept": "application/json"})
-    r.raise_for_status()
-    return r.json()
+    last = ""
+    for attempt in range(tries):
+        wait = WIKI_GAP - (time.time() - _wiki_last[0])
+        if wait > 0:
+            time.sleep(wait)
+        _wiki_last[0] = time.time()
+        r = requests.get(url, params=params, timeout=15,
+                         headers={"User-Agent": WIKI_UA,
+                                  "Accept": "application/json"})
+        if r.status_code == 429 or r.status_code >= 500:
+            last = "HTTP %d" % r.status_code
+            try:
+                back = float(r.headers.get("Retry-After") or 0)
+            except ValueError:
+                back = 0
+            time.sleep(min(max(back, 2.0 * (attempt + 1)), 6.0))
+            continue
+        r.raise_for_status()
+        return r.json()
+    raise RuntimeError("Wikimedia is throttling us (%s) — wait a minute and "
+                       "click again" % last)
 
 
-def _wiki_lead_file(title):
-    """The file name of an article's lead image, or None."""
-    data = _wiki_get(WIKI_API, {"action": "query", "format": "json",
-                                "formatversion": "2", "prop": "pageimages",
-                                "piprop": "name", "titles": title,
-                                "redirects": "1"})
-    for page in (data.get("query") or {}).get("pages") or []:
-        if page.get("pageimage"):
-            return page["pageimage"], page.get("title") or title
-    return None, None
+def _resolved(data):
+    """MediaWiki rewrites the titles you asked for. Map ours to theirs."""
+    q = data.get("query") or {}
+    hop = {}
+    for key in ("normalized", "redirects"):
+        for h in q.get(key) or []:
+            hop[h.get("from")] = h.get("to")
+    pages = {p.get("title"): p for p in q.get("pages") or []}
+
+    def find(title):
+        seen = set()
+        while title and title not in seen:
+            if title in pages:
+                return pages[title]
+            seen.add(title)
+            title = hop.get(title)
+        return None
+    return find
 
 
-def _commons_file(name, width=1400):
-    """A usable copy of a Commons file plus who to credit for it."""
-    data = _wiki_get(COMMONS_API, {"action": "query", "format": "json",
-                                   "formatversion": "2", "prop": "imageinfo",
-                                   "titles": "File:" + name,
-                                   "iiprop": "url|extmetadata|mime",
-                                   "iiurlwidth": str(width)})
-    for page in (data.get("query") or {}).get("pages") or []:
-        for info in page.get("imageinfo") or []:
-            meta = info.get("extmetadata") or {}
-
-            def m(key):
-                v = (meta.get(key) or {}).get("value") or ""
-                return re.sub(r"<[^>]+>", "", v).strip()
-
-            return {"url": info.get("thumburl") or info.get("url"),
-                    "mime": info.get("mime") or "",
-                    "credit": m("Artist") or m("Credit") or "Wikimedia Commons",
-                    "license": m("LicenseShortName") or m("License"),
-                    "source": info.get("descriptionurl") or ""}
-    return None
+def _lead_images(titles):
+    """{requested title: lead image file name} for a whole batch in one call."""
+    out = {}
+    for i in range(0, len(titles), WIKI_TITLES):
+        chunk = titles[i:i + WIKI_TITLES]
+        data = _wiki_get(WIKI_API, {"action": "query", "format": "json",
+                                    "formatversion": "2", "prop": "pageimages",
+                                    "piprop": "name", "redirects": "1",
+                                    "titles": "|".join(chunk)})
+        find = _resolved(data)
+        for t in chunk:
+            page = find(t)
+            if page and page.get("pageimage"):
+                out[t] = (page["pageimage"], page.get("title") or t)
+    return out
 
 
-def fetch_stadium_photo(s):
-    """Find a picture of one stadium on Wikipedia/Commons and keep a copy.
+def _commons_info(names, width=1400):
+    """{file name: {url, credit, licence, ...}} for a whole batch in one call."""
+    out = {}
+    for i in range(0, len(names), WIKI_TITLES):
+        chunk = names[i:i + WIKI_TITLES]
+        data = _wiki_get(COMMONS_API, {
+            "action": "query", "format": "json", "formatversion": "2",
+            "prop": "imageinfo", "iiprop": "url|extmetadata|mime",
+            "iiurlwidth": str(width),
+            "titles": "|".join("File:" + n for n in chunk)})
+        find = _resolved(data)
+        for n in chunk:
+            page = find("File:" + n)
+            for info in (page or {}).get("imageinfo") or []:
+                meta = info.get("extmetadata") or {}
 
-    Everything here can fail — an article with no lead image, a redirect
-    somewhere daft, a file we can't decode. It returns a reason rather than
-    raising, and the admin page shows every result so a bad match can be
-    thrown back.
-    """
+                def m(key):
+                    v = (meta.get(key) or {}).get("value") or ""
+                    return re.sub(r"<[^>]+>", " ", v).strip()
+
+                out[n] = {"url": info.get("thumburl") or info.get("url"),
+                          "mime": info.get("mime") or "",
+                          "credit": re.sub(r"\s+", " ",
+                                           m("Artist") or m("Credit")
+                                           or "Wikimedia Commons"),
+                          "license": m("LicenseShortName") or m("License"),
+                          "source": info.get("descriptionurl") or ""}
+    return out
+
+
+def _keep_photo(url):
+    """Download one picture and keep our own downscaled copy."""
     import requests
     from PIL import Image
-    title = s["stadium"]
-    tried = []
-    for query in (title, "%s (%s)" % (title, s["city"]),
-                  "%s %s football stadium" % (s["team"], s["city"])):
+    r = requests.get(url, timeout=20, headers={"User-Agent": WIKI_UA})
+    r.raise_for_status()
+    PHOTO_DIR.mkdir(parents=True, exist_ok=True)
+    fn = secrets.token_hex(16) + ".jpg"
+    path = PHOTO_DIR / fn
+    path.write_bytes(r.content)
+    with IMG_WORK:                  # same memory guard the uploader uses
+        img = Image.open(path)
+        img.draft("RGB", (2400, 2400))
+        img.thumbnail((1400, 1400))
+        img.convert("RGB").save(path, "JPEG", quality=82)
+    return fn
+
+
+def fetch_stadium_photos(wanted, budget=20.0):
+    """Find pictures for a batch of stadiums.
+
+    Two API calls cover the whole batch instead of six per stadium, which is
+    what tripped Wikimedia's rate limiter. Stops when the time budget is
+    spent — a single worker serves this whole board, and a request that runs
+    past gunicorn's timeout takes the board down with it.
+
+    Returns (found, failures, done) where done is how many of `wanted` were
+    actually looked at.
+    """
+    started = time.time()
+    found, failures = {}, []
+    if not wanted:
+        return found, failures, 0
+
+    titles = [s["stadium"] for s in wanted]
+    try:
+        leads = _lead_images(titles)
+    except Exception as exc:
+        return found, ["%s" % exc], 0
+
+    # names that are shared or missing an article get one search each
+    misses = [s for s in wanted if s["stadium"] not in leads]
+    for s in misses:
+        if time.time() - started > budget * 0.5:
+            break
+        query = "%s %s %s football stadium" % (s["stadium"], s["team"], s["city"])
         try:
-            if query is title or query.endswith(")"):
-                name, matched = _wiki_lead_file(query)
-            else:                       # last resort: let search pick a page
-                sr = _wiki_get(WIKI_API, {"action": "query", "format": "json",
-                                          "formatversion": "2", "list": "search",
-                                          "srsearch": query, "srlimit": "1"})
-                hits = (sr.get("query") or {}).get("search") or []
-                if not hits:
-                    tried.append("%s: no article" % query)
-                    continue
-                name, matched = _wiki_lead_file(hits[0]["title"])
+            sr = _wiki_get(WIKI_API, {"action": "query", "format": "json",
+                                      "formatversion": "2", "list": "search",
+                                      "srsearch": query, "srlimit": "1"})
+            hits = (sr.get("query") or {}).get("search") or []
+            if not hits:
+                failures.append("%s (%s) — no article found" % (s["stadium"], s["team"]))
+                continue
+            more = _lead_images([hits[0]["title"]])
+            if more:
+                leads[s["stadium"]] = list(more.values())[0]
+            else:
+                failures.append("%s (%s) — \u201c%s\u201d has no lead picture"
+                                % (s["stadium"], s["team"], hits[0]["title"]))
         except Exception as exc:
-            tried.append("%s: %s" % (query, exc))
+            failures.append("%s (%s) — %s" % (s["stadium"], s["team"], exc))
+
+    try:
+        info = _commons_info(sorted({v[0] for v in leads.values()}))
+    except Exception as exc:
+        return found, failures + ["%s" % exc], 0
+
+    done = 0
+    for s in wanted:
+        if s["stadium"] not in leads:
+            done += 1
             continue
-        if not name:
-            tried.append("%s: article has no lead image" % query)
+        if time.time() - started > budget:
+            break                     # the rest wait for the next click
+        done += 1
+        name, article = leads[s["stadium"]]
+        meta = info.get(name)
+        if not meta or not meta.get("url"):
+            failures.append("%s — %s is not on Commons" % (s["stadium"], name))
+            continue
+        if meta["mime"] and not meta["mime"].startswith("image/"):
+            failures.append("%s — %s is not an image (%s)"
+                            % (s["stadium"], name, meta["mime"]))
             continue
         try:
-            info = _commons_file(name)
+            fn = _keep_photo(meta["url"])
         except Exception as exc:
-            return None, "%s: commons lookup failed: %s" % (name, exc)
-        if not info or not info.get("url"):
-            tried.append("%s: not on Commons" % name)
+            failures.append("%s — download failed: %s" % (s["stadium"], exc))
             continue
-        if info["mime"] and not info["mime"].startswith("image/"):
-            tried.append("%s: not an image (%s)" % (name, info["mime"]))
-            continue
-        try:
-            r = requests.get(info["url"], timeout=20,
-                             headers={"User-Agent": WIKI_UA})
-            r.raise_for_status()
-            PHOTO_DIR.mkdir(parents=True, exist_ok=True)
-            fn = secrets.token_hex(16) + ".jpg"
-            path = PHOTO_DIR / fn
-            path.write_bytes(r.content)
-            with IMG_WORK:              # same memory guard the uploader uses
-                img = Image.open(path)
-                img.draft("RGB", (2400, 2400))
-                img.thumbnail((1400, 1400))
-                img.convert("RGB").save(path, "JPEG", quality=82)
-        except Exception as exc:
-            return None, "%s: download failed: %s" % (name, exc)
-        return {"file": fn, "credit": info["credit"][:160],
-                "license": info["license"][:60], "source": info["source"],
-                "wiki": matched, "commons_file": name}, None
-    return None, "; ".join(tried[:3]) or "nothing found"
+        found[stadium_key(s)] = {
+            "file": fn, "credit": meta["credit"][:160],
+            "license": meta["license"][:60], "source": meta["source"],
+            "wiki": article, "commons_file": name,
+            "team": s["team"], "stadium": s["stadium"]}
+    return found, failures, done
 
 
 def save_stadium_photos(found):
@@ -2668,7 +2757,10 @@ def stadium_leaderboard():
                            rounds=STADIUM_ROUNDS)
 
 
-PHOTO_BATCH = 12    # per click, so the request finishes well inside a timeout
+# Two API calls now cover a whole batch, so the limit is download time, not
+# request count. Gunicorn's default timeout is 30s and this board runs a
+# single worker — the fetch stops itself at 20s and leaves the rest.
+PHOTO_BATCH = 30
 
 
 @app.route("/admin/games", methods=["GET", "POST"])
@@ -2686,19 +2778,11 @@ def admin_games():
         if action == "fetch_photos":
             have = stadium_photos()
             todo = [s for s in load_stadiums() if stadium_key(s) not in have]
-            found, failed = {}, []
-            for s in todo[:PHOTO_BATCH]:
-                entry, why = fetch_stadium_photo(s)
-                if entry:
-                    entry["team"] = s["team"]
-                    entry["stadium"] = s["stadium"]
-                    found[stadium_key(s)] = entry
-                else:
-                    failed.append("%s — %s" % (s["stadium"], why))
+            found, failed, looked = fetch_stadium_photos(todo[:PHOTO_BATCH])
             total = save_stadium_photos(found) if found else len(have)
             flash("Fetched %d picture%s. %d stadium%s now have one, %d to go."
                   % (len(found), "" if len(found) == 1 else "s", total,
-                     "" if total == 1 else "s", max(0, len(todo) - PHOTO_BATCH)),
+                     "" if total == 1 else "s", max(0, len(todo) - len(found))),
                   "success" if found else "message")
             for f in failed[:6]:
                 flash("No picture: " + f)
