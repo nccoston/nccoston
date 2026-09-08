@@ -22,9 +22,40 @@
 
   var CFG = window.BOWL || {};
   var schedule = CFG.schedule || [];
-  var week = parseInt(load("bowlWeek") || "0", 10);
   if (!schedule.length) schedule = [{ name: "Opponent", abbr: "OPP", home: true }];
-  if (week >= schedule.length) week = 0;
+
+  // ------------------------------------------------------------- season
+  // One row per week, kept on this device. The season runs the real
+  // schedule start to finish, then hands back a recap.
+  function loadSeason() {
+    var sn = null;
+    try { sn = JSON.parse(load("bowlSeason") || "null"); } catch (e) {}
+    if (!sn || typeof sn.week !== "number" || !(sn.results instanceof Array)) {
+      sn = { year: 1, week: 0, results: [] };
+      var old = parseInt(load("bowlWeek") || "0", 10);   // carry an older save forward
+      if (old > 0 && old < schedule.length) sn.week = old;
+    }
+    sn.week = clamp(sn.week, 0, schedule.length);
+    return sn;
+  }
+  function saveSeason() { store("bowlSeason", JSON.stringify(season)); }
+  function seasonRecord() {
+    var w = 0, l = 0, t = 0;
+    season.results.forEach(function (r) {
+      if (!r) return;
+      if (r.us > r.them) w++; else if (r.us < r.them) l++; else t++;
+    });
+    return { w: w, l: l, t: t, text: w + "-" + l + (t ? "-" + t : "") };
+  }
+  // the last game on the schedule is the one that matters; so is Ohio State
+  function isRivalry(i) {
+    var g = schedule[i];
+    return i === schedule.length - 1 || (g && teamKey(g.name, g.abbr) === "ohio state");
+  }
+
+  var season = loadSeason();
+  var seasonOver = season.week >= schedule.length;
+  var week = clamp(season.week, 0, schedule.length - 1);
 
   // opponent strength, by reputation (0.2 cupcake .. 0.9 nightmare)
   var RATINGS = {
@@ -557,14 +588,19 @@
 
   function finishGame() {
     G.mode = "gameover";
-    var w = G.score[0] > G.score[1];
-    G.result = w ? "W" : (G.score[0] === G.score[1] ? "T" : "L");
-    var rec = JSON.parse(load("bowlRecord") || "[0,0,0]");
-    if (G.result === "W") rec[0]++; else if (G.result === "L") rec[1]++; else rec[2]++;
-    store("bowlRecord", JSON.stringify(rec)); G.record = rec;
-    var best = parseInt(load("bowlLongest") || "0", 10);
-    if (G.stats.longest > best) store("bowlLongest", String(G.stats.longest));
-    store("bowlWeek", String(week + 1 < schedule.length ? week + 1 : 0));
+    G.result = G.score[0] > G.score[1] ? "W"
+             : (G.score[0] === G.score[1] ? "T" : "L");
+    if (!G.recorded) {                       // write the week down exactly once
+      G.recorded = true;
+      season.results[week] = { n: opp.name, a: opp.abbr || "OPP",
+                               us: G.score[0], them: G.score[1], home: !!opp.home };
+      season.week = week + 1;
+      saveSeason();
+      var best = parseInt(load("bowlLongest") || "0", 10);
+      if (G.stats.longest > best) store("bowlLongest", String(G.stats.longest));
+    }
+    G.record = seasonRecord();
+    G.lastOfSeason = (week + 1 >= schedule.length);
   }
 
   // ------------------------------------------------------------ drawing
@@ -926,10 +962,28 @@
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, barH);
     ctx.fillStyle = MAIZE; ctx.fillRect(0, barH, W, 1);
 
+    if (G.mode === "recap") {          // no clock, no down, no live score
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = "bold 9px Verdana, sans-serif"; ctx.fillStyle = MAIZE;
+      ctx.fillText("VICTARD BOWL", W / 2, 7);
+      ctx.font = "6px Verdana, sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.fillText("SEASON " + (season.year || 1) + " COMPLETE", W / 2, 15);
+      ctx.textBaseline = "alphabetic";
+      return;
+    }
+
     scoreChip(4, 1, 54, MAIZE, BLUE, "MICH", G.score[0]);
     scoreChip(4, 10, 54, oppColor, "#ffffff", (opp.abbr || "OPP").slice(0, 5), G.score[1]);
 
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    var rec = seasonRecord();
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.font = "bold 6px Verdana, sans-serif";
+    ctx.fillStyle = isRivalry(week) ? MAIZE : "rgba(255,255,255,0.6)";
+    ctx.fillText(isRivalry(week) ? "RIVALRY" : "WEEK " + (week + 1), 62, 5.5);
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillText(rec.text, 62, 14);
+
+    ctx.textAlign = "center";
     ctx.font = "bold 9px Verdana, sans-serif";
     ctx.fillStyle = "#ffffff";
     ctx.fillText(fmtClock(G.clock), W / 2, 6);
@@ -980,6 +1034,13 @@
   function drawOverlay() {
     BTNS = [];
     ctx.textAlign = "center";
+    if (G.mode === "recap") {
+      drawRecap();
+      BTNS.push({ x: W / 2 - 55, y: FIELD_BOT + 3, w: 110, h: 11,
+                  label: "NEW SEASON", act: "new" });
+      BTNS.forEach(function (b) { button(b.x, b.y, b.w, b.h, b.label, true); });
+      return;
+    }
     if (G.mode === "presnap") {
       drawRouteGhosts();
       var inRange = (100 - G.spot + 17) <= 55;
@@ -1019,8 +1080,9 @@
       ctx.fillText("MICH " + G.score[0] + "  —  " + (opp.abbr || "OPP") + " " + G.score[1], W / 2, 68);
       ctx.font = "8px monospace"; ctx.fillStyle = "#ccc";
       ctx.fillText(G.stats.yards + " yds · " + G.stats.tds + " TD · " + G.stats.ints + " INT · " + G.stats.sacks + " sacks · long " + G.stats.longest, W / 2, 84);
-      if (G.record) ctx.fillText("Season: " + G.record[0] + "-" + G.record[1] + (G.record[2] ? "-" + G.record[2] : ""), W / 2, 98);
-      BTNS.push({ x: 110, y: 118, w: 100, h: 13, label: "NEXT GAME", act: "next" });
+      if (G.record) ctx.fillText("Season: " + G.record.text + "  ·  week " + (week + 1) + " of " + schedule.length, W / 2, 98);
+      BTNS.push({ x: 100, y: 118, w: 120, h: 13,
+                  label: G.lastOfSeason ? "SEASON RECAP" : "NEXT GAME", act: "next" });
       BTNS.forEach(function (b) { button(b.x, b.y, b.w, b.h, b.label, true); });
     }
     if (G.banner && G.bannerT > 0) {
@@ -1030,6 +1092,44 @@
       ctx.fillText(G.banner, W / 2, 89);
     }
   }
+  function drawRecap() {
+    var rec = seasonRecord();
+    ctx.fillStyle = "rgba(3,8,16,0.93)";
+    ctx.fillRect(0, FIELD_TOP, W, FIELD_BOT - FIELD_TOP);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "bold 13px Verdana, sans-serif"; ctx.fillStyle = MAIZE;
+    ctx.fillText("SEASON " + rec.text, W / 2, FIELD_TOP + 15);
+    ctx.font = "7px Verdana, sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.55)";
+    var note = rec.l === 0 ? "undefeated. nobody will believe you."
+             : rec.w === 0 ? "a rebuilding year."
+             : rec.w > rec.l ? "a winning season." : "wait till next year.";
+    ctx.fillText(note, W / 2, FIELD_TOP + 27);
+
+    var rows = Math.ceil(schedule.length / 2);
+    for (var i = 0; i < schedule.length; i++) {
+      var r = season.results[i];
+      var col = i < rows ? 0 : 1;
+      var x = col === 0 ? 14 : W / 2 + 8;
+      var y = FIELD_TOP + 42 + (i - col * rows) * 13;
+      var g = schedule[i];
+      ctx.textAlign = "left";
+      if (!r) {
+        ctx.font = "7px Verdana, sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.28)";
+        ctx.fillText((g.home ? "vs " : "at ") + (g.abbr || "OPP"), x + 24, y);
+        continue;
+      }
+      var won = r.us > r.them, tie = r.us === r.them;
+      ctx.font = "bold 8px Verdana, sans-serif";
+      ctx.fillStyle = won ? MAIZE : tie ? "#c9c9c9" : "#e2757a";
+      ctx.fillText(tie ? "T" : won ? "W" : "L", x, y);
+      ctx.font = "8px Verdana, sans-serif"; ctx.fillStyle = "#ffffff";
+      ctx.fillText(r.us + "-" + r.them, x + 10, y);
+      ctx.font = "7px Verdana, sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.65)";
+      ctx.fillText((r.home ? "vs " : "at ") + r.a, x + 40, y);
+    }
+    ctx.textBaseline = "alphabetic";
+  }
+
   function routeLine(points, color) {
     if (points.length < 2) return;
     ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([]);
@@ -1115,6 +1215,10 @@
     else if (a === "punt") { G.mode = "dead"; punt(); }
     else if (a === "fg") { fieldGoal(); }
     else if (a === "next") { location.reload(); }
+    else if (a === "new") {
+      season = { year: (season.year || 1) + 1, week: 0, results: [] };
+      saveSeason(); location.reload();
+    }
   }
   var down = false;
   function onDown(e) {
@@ -1178,8 +1282,16 @@
   }
   // initial camera at the ball
   camX = clamp(yardToPx(G.spot) - 130, 0, yardToPx(110) - W);
-  enterPresnap();
-  G.banner = "WEEK " + (week + 1) + ": vs " + opp.name.toUpperCase(); G.bannerT = 2.2;
+  if (seasonOver) {
+    G.mode = "recap";
+  } else {
+    enterPresnap();
+    var rec0 = seasonRecord();
+    G.banner = (isRivalry(week) ? "THE RIVALRY: " : "WEEK " + (week + 1) + ": ")
+             + (opp.home ? "vs " : "at ") + (opp.name || "OPPONENT").toUpperCase()
+             + (season.results.length ? "  (" + rec0.text + ")" : "");
+    G.bannerT = 2.6;
+  }
   window.__bowl = G;   // read-only peek for playtests
   window.__bowlTeam = { key: teamKey, color: colorFor, rating: ratingFor, opp: { color: oppColor, rating: oppRating } };
   window.__bowlPeek = function () { return { players: players, qb: qb, camX: camX, carrier: carrier, mode: G.mode, playT: playT }; };
