@@ -42,14 +42,6 @@
 
 <h1 class="board-title"><a href="{{ url_for('index', board_name='main') }}">{{ site_title }}</a></h1>
 
-{% if countdown %}
-<p class="countdown" id="countdown" data-left="{{ countdown.seconds }}"
-   title="{{ countdown.when }}">
-  <span class="countdown-label">{{ countdown.label }}</span>
-  <span class="countdown-clock">&hellip;</span>
-</p>
-{% endif %}
-
 <p class="links-row">{{ links_html | safe }} ||
   <span class="nb"><a href="{{ url_for('index', board_name='scores') }}">Scores</a> ||
   <a href="{{ url_for('index', board_name='cards') }}">Cards</a> ||
@@ -86,6 +78,14 @@
 {% endwith %}
 
 {% block content %}{% endblock %}
+
+{% if countdown %}
+<p class="countdown" id="countdown" data-left="{{ countdown.seconds }}"
+   title="{{ countdown.when }}">
+  <span class="countdown-label">{{ countdown.label }}</span>
+  <span class="countdown-clock">&hellip;</span>
+</p>
+{% endif %}
 
 <p class="footer">Self-hosted <span id="goblue-egg">by</span> Nick Coston &middot;
   <a href="{{ url_for('rss') }}">RSS</a> &middot;
