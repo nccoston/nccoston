@@ -1826,8 +1826,10 @@ def _bowl_month_key():
 
 def seed_bowl_standings(db):
     """Once a calendar month, Skeeps posts the Victard Bowl standings to
-    Scores. Held until somebody has actually finished a season, so the
-    first one says something."""
+    Scores. A season is twelve games, so waiting for somebody to finish one
+    would leave the board silent about the thing for weeks. As soon as
+    anyone has played, he posts the career table and switches to ranking by
+    best season once there is a finished one to rank."""
     with BOWL_LOCK:
         key = _bowl_month_key()
         if get_setting(key):
@@ -1837,24 +1839,33 @@ def seed_bowl_standings(db):
             " WHERE b.games > 0"
             " ORDER BY b.best_w DESC, b.best_l ASC, b.wins DESC, b.games ASC"
             " LIMIT 10").fetchall()
-        if not rows or not any(r["seasons"] for r in rows):
+        if not rows:
             return None
         uid = board_user_id(db)
         if uid is None:
             return None
+        # with no finished seasons the best_w/best_l keys are all zero, so
+        # the same ordering already falls through to career record
+        anyone_done = any(r["seasons"] for r in rows)
         month = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%B")
         lines = []
         for i, r in enumerate(rows, 1):
-            best = ("%d-%d" % (r["best_w"], r["best_l"]) if r["seasons"]
-                    else "still playing one")
             crown = " \U0001F3C6" if r["seasons"] and r["best_l"] == 0 else ""
-            lines.append(
-                "%d. <b>%s</b>%s — best season %s · career %d-%d · longest %d yds"
-                % (i, r["handle"], crown, best, r["wins"], r["losses"],
-                   r["longest_td"]))
+            if anyone_done:
+                best = ("%d-%d" % (r["best_w"], r["best_l"]) if r["seasons"]
+                        else "still playing one")
+                tail = "best season %s · career %d-%d" % (best, r["wins"], r["losses"])
+            else:
+                tail = "%d-%d in %d game%s" % (r["wins"], r["losses"], r["games"],
+                                               "" if r["games"] == 1 else "s")
+            lines.append("%d. <b>%s</b>%s — %s · longest %d yds"
+                         % (i, r["handle"], crown, tail, r["longest_td"]))
         unbeaten = [r["handle"] for r in rows if r["seasons"] and r["best_l"] == 0]
-        body = ("Victard Bowl standings for %s, ranked by best finished season.\n\n%s"
-                % (month, "\n".join(lines)))
+        body = ("Victard Bowl standings for %s, ranked by %s.\n\n%s"
+                % (month,
+                   "best finished season" if anyone_done
+                   else "record so far — nobody has finished a season yet",
+                   "\n".join(lines)))
         if unbeaten:
             body += ("\n\nUndefeated, and therefore above suspicion: <b>%s</b>."
                      % ", ".join(unbeaten))
