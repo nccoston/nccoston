@@ -537,11 +537,12 @@
     var yds = 100 - G.spot + 17;
     var p = yds <= 30 ? 0.97 : yds <= 40 ? 0.86 : yds <= 50 ? 0.7 : 0.5;
     G.clock -= 6;
-    if (Math.random() < p) { G.score[0] += 3; G.banner = yds + " YD FIELD GOAL — GOOD"; }
-    else G.banner = yds + " YD FIELD GOAL — NO GOOD";
+    var good = Math.random() < p;            // remember it; the banner is gone by then
+    if (good) G.score[0] += 3;
+    G.banner = yds + " YD FIELD GOAL — " + (good ? "GOOD" : "NO GOOD");
     G.bannerT = 1.6; G.mode = "dead";
     var missSpot = clamp(100 - G.spot + 7, 20, 80);
-    after(1.7, function () { startOppDrive(G.banner.indexOf("GOOD") !== -1 && G.banner.indexOf("NO") === -1 ? 25 : missSpot); });
+    after(1.7, function () { startOppDrive(good ? 25 : missSpot); });
   }
 
   // ------------------------------------------------------------ opponent drives (simmed)
@@ -1261,10 +1262,15 @@
   var last = performance.now();
   function frame(now) {
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
-    runTimers(dt);
-    update(dt);
-    presnapCamera();
-    render();
+    try {
+      runTimers(dt);
+      update(dt);
+      presnapCamera();
+      render();
+    } catch (e) {
+      // one bad frame must never end the game; say so and keep going
+      if (window.console && console.error) console.error("bowl:", e);
+    }
     requestAnimationFrame(frame);
   }
   // initial camera at the ball
