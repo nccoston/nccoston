@@ -1915,20 +1915,35 @@ def stadium_points(miles):
 
 WIKI_API = "https://en.wikipedia.org/w/api.php"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
-# Wikimedia asks callers to identify themselves. The board's name does that;
-# the admin's email address is not theirs to have.
-WIKI_UA = "TheVictorsBoard/1.0 (small self-hosted message board; light use)"
+# Wikimedia's User-Agent policy asks callers to identify themselves AND give
+# a way to be contacted; requests without one get refused, which is what a
+# datacentre IP like ours runs into first. The board's public address does
+# that job — the admin's personal email is not theirs to have.
+SITE_URL = "https://the-victors-board.onrender.com/"
+WIKI_UA = "TheVictorsBoard/1.0 (%s) python-requests" % SITE_URL
+WIKI_REST = "https://en.wikipedia.org/api/rest_v1/page/summary/"
 WIKI_GAP = 1.1          # seconds between calls; their limiter is not a suggestion
 WIKI_TITLES = 40        # titles per query — the API takes up to 50
 _wiki_last = [0.0]
 
 
-def _wiki_get(url, params, tries=3):
-    """One paced, retrying call. Wikimedia answers 429 to a tight loop, and
-    asks for serial requests, so hold a gap between them and back off when
-    told to rather than hammering away."""
+class Throttled(Exception):
+    """Wikimedia said no. Carries how long they asked us to wait."""
+
+    def __init__(self, status, retry_after=None):
+        self.status, self.retry_after = status, retry_after
+        if retry_after:
+            msg = ("Wikimedia is refusing us (HTTP %d) and asks for %s seconds."
+                   % (status, int(retry_after)))
+        else:
+            msg = "Wikimedia is refusing us (HTTP %d)." % status
+        Exception.__init__(self, msg + " Try again in a few minutes.")
+
+
+def _wiki_get(url, params=None, tries=3):
+    """One paced, retrying call."""
     import requests
-    last = ""
+    status, retry_after = 0, None
     for attempt in range(tries):
         wait = WIKI_GAP - (time.time() - _wiki_last[0])
         if wait > 0:
@@ -1936,19 +1951,45 @@ def _wiki_get(url, params, tries=3):
         _wiki_last[0] = time.time()
         r = requests.get(url, params=params, timeout=15,
                          headers={"User-Agent": WIKI_UA,
-                                  "Accept": "application/json"})
+                                  "Accept": "application/json",
+                                  "Accept-Encoding": "gzip"})
         if r.status_code == 429 or r.status_code >= 500:
-            last = "HTTP %d" % r.status_code
+            status = r.status_code
             try:
-                back = float(r.headers.get("Retry-After") or 0)
+                retry_after = float(r.headers.get("Retry-After") or 0) or None
             except ValueError:
-                back = 0
-            time.sleep(min(max(back, 2.0 * (attempt + 1)), 6.0))
+                retry_after = None
+            # If they have asked us to wait minutes, sitting here retrying
+            # only burns the budget the fallback needs. Give up quickly.
+            if retry_after and retry_after > 5:
+                break
+            if attempt == tries - 1:
+                break
+            time.sleep(min(retry_after or (1.5 * (attempt + 1)), 4.0))
             continue
         r.raise_for_status()
         return r.json()
-    raise RuntimeError("Wikimedia is throttling us (%s) — wait a minute and "
-                       "click again" % last)
+    raise Throttled(status, retry_after)
+
+
+def _rest_lead_image(title):
+    """The CDN-backed summary endpoint, used when the query API turns us away.
+
+    It is cached at the edge and far more tolerant than the action API, but
+    it answers one title at a time and says nothing about licensing — so it
+    is a way to find the picture, never a way to skip crediting it.
+    """
+    from urllib.parse import quote
+    data = _wiki_get(WIKI_REST + quote(title.replace(" ", "_"), safe=""))
+    src = ((data.get("originalimage") or {}).get("source")
+           or (data.get("thumbnail") or {}).get("source") or "")
+    if not src:
+        return None
+    name = src.rsplit("/", 1)[-1]
+    if "/thumb/" in src:                     # .../thumb/a/ab/Name.jpg/800px-Name.jpg
+        name = src.split("/thumb/", 1)[1].split("/")[2]
+    from urllib.parse import unquote
+    return unquote(name), data.get("title") or title
 
 
 def _resolved(data):
@@ -2055,6 +2096,22 @@ def fetch_stadium_photos(wanted, budget=20.0):
     titles = [s["stadium"] for s in wanted]
     try:
         leads = _lead_images(titles)
+    except Throttled as exc:
+        # the batch query is barred; the CDN summary endpoint usually is not
+        leads = {}
+        for s in wanted:
+            if time.time() - started > budget * 0.6:
+                break
+            try:
+                hit = _rest_lead_image(s["stadium"])
+            except Throttled:
+                return found, ["%s" % exc], 0     # both doors shut; say so once
+            except Exception:
+                continue
+            if hit:
+                leads[s["stadium"]] = hit
+        if not leads:
+            return found, ["%s" % exc], 0
     except Exception as exc:
         return found, ["%s" % exc], 0
 
@@ -2078,6 +2135,8 @@ def fetch_stadium_photos(wanted, budget=20.0):
             else:
                 failures.append("%s (%s) — \u201c%s\u201d has no lead picture"
                                 % (s["stadium"], s["team"], hits[0]["title"]))
+        except Throttled:
+            break                     # stop asking; the rest wait for later
         except Exception as exc:
             failures.append("%s (%s) — %s" % (s["stadium"], s["team"], exc))
 
