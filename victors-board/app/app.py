@@ -1913,6 +1913,154 @@ def stadium_points(miles):
     return int(round(5000 * math.exp(-miles / 250.0)))
 
 
+WIKI_API = "https://en.wikipedia.org/w/api.php"
+COMMONS_API = "https://commons.wikimedia.org/w/api.php"
+# Wikimedia asks callers to identify themselves. The board's name does that;
+# the admin's email address is not theirs to have.
+WIKI_UA = "TheVictorsBoard/1.0 (small self-hosted message board; light use)"
+
+
+def _wiki_get(url, params):
+    import requests
+    r = requests.get(url, params=params, timeout=12,
+                     headers={"User-Agent": WIKI_UA,
+                              "Accept": "application/json"})
+    r.raise_for_status()
+    return r.json()
+
+
+def _wiki_lead_file(title):
+    """The file name of an article's lead image, or None."""
+    data = _wiki_get(WIKI_API, {"action": "query", "format": "json",
+                                "formatversion": "2", "prop": "pageimages",
+                                "piprop": "name", "titles": title,
+                                "redirects": "1"})
+    for page in (data.get("query") or {}).get("pages") or []:
+        if page.get("pageimage"):
+            return page["pageimage"], page.get("title") or title
+    return None, None
+
+
+def _commons_file(name, width=1400):
+    """A usable copy of a Commons file plus who to credit for it."""
+    data = _wiki_get(COMMONS_API, {"action": "query", "format": "json",
+                                   "formatversion": "2", "prop": "imageinfo",
+                                   "titles": "File:" + name,
+                                   "iiprop": "url|extmetadata|mime",
+                                   "iiurlwidth": str(width)})
+    for page in (data.get("query") or {}).get("pages") or []:
+        for info in page.get("imageinfo") or []:
+            meta = info.get("extmetadata") or {}
+
+            def m(key):
+                v = (meta.get(key) or {}).get("value") or ""
+                return re.sub(r"<[^>]+>", "", v).strip()
+
+            return {"url": info.get("thumburl") or info.get("url"),
+                    "mime": info.get("mime") or "",
+                    "credit": m("Artist") or m("Credit") or "Wikimedia Commons",
+                    "license": m("LicenseShortName") or m("License"),
+                    "source": info.get("descriptionurl") or ""}
+    return None
+
+
+def fetch_stadium_photo(s):
+    """Find a picture of one stadium on Wikipedia/Commons and keep a copy.
+
+    Everything here can fail — an article with no lead image, a redirect
+    somewhere daft, a file we can't decode. It returns a reason rather than
+    raising, and the admin page shows every result so a bad match can be
+    thrown back.
+    """
+    import requests
+    from PIL import Image
+    title = s["stadium"]
+    tried = []
+    for query in (title, "%s (%s)" % (title, s["city"]),
+                  "%s %s football stadium" % (s["team"], s["city"])):
+        try:
+            if query is title or query.endswith(")"):
+                name, matched = _wiki_lead_file(query)
+            else:                       # last resort: let search pick a page
+                sr = _wiki_get(WIKI_API, {"action": "query", "format": "json",
+                                          "formatversion": "2", "list": "search",
+                                          "srsearch": query, "srlimit": "1"})
+                hits = (sr.get("query") or {}).get("search") or []
+                if not hits:
+                    tried.append("%s: no article" % query)
+                    continue
+                name, matched = _wiki_lead_file(hits[0]["title"])
+        except Exception as exc:
+            tried.append("%s: %s" % (query, exc))
+            continue
+        if not name:
+            tried.append("%s: article has no lead image" % query)
+            continue
+        try:
+            info = _commons_file(name)
+        except Exception as exc:
+            return None, "%s: commons lookup failed: %s" % (name, exc)
+        if not info or not info.get("url"):
+            tried.append("%s: not on Commons" % name)
+            continue
+        if info["mime"] and not info["mime"].startswith("image/"):
+            tried.append("%s: not an image (%s)" % (name, info["mime"]))
+            continue
+        try:
+            r = requests.get(info["url"], timeout=20,
+                             headers={"User-Agent": WIKI_UA})
+            r.raise_for_status()
+            PHOTO_DIR.mkdir(parents=True, exist_ok=True)
+            fn = secrets.token_hex(16) + ".jpg"
+            path = PHOTO_DIR / fn
+            path.write_bytes(r.content)
+            with IMG_WORK:              # same memory guard the uploader uses
+                img = Image.open(path)
+                img.draft("RGB", (2400, 2400))
+                img.thumbnail((1400, 1400))
+                img.convert("RGB").save(path, "JPEG", quality=82)
+        except Exception as exc:
+            return None, "%s: download failed: %s" % (name, exc)
+        return {"file": fn, "credit": info["credit"][:160],
+                "license": info["license"][:60], "source": info["source"],
+                "wiki": matched, "commons_file": name}, None
+    return None, "; ".join(tried[:3]) or "nothing found"
+
+
+def save_stadium_photos(found):
+    """Merge new entries into the index on disk, under the lock."""
+    with STADIUM_LOCK:
+        PHOTO_DIR.mkdir(parents=True, exist_ok=True)
+        idx_path = PHOTO_DIR / "index.json"
+        try:
+            idx = json.loads(idx_path.read_text())
+        except (OSError, ValueError):
+            idx = {}
+        idx.update(found)
+        idx_path.write_text(json.dumps(idx, indent=1, sort_keys=True))
+    PHOTO_CACHE["at"] = None
+    return len(idx)
+
+
+def drop_stadium_photo(key):
+    with STADIUM_LOCK:
+        idx_path = PHOTO_DIR / "index.json"
+        try:
+            idx = json.loads(idx_path.read_text())
+        except (OSError, ValueError):
+            return False
+        entry = idx.pop(key, None)
+        if entry is None:
+            return False
+        idx_path.write_text(json.dumps(idx, indent=1, sort_keys=True))
+        try:
+            (PHOTO_DIR / entry["file"]).unlink(missing_ok=True)
+        except OSError:
+            pass
+    PHOTO_CACHE["at"] = None
+    return True
+
+
 def _prune_stadium_games():
     cutoff = time.time() - 7200
     for tok in [t for t, g in STADIUM_GAMES.items() if g["at"] < cutoff]:
@@ -2336,7 +2484,7 @@ def _admin_post(db):
 
 def _admin_nav():
     return [("admin", "Overview"), ("admin_settings", "Settings"),
-            ("admin_users", "Members"), ("admin_bowl", "Bowl"),
+            ("admin_users", "Members"), ("admin_games", "Games"),
             ("admin_backups", "Backups")]
 
 
@@ -2520,29 +2668,85 @@ def stadium_leaderboard():
                            rounds=STADIUM_ROUNDS)
 
 
-@app.route("/admin/bowl")
+PHOTO_BATCH = 12    # per click, so the request finishes well inside a timeout
+
+
+@app.route("/admin/games", methods=["GET", "POST"])
 @admin_required
-def admin_bowl():
-    """Who has tried the Victard Bowl, and when. Ordered by last seen, so
-    the people playing it right now are at the top."""
+def admin_games():
+    """Who is playing, and the Stadium Guesser's photo shelf.
+
+    Photos are fetched a dozen at a time and every result is shown, because
+    matching an article to a stadium is a guess and some of them will be
+    wrong. Throwing one back is a click.
+    """
     db = get_db()
-    rows = db.execute(
-        "SELECT b.*, u.handle FROM bowl_scores b JOIN users u ON u.id = b.user_id"
-        " ORDER BY b.last_at DESC NULLS LAST, b.updated_at DESC").fetchall()
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "fetch_photos":
+            have = stadium_photos()
+            todo = [s for s in load_stadiums() if stadium_key(s) not in have]
+            found, failed = {}, []
+            for s in todo[:PHOTO_BATCH]:
+                entry, why = fetch_stadium_photo(s)
+                if entry:
+                    entry["team"] = s["team"]
+                    entry["stadium"] = s["stadium"]
+                    found[stadium_key(s)] = entry
+                else:
+                    failed.append("%s — %s" % (s["stadium"], why))
+            total = save_stadium_photos(found) if found else len(have)
+            flash("Fetched %d picture%s. %d stadium%s now have one, %d to go."
+                  % (len(found), "" if len(found) == 1 else "s", total,
+                     "" if total == 1 else "s", max(0, len(todo) - PHOTO_BATCH)),
+                  "success" if found else "message")
+            for f in failed[:6]:
+                flash("No picture: " + f)
+        elif action == "drop_photo":
+            key = request.form.get("key") or ""
+            if drop_stadium_photo(key):
+                flash("Dropped that one. The next fetch will look again.")
+        return redirect(url_for("admin_games"))
+
     members = db.execute("SELECT COUNT(*) c FROM users"
                          " WHERE password_hash != '!'").fetchone()["c"]
     week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-    tally = {
-        "members": members,
-        "opened": len(rows),
-        "played": sum(1 for r in rows if r["games"]),
-        "seasons": sum(1 for r in rows if r["seasons"]),
-        "games": sum(r["games"] for r in rows),
-        "this_week": sum(1 for r in rows if (r["last_at"] or "") >= week_ago),
-        "looked_only": sum(1 for r in rows if not r["games"]),
-    }
-    return render_template("admin_bowl.html", admin_nav=_admin_nav(),
-                           rows=rows, tally=tally)
+
+    def tally_for(table, extra=None):
+        rows = db.execute(
+            "SELECT t.*, u.handle FROM %s t JOIN users u ON u.id = t.user_id"
+            " ORDER BY t.last_at DESC, t.updated_at DESC" % table).fetchall()
+        t = {"members": members, "opened": len(rows),
+             "played": sum(1 for r in rows if r["games"]),
+             "games": sum(r["games"] for r in rows),
+             "this_week": sum(1 for r in rows if (r["last_at"] or "") >= week_ago),
+             "looked_only": sum(1 for r in rows if not r["games"])}
+        if extra:
+            t.update(extra(rows))
+        return rows, t
+
+    bowl_rows, bowl = tally_for(
+        "bowl_scores", lambda rs: {"seasons": sum(1 for r in rs if r["seasons"])})
+    sg_rows, sg = tally_for("stadium_scores")
+
+    photos = stadium_photos()
+    shelf = []
+    for s in load_stadiums():
+        p = photos.get(stadium_key(s))
+        if p:
+            shelf.append({"key": stadium_key(s), "team": s["team"],
+                          "stadium": s["stadium"],
+                          "city": "%s, %s" % (s["city"], s["state"]),
+                          "url": url_for("stadium_photo", filename=p["file"]),
+                          "credit": p.get("credit", ""),
+                          "license": p.get("license", ""),
+                          "source": p.get("source", ""),
+                          "wiki": p.get("wiki", "")})
+    return render_template("admin_games.html", admin_nav=_admin_nav(),
+                           bowl_rows=bowl_rows, bowl=bowl,
+                           sg_rows=sg_rows, sg=sg, shelf=shelf,
+                           total_stadiums=len(load_stadiums()),
+                           needed=STADIUM_ROUNDS, batch=PHOTO_BATCH)
 
 
 @app.route("/admin/backups")

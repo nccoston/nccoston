@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Admin games - {{ site_title }}{% endblock %}
+
+{% macro tally_line(t, thing) -%}
+  <p class="bowl-tally">
+    <b>{{ t.opened }}</b> of {{ t.members }} member{{ '' if t.members == 1 else 's' }}
+    ha{{ 's' if t.opened == 1 else 've' }} opened it &middot;
+    <b>{{ t.played }}</b> finished a {{ thing }}
+    {%- if t.seasons is defined %} &middot; <b>{{ t.seasons }}</b> finished a season{% endif %}
+  </p>
+  <p class="hint">
+    {{ t.games }} {{ thing }}{{ '' if t.games == 1 else 's' }} played in total.
+    {{ t.this_week }} {{ 'person' if t.this_week == 1 else 'people' }} in the last seven days.
+    {%- if t.looked_only %} {{ t.looked_only }} opened it and never finished one.{% endif %}
+  </p>
+{%- endmacro %}
+
+{% macro players(rows, cols) -%}
+  {% if rows %}
+  <table class="admin-table user-table">
+    <tr><th>Poster</th><th>Last seen</th><th>First tried</th>
+      <th>Opens</th><th>Games</th>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr>
+    {% for r in rows %}
+    <tr{% if not r['games'] %} class="bowl-looker"{% endif %}>
+      <td><b>{{ r['handle'] }}</b></td>
+      <td>{{ r['last_at'] | boardago }}</td>
+      <td>{% if r['first_at'] %}{{ r['first_at'] | boarddate }}
+        {%- else %}<span class="hint">&mdash;</span>{% endif %}</td>
+      <td>{{ r['opens'] }}</td>
+      <td>{{ r['games'] }}</td>
+      {{ caller(r) }}
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="hint">Nobody has opened it yet.</p>{% endif %}
+{%- endmacro %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Admin</h2>
+  {% include "_admin_nav.html" %}
+
+  <h3>&#127944; Victard Bowl</h3>
+  {{ tally_line(bowl, 'game') }}
+  {% call(r) players(bowl_rows, ['Record', 'Best season']) %}
+      <td>{% if r['games'] %}{{ r['wins'] }}-{{ r['losses'] }}
+        {%- else %}<span class="hint">only looked</span>{% endif %}</td>
+      <td>{% if r['seasons'] %}{{ r['best_w'] }}-{{ r['best_l'] }}
+        {%- elif r['games'] %}<span class="hint">in progress</span>
+        {%- else %}<span class="hint">&mdash;</span>{% endif %}</td>
+  {% endcall %}
+
+  <h3>&#127943; Stadium Guesser</h3>
+  {{ tally_line(sg, 'game') }}
+  {% call(r) players(sg_rows, ['Best', 'Closest']) %}
+      <td>{% if r['games'] %}{{ '{:,}'.format(r['best']) }}
+        {%- else %}<span class="hint">only looked</span>{% endif %}</td>
+      <td>{% if r['closest'] is not none %}{{ '%.1f'|format(r['closest']) }} mi
+        {%- else %}<span class="hint">&mdash;</span>{% endif %}</td>
+  {% endcall %}
+
+  <h4>Photos &mdash; {{ shelf | length }} of {{ total_stadiums }} stadiums</h4>
+  <p class="hint">Pulled from the stadium's Wikipedia article and credited to
+    whoever took it. Matching an article to a stadium is a guess, so check
+    them: if one isn't the right stadium, drop it and the next fetch will
+    look again. The game needs {{ needed }} to be playable.</p>
+  <form class="inline-form" method="post">
+    <input type="hidden" name="action" value="fetch_photos">
+    <button type="submit" class="fetch-btn">Fetch the next {{ batch }}</button>
+  </form>
+
+  {% if shelf %}
+  <div class="photo-shelf">
+    {% for p in shelf %}
+    <div class="photo-card">
+      <img src="{{ p.url }}" alt="{{ p.stadium }}" loading="lazy">
+      <p><b>{{ p.stadium }}</b><br>
+        <span class="hint">{{ p.team }} &middot; {{ p.city }}</span></p>
+      <p class="hint">{{ p.credit }}{% if p.license %} &middot; {{ p.license }}{% endif %}
+        {%- if p.source %} <a href="{{ p.source }}" target="_blank" rel="noopener">file</a>{% endif %}
+        {%- if p.wiki %}<br>from &ldquo;{{ p.wiki }}&rdquo;{% endif %}</p>
+      <form class="inline-form" method="post"
+            onsubmit="return confirm('Drop the picture for {{ p.stadium }}?')">
+        <input type="hidden" name="action" value="drop_photo">
+        <input type="hidden" name="key" value="{{ p.key }}">
+        <button type="submit">Wrong one &mdash; drop it</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
