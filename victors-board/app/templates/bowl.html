@@ -4,10 +4,6 @@
 {% block content %}
 <div class="bowl-wrap">
   <canvas id="bowl" width="320" height="180"></canvas>
-  <p class="hint bowl-help">Tap a play to see its routes, tap the field to snap.
-    Passing: pull back from anywhere to aim &mdash; time slows, the ring marks
-    your receiver &mdash; let go to throw. Running (and after a catch): drag
-    to steer. The other team's drives play themselves.</p>
 </div>
 <script>window.BOWL = {{ bowl_cfg | tojson }};</script>
 <script src="{{ url_for('static', filename='bowl.js') }}"></script>

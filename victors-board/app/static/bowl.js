@@ -176,12 +176,15 @@
     var rb = P("M", "RB", los - (play.f === "iform" ? 34 : 28), fieldY(rbY), 60);
     var wrs = FORMATIONS[play.f].map(function (spot) { return P("M", "WR", los + spot[1], fieldY(spot[0]), 60); });
     var ols = [];
-    for (var i = 0; i < 5; i++) ols.push(P("M", "OL", los - 4, fieldY(0.38 + i * 0.06), 44));
+    for (var i = 0; i < 5; i++) {
+      ols.push(P("M", "OL", los - 4 - (i === 2 ? 1 : 0) - (i % 2) * 1.5,
+                 fieldY(0.315 + i * 0.0925), 44));
+    }
     wrs.forEach(function (w, k) { w.route = play.routes[k]; w.home = { x: w.x, y: w.y }; });
     rb.route = play.rb; rb.home = { x: rb.x, y: rb.y };
     // defense
     var dls = [];
-    for (var j = 0; j < 4; j++) dls.push(P("O", "DL", los + 5, fieldY(0.36 + j * 0.09), 38));
+    for (var j = 0; j < 4; j++) dls.push(P("O", "DL", los + 5 + (j % 2) * 1.5, fieldY(0.355 + j * 0.1), 38));
     var lbs = [P("O", "LB", los + 28, fieldY(0.38), 46), P("O", "LB", los + 28, fieldY(0.62), 46)];
     // blocking assignments: four linemen on the four down linemen; the
     // fifth pulls to a linebacker on runs (the lane) or doubles on passes
@@ -565,46 +568,186 @@
   }
 
   // ------------------------------------------------------------ drawing
-  function drawField() {
-    ctx.fillStyle = "#1c2a1c"; ctx.fillRect(0, 0, W, H);
-    // grass stripes, 5-yard bands
+  // ------------------------------------------------------------ the field
+  // The field never changes, so it's painted ONCE into an offscreen canvas
+  // (turf texture, numbers, logo, goal posts) and the visible slice is
+  // blitted each frame. Detail is free when you only pay for it at load.
+  var FIELD_W = yardToPx(110);          // -10 .. 110 yards
+  var fieldCanvas = null;
+
+  function blockM(g, cx, cy, size, fill, edge) {
+    // a Block M, painted at midfield
+    var ROWS = [
+      "MMM.......MMM",
+      "MMMM.....MMMM",
+      "MM.MM...MM.MM",
+      "MM..MM.MM..MM",
+      "MM...MMM...MM",
+      "MM....M....MM",
+      "MM.........MM",
+      "MM.........MM",
+      "MM.........MM",
+      "MM.........MM",
+      "MMM.......MMM"
+    ];
+    var cols = ROWS[0].length, rows = ROWS.length;
+    var u = size / cols, x0 = cx - size / 2, y0 = cy - (rows * u) / 2;
+    g.fillStyle = edge;
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+      if (ROWS[r][c] === "M") g.fillRect(x0 + c * u - 0.6, y0 + r * u - 0.6, u + 1.2, u + 1.2);
+    }
+    g.fillStyle = fill;
+    for (var r2 = 0; r2 < rows; r2++) for (var c2 = 0; c2 < cols; c2++) {
+      if (ROWS[r2][c2] === "M") g.fillRect(x0 + c2 * u, y0 + r2 * u, u + 0.4, u + 0.4);
+    }
+  }
+
+  function endzone(g, x, w, color, label, flip) {
+    g.fillStyle = color; g.fillRect(x, FIELD_TOP, w, FIELD_BOT - FIELD_TOP);
+    // diagonal weave, barely there — paint on grass, not a flat block
+    g.save();
+    g.beginPath(); g.rect(x, FIELD_TOP, w, FIELD_BOT - FIELD_TOP); g.clip();
+    g.strokeStyle = "rgba(255,255,255,0.055)"; g.lineWidth = 1;
+    for (var d = -160; d < w + 160; d += 7) {
+      g.beginPath(); g.moveTo(x + d, FIELD_TOP); g.lineTo(x + d + 160, FIELD_BOT); g.stroke();
+    }
+    g.restore();
+    // lettering, reading from the near sideline
+    g.save();
+    g.translate(x + w / 2, (FIELD_TOP + FIELD_BOT) / 2);
+    g.rotate(flip ? Math.PI / 2 : -Math.PI / 2);
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.font = "bold 13px Verdana, sans-serif";
+    g.lineWidth = 3; g.lineJoin = "round";
+    g.strokeStyle = "rgba(0,0,0,0.35)"; g.strokeText(label, 0, 0);
+    g.fillStyle = "#ffffff"; g.fillText(label, 0, 0);
+    g.restore();
+  }
+
+  function goalPost(g, x, dir) {
+    // seen from above: the base, the crossbar, and two uprights
+    var midY = (FIELD_TOP + FIELD_BOT) / 2, spread = 13;
+    g.strokeStyle = "#f2c200"; g.lineWidth = 1.6; g.lineCap = "round";
+    g.beginPath(); g.moveTo(x, midY - spread); g.lineTo(x, midY + spread); g.stroke();
+    g.beginPath();
+    g.moveTo(x, midY - spread); g.lineTo(x + dir * 5, midY - spread);
+    g.moveTo(x, midY + spread); g.lineTo(x + dir * 5, midY + spread);
+    g.stroke();
+    g.fillStyle = "rgba(0,0,0,0.3)";
+    g.fillRect(x - 1, midY - spread + 1, 2, spread * 2 - 2);
+    g.fillStyle = "#ffd633"; g.fillRect(x - 1.2, midY - 2, 2.4, 4);
+  }
+
+  function fieldNumbers(g) {
+    g.textAlign = "center"; g.textBaseline = "middle";
+    for (var yd = 10; yd <= 90; yd += 10) {
+      var lx = yardToPx(yd);
+      var n = yd > 50 ? 100 - yd : yd;
+      var label = n === 50 ? "50" : String(n);
+      [[FIELD_TOP + 17, -1], [FIELD_BOT - 17, 1]].forEach(function (pos) {
+        var ty = pos[0], side = pos[1];
+        g.save();
+        g.translate(lx, ty);
+        g.rotate(side < 0 ? -Math.PI / 2 : Math.PI / 2);
+        g.font = "bold 11px Verdana, sans-serif";
+        g.fillStyle = "rgba(0,0,0,0.28)"; g.fillText(label, 0.8, 1.2);
+        g.fillStyle = "rgba(255,255,255,0.92)"; g.fillText(label, 0, 0);
+        // the arrow that points at the nearer goal line
+        if (n !== 50) {
+          var toRight = yd < 50;
+          var ax = (toRight ? 1 : -1) * 10;
+          g.fillStyle = "rgba(255,255,255,0.85)";
+          g.beginPath();
+          g.moveTo(ax + (toRight ? 3 : -3), 0);
+          g.lineTo(ax, -2.4); g.lineTo(ax, 2.4);
+          g.closePath(); g.fill();
+        }
+        g.restore();
+      });
+    }
+  }
+
+  function bakeField() {
+    var c = document.createElement("canvas");
+    c.width = FIELD_W * RES; c.height = H * RES;
+    var g = c.getContext("2d");
+    g.scale(RES, RES);
+
+    // beyond the sidelines: shadowed apron, so the field sits in something
+    var sur = g.createLinearGradient(0, 0, 0, H);
+    sur.addColorStop(0, "#0e1a12"); sur.addColorStop(0.5, "#16261a"); sur.addColorStop(1, "#0e1a12");
+    g.fillStyle = sur; g.fillRect(0, 0, FIELD_W, H);
+
+    // turf: mown stripes every five yards
     for (var yd = -10; yd < 110; yd += 5) {
-      var x = yardToPx(yd) - camX;
-      ctx.fillStyle = ((yd / 5) % 2 === 0) ? GRASS_A : GRASS_B;
-      ctx.fillRect(x, FIELD_TOP, 5 * PX, FIELD_BOT - FIELD_TOP);
+      g.fillStyle = ((yd / 5) % 2 === 0) ? GRASS_A : GRASS_B;
+      g.fillRect(yardToPx(yd), FIELD_TOP, 5 * PX, FIELD_BOT - FIELD_TOP);
     }
-    // endzones
-    ctx.fillStyle = BLUE; ctx.fillRect(yardToPx(-10) - camX, FIELD_TOP, 10 * PX, FIELD_BOT - FIELD_TOP);
-    ctx.fillStyle = oppColor; ctx.fillRect(yardToPx(100) - camX, FIELD_TOP, 10 * PX, FIELD_BOT - FIELD_TOP);
-    ctx.fillStyle = MAIZE; ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-    ctx.save(); ctx.translate(yardToPx(-5) - camX, (FIELD_TOP + FIELD_BOT) / 2); ctx.rotate(-Math.PI / 2);
-    ctx.fillText("MICHIGAN", 0, 3); ctx.restore();
-    ctx.fillStyle = "#fff";
-    ctx.save(); ctx.translate(yardToPx(105) - camX, (FIELD_TOP + FIELD_BOT) / 2); ctx.rotate(Math.PI / 2);
-    ctx.fillText(opp.abbr || "OPP", 0, 3); ctx.restore();
-    // yard lines + numbers
-    ctx.fillStyle = LINE;
+    // light across the grass: brighter down the middle, shaded at the rails
+    var lit = g.createLinearGradient(0, FIELD_TOP, 0, FIELD_BOT);
+    lit.addColorStop(0, "rgba(0,0,0,0.30)");
+    lit.addColorStop(0.42, "rgba(255,255,255,0.07)");
+    lit.addColorStop(1, "rgba(0,0,0,0.34)");
+    g.fillStyle = lit; g.fillRect(0, FIELD_TOP, FIELD_W, FIELD_BOT - FIELD_TOP);
+
+    endzone(g, yardToPx(-10), 10 * PX, BLUE, "MICHIGAN", false);
+    endzone(g, yardToPx(100), 10 * PX, oppColor, (opp.name || "OPP").toUpperCase().slice(0, 11), true);
+
+    blockM(g, yardToPx(50), (FIELD_TOP + FIELD_BOT) / 2, 34, "rgba(255,203,5,0.5)", "rgba(0,20,46,0.45)");
+
+    // yard lines
     for (var y2 = 0; y2 <= 100; y2 += 5) {
-      var lx = yardToPx(y2) - camX;
-      ctx.fillRect(lx, FIELD_TOP, 1, FIELD_BOT - FIELD_TOP);
-      if (y2 % 10 === 0 && y2 > 0 && y2 < 100) {
-        var n = y2 > 50 ? 100 - y2 : y2;
-        ctx.font = "7px monospace"; ctx.textAlign = "center";
-        ctx.fillText(String(n), lx, FIELD_TOP + 14); ctx.fillText(String(n), lx, FIELD_BOT - 8);
-      }
+      var lx = yardToPx(y2);
+      var goal = (y2 === 0 || y2 === 100);
+      g.fillStyle = goal ? "#ffffff" : "rgba(255,255,255,0.78)";
+      g.fillRect(lx - (goal ? 1 : 0.5), FIELD_TOP, goal ? 2 : 1, FIELD_BOT - FIELD_TOP);
     }
-    // hashes
+    // hash marks, and the little ticks along each sideline
+    g.fillStyle = "rgba(255,255,255,0.62)";
+    var h1 = FIELD_TOP + 46, h2 = FIELD_BOT - 46;
     for (var y3 = 0; y3 <= 100; y3++) {
-      var hx = yardToPx(y3) - camX;
-      ctx.fillRect(hx, FIELD_TOP + 44, 1, 2); ctx.fillRect(hx, FIELD_BOT - 46, 1, 2);
+      if (y3 % 5 === 0) continue;
+      var hx = yardToPx(y3);
+      g.fillRect(hx, h1, 1, 3); g.fillRect(hx, h2, 1, 3);
+      g.fillRect(hx, FIELD_TOP + 1, 1, 3); g.fillRect(hx, FIELD_BOT - 4, 1, 3);
     }
-    // sidelines
-    ctx.fillStyle = "#e8e8e8";
-    ctx.fillRect(0, FIELD_TOP - 1, W, 2); ctx.fillRect(0, FIELD_BOT - 1, W, 2);
-    // line of scrimmage + first-down marker
+    fieldNumbers(g);
+
+    // sidelines and the bright rail that frames the whole thing
+    g.fillStyle = "#f2f2f2";
+    g.fillRect(0, FIELD_TOP - 2, FIELD_W, 2); g.fillRect(0, FIELD_BOT, FIELD_W, 2);
+    g.fillStyle = "rgba(255,203,5,0.5)";
+    g.fillRect(0, FIELD_TOP - 3, FIELD_W, 1); g.fillRect(0, FIELD_BOT + 2, FIELD_W, 1);
+
+    goalPost(g, yardToPx(-9), -1);
+    goalPost(g, yardToPx(109), 1);
+
+    // turf grain: a fine speckle over everything, so it reads as grass
+    var img = g.getImageData(0, FIELD_TOP * RES, FIELD_W * RES, (FIELD_BOT - FIELD_TOP) * RES);
+    var d = img.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var n = ((i * 2654435761) % 23) - 11;      // cheap deterministic dither
+      d[i] = clamp(d[i] + n, 0, 255);
+      d[i + 1] = clamp(d[i + 1] + n, 0, 255);
+      d[i + 2] = clamp(d[i + 2] + n, 0, 255);
+    }
+    g.putImageData(img, 0, FIELD_TOP * RES);
+    fieldCanvas = c;
+  }
+
+  function drawField() {
+    if (!fieldCanvas) bakeField();
+    ctx.fillStyle = "#0b1410"; ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(fieldCanvas, camX * RES, 0, W * RES, H * RES, 0, 0, W, H);
+
+    // the two lines that move: scrimmage and the sticks
     if (G.mode === "presnap" || G.mode === "play" || G.mode === "dead") {
-      ctx.fillStyle = "rgba(60,120,255,0.75)"; ctx.fillRect(yardToPx(G.spot) - camX, FIELD_TOP, 1, FIELD_BOT - FIELD_TOP);
-      ctx.fillStyle = "rgba(255,230,0,0.85)"; ctx.fillRect(yardToPx(Math.min(100, G.spot + G.toGo)) - camX, FIELD_TOP, 1, FIELD_BOT - FIELD_TOP);
+      var sx = Math.round(yardToPx(G.spot) - camX);
+      ctx.fillStyle = "rgba(90,150,255,0.30)"; ctx.fillRect(sx - 1, FIELD_TOP, 3, FIELD_BOT - FIELD_TOP);
+      ctx.fillStyle = "rgba(150,200,255,0.95)"; ctx.fillRect(sx, FIELD_TOP, 1, FIELD_BOT - FIELD_TOP);
+      var fx = Math.round(yardToPx(Math.min(100, G.spot + G.toGo)) - camX);
+      ctx.fillStyle = "rgba(255,203,5,0.28)"; ctx.fillRect(fx - 1, FIELD_TOP, 3, FIELD_BOT - FIELD_TOP);
+      ctx.fillStyle = "rgba(255,220,60,0.95)"; ctx.fillRect(fx, FIELD_TOP, 1, FIELD_BOT - FIELD_TOP);
     }
   }
 
@@ -642,32 +785,68 @@
     [".....PPP.PP.....", "....PPP...PP....", "...OOO....OO....", "..OOO......OO...", ".KKKK......KKK..", "................"]
   ];
   var SW = 16, SH = 26;          // sprite pixels; drawn into an 8x13 logical box
+  var PAD = 1;                   // room for the outline
   var SKINS = ["#f1c9a5", "#c68642", "#6b3e22"];
   var spriteCache = {};
+  function shade(hex, amt) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = clamp(((n >> 16) & 255) + amt, 0, 255);
+    var g2 = clamp(((n >> 8) & 255) + amt, 0, 255);
+    var b = clamp((n & 255) + amt, 0, 255);
+    return "rgb(" + r + "," + g2 + "," + b + ")";
+  }
   function bakeSprite(team, skin, frame, faceRight) {
     var key = team + skin + frame + (faceRight ? "R" : "L");
     if (spriteCache[key]) return spriteCache[key];
-    var c = document.createElement("canvas"); c.width = SW; c.height = SH;
+    var c = document.createElement("canvas");
+    c.width = SW + PAD * 2; c.height = SH + PAD * 2;
     var g = c.getContext("2d");
+    var jersey = team === "M" ? BLUE : oppColor;
+    var helm = team === "M" ? "#00274C" : oppColor;
     var colors = team === "M"
-      ? { H: "#00274C", W: MAIZE, F: "#2b2b2b", S: SKINS[skin], J: BLUE, N: MAIZE, P: MAIZE, O: BLUE, K: "#1a1a1a" }
-      : { H: oppColor, W: "#f4f4f4", F: "#2b2b2b", S: SKINS[skin], J: oppColor, N: "#f4f4f4", P: "#ececec", O: oppColor, K: "#1a1a1a" };
+      ? { H: helm, W: MAIZE, F: "#2b2b2b", S: SKINS[skin], J: jersey, N: MAIZE, P: MAIZE, O: jersey, K: "#1a1a1a" }
+      : { H: helm, W: "#f4f4f4", F: "#2b2b2b", S: SKINS[skin], J: jersey, N: "#f4f4f4", P: "#ececec", O: jersey, K: "#1a1a1a" };
     var rows = SPRITE_ROWS.concat(LEG_FRAMES[frame]);
+    function at(r, col) {
+      if (r < 0 || r >= rows.length || col < 0 || col >= SW) return ".";
+      return rows[r][col];
+    }
+    // 1. outline: any empty pixel touching the figure goes near-black
+    g.fillStyle = "rgba(8,10,16,0.85)";
+    for (var r0 = -1; r0 <= rows.length; r0++) {
+      for (var c0 = -1; c0 <= SW; c0++) {
+        if (at(r0, c0) !== ".") continue;
+        if (at(r0 - 1, c0) === "." && at(r0 + 1, c0) === "." &&
+            at(r0, c0 - 1) === "." && at(r0, c0 + 1) === ".") continue;
+        var ox = faceRight ? c0 : SW - 1 - c0;
+        g.fillRect(ox + PAD, r0 + PAD, 1, 1);
+      }
+    }
+    // 2. the figure
     for (var r = 0; r < rows.length; r++) {
       for (var col = 0; col < SW; col++) {
         var ch = rows[r][col];
         if (ch === ".") continue;
-        g.fillStyle = colors[ch];
-        g.fillRect(faceRight ? col : SW - 1 - col, r, 1, 1);
+        var base = colors[ch];
+        // light from above-left: brighten the top row of each part, darken the last
+        if (ch === "J" || ch === "P" || ch === "H" || ch === "O") {
+          if (at(r - 1, col) === ".") base = shade(base === MAIZE ? "#FFCB05" : base, 26);
+          else if (at(r + 1, col) === ".") base = shade(base === MAIZE ? "#FFCB05" : base, -26);
+        }
+        g.fillStyle = base;
+        g.fillRect((faceRight ? col : SW - 1 - col) + PAD, r + PAD, 1, 1);
       }
     }
+    // 3. a glint on the helmet
+    g.fillStyle = "rgba(255,255,255,0.30)";
+    g.fillRect((faceRight ? 4 : SW - 8) + PAD, 1 + PAD, 3, 1);
     spriteCache[key] = c;
     return c;
   }
   var RUN_CYCLE = [0, 1, 2, 1];
 
   function drawPlayer(p) {
-    var x = Math.round(p.x - camX), y = Math.round(p.y);
+    var x = p.x - camX, y = p.y;
     if (p.skin === undefined) p.skin = Math.floor(Math.random() * SKINS.length);
     // facing: carriers by motion, otherwise offense right / defense left
     var faceRight = p.team === "M";
@@ -677,46 +856,119 @@
     }
     var moving = (p === carrier) || p.team === "O" || (p.route && G.mode === "play");
     var frame = moving ? RUN_CYCLE[Math.floor(p.anim) % 4] : 0;
-    // shadow
-    ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.fillRect(x - 3, y + 2, 7, 2);
-    ctx.drawImage(bakeSprite(p.team, p.skin, frame, faceRight), x - 4, y - 10, 8, 13);
-    if (p === carrier && !ball.flying) {   // marker over the ball carrier
-      ctx.fillStyle = MAIZE; ctx.fillRect(x - 1, y - 14, 2, 2); ctx.fillRect(x, y - 13, 1, 1);
+    // shadow, cast to the low right
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.30)";
+    ctx.beginPath(); ctx.ellipse(x + 1, y + 3, 4.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.drawImage(bakeSprite(p.team, p.skin, frame, faceRight),
+                  Math.round(x) - 4.5, Math.round(y) - 10.5, 9, 14);
+    if (p === carrier && !ball.flying) {   // a chevron over whoever has it
+      var by = Math.round(y) - 14 + Math.sin(playT * 7) * 0.6;
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x), by + 3.6); ctx.lineTo(Math.round(x) - 2.6, by - 0.4);
+      ctx.lineTo(Math.round(x) + 2.6, by - 0.4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = MAIZE;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x), by + 2.8); ctx.lineTo(Math.round(x) - 2, by - 0.6);
+      ctx.lineTo(Math.round(x) + 2, by - 0.6); ctx.closePath(); ctx.fill();
     }
   }
 
   function drawBall() {
     if (!ball) return;
-    var x = Math.round(ball.x - camX), y = Math.round(ball.y - (ball.z || 0));
-    if (ball.flying) { ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(Math.round(ball.x - camX) - 1, Math.round(ball.y) + 3, 3, 1); }
-    ctx.fillStyle = "#8b4a1c"; ctx.fillRect(x - 2, y - 1, 4, 2);
-    ctx.fillStyle = "#fff"; ctx.fillRect(x, y - 1, 1, 1);
+    if (ball.holder && !ball.flying) return;    // it's tucked under an arm
+    var x = ball.x - camX, y = ball.y - (ball.z || 0);
+    if (ball.flying) {
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.beginPath(); ctx.ellipse(ball.x - camX, ball.y + 3, 3, 1.1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ball.flying ? (ball.tx > ball.sx ? 0.35 : -0.35) + ball.t * 7 : 0.3);
+    ctx.fillStyle = "rgba(8,10,16,0.8)";
+    ctx.beginPath(); ctx.ellipse(0, 0, 3.4, 2.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#8a4a20";
+    ctx.beginPath(); ctx.ellipse(0, 0, 2.9, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#a95f2c";
+    ctx.beginPath(); ctx.ellipse(-0.4, -0.4, 2.1, 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f6f0e6";
+    ctx.fillRect(-1.1, -0.45, 2.2, 0.9);
+    ctx.fillRect(2.0, -0.5, 0.7, 1.0); ctx.fillRect(-2.7, -0.5, 0.7, 1.0);
+    ctx.restore();
+  }
+
+  function scoreChip(x, y, w, color, textColor, name, score) {
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.fillRect(x + 1, y + 1, w, 8);
+    ctx.fillStyle = color; ctx.fillRect(x, y, w, 8);
+    ctx.fillStyle = "rgba(255,255,255,0.16)"; ctx.fillRect(x, y, w, 1);
+    ctx.font = "bold 7px Verdana, sans-serif";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillStyle = textColor; ctx.fillText(name, x + 3, y + 4.5);
+    ctx.textAlign = "right";
+    ctx.font = "bold 8px Verdana, sans-serif";
+    ctx.fillText(String(score), x + w - 3, y + 4.5);
   }
 
   function drawHUD() {
-    ctx.fillStyle = "#0a0a12"; ctx.fillRect(0, 0, W, FIELD_TOP - 2);
-    ctx.font = "bold 9px monospace"; ctx.textAlign = "left";
-    ctx.fillStyle = MAIZE; ctx.fillText("MICH " + G.score[0], 4, 9);
-    ctx.fillStyle = "#fff"; ctx.fillText((opp.abbr || "OPP") + " " + G.score[1], 4, 18);
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#ddd"; ctx.fillText("Q" + G.quarter + "  " + fmtClock(G.clock), W / 2, 9);
+    var barH = FIELD_TOP - 3;
+    var bg = ctx.createLinearGradient(0, 0, 0, barH);
+    bg.addColorStop(0, "#0d1420"); bg.addColorStop(1, "#060a12");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, barH);
+    ctx.fillStyle = MAIZE; ctx.fillRect(0, barH, W, 1);
+
+    scoreChip(4, 1, 54, MAIZE, BLUE, "MICH", G.score[0]);
+    scoreChip(4, 10, 54, oppColor, "#ffffff", (opp.abbr || "OPP").slice(0, 5), G.score[1]);
+
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "bold 9px Verdana, sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(fmtClock(G.clock), W / 2, 6);
+    ctx.font = "bold 6px Verdana, sans-serif";
+    ctx.fillStyle = MAIZE; ctx.fillText(ordinal(G.quarter) + " QUARTER", W / 2, 14);
+
     if (G.mode !== "gameover" && G.mode !== "oppdrive") {
-      var yl = G.spot <= 50 ? "MICH " + Math.round(G.spot) : (opp.abbr || "OPP") + " " + Math.round(100 - G.spot);
+      var yl = G.spot <= 50 ? "MICH " + Math.round(G.spot)
+                            : (opp.abbr || "OPP") + " " + Math.round(100 - G.spot);
       var togo = (G.spot + G.toGo >= 100) ? "GOAL" : Math.round(G.toGo);
-      ctx.fillText(ordinal(G.down) + " & " + togo + "  ·  " + yl, W / 2, 18);
+      var txt = ordinal(G.down) + " & " + togo;
+      ctx.font = "bold 7px Verdana, sans-serif";
+      var tw = ctx.measureText(txt).width + 8;
+      ctx.fillStyle = "rgba(255,203,5,0.14)";
+      ctx.fillRect(W - 6 - tw, 1, tw, 8);
+      ctx.strokeStyle = "rgba(255,203,5,0.5)"; ctx.lineWidth = 1;
+      ctx.strokeRect(W - 6 - tw + 0.5, 1.5, tw - 1, 7);
+      ctx.textAlign = "center"; ctx.fillStyle = MAIZE;
+      ctx.fillText(txt, W - 6 - tw / 2, 5.5);
+      ctx.textAlign = "right"; ctx.font = "6px Verdana, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.65)";
+      ctx.fillText("BALL ON " + yl, W - 6, 14);
+    } else {
+      ctx.textAlign = "right"; ctx.font = "6px Verdana, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.fillText("WEEK " + (week + 1), W - 6, 8);
     }
-    ctx.textAlign = "right"; ctx.fillStyle = "#9aa";
-    ctx.fillText("WK " + (week + 1) + "  vs " + (opp.abbr || "OPP"), W - 4, 9);
-    ctx.fillStyle = "#777"; ctx.font = "7px monospace";
-    ctx.fillText("VICTARD BOWL", W - 4, 17);
+    ctx.textBaseline = "alphabetic";
   }
 
   function button(x, y, w, h, label, hot) {
-    ctx.fillStyle = hot ? MAIZE : "rgba(0,39,76,0.92)";
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = MAIZE; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    ctx.fillStyle = hot ? BLUE : MAIZE; ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
-    ctx.fillText(label, x + w / 2, y + h / 2 + 3);
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.fillRect(x + 1, y + 1, w, h);
+    var g2 = ctx.createLinearGradient(0, y, 0, y + h);
+    if (hot) { g2.addColorStop(0, "#ffe066"); g2.addColorStop(1, "#e0b000"); }
+    else { g2.addColorStop(0, "#0b3565"); g2.addColorStop(1, "#022043"); }
+    ctx.fillStyle = g2; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = hot ? "rgba(255,255,255,0.55)" : "rgba(255,203,5,0.22)";
+    ctx.fillRect(x, y, w, 1);
+    ctx.strokeStyle = hot ? "#fff3b0" : "rgba(255,203,5,0.65)";
+    ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.font = "bold 8px Verdana, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = hot ? "#00203f" : MAIZE;
+    ctx.fillText(label, x + w / 2, y + h / 2 + 0.5);
+    ctx.textBaseline = "alphabetic";
   }
   var BTNS = [];
   function drawOverlay() {
@@ -736,13 +988,7 @@
         var b = { x: 4 + i * (bw + 6), y: y, w: bw, h: 11, label: sl.label, act: sl.act, hot: sl.hot };
         BTNS.push(b); button(b.x, b.y, b.w, b.h, b.label, !!b.hot);
       });
-      ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.font = "7px monospace"; ctx.textAlign = "center";
-      ctx.fillText("tap a play · tap the field to snap", W / 2, FIELD_TOP + 8);
     } else if (G.mode === "play") {
-      ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "7px monospace";
-      var hint = carrier === qb && isPass() ? "drag to aim · release to throw"
-               : carrier ? "drag to steer" : "";
-      ctx.fillText(hint, W / 2, H - 4);
       if (aim && carrier === qb) {
         var ax = clamp(aim.x, qb.x - 10, yardToPx(112)), ay = clamp(aim.y, FIELD_TOP + 1, FIELD_BOT - 1);
         ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.setLineDash([2, 2]);
@@ -798,13 +1044,16 @@
     ctx.stroke();
   }
   function drawRouteGhosts() {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, FIELD_TOP, W, FIELD_BOT - FIELD_TOP); ctx.clip();
     players.forEach(function (p) {
       if (p.team !== "M" || !p.route || p.route === "block") return;
       var sim = { x: p.x, y: p.y, spd: p.spd, route: p.route, home: p.home };
       var pts = [{ x: sim.x, y: sim.y }];
-      for (var t = 0; t < 2.0; t += 0.1) {
+      for (var t = 0; t < 1.7; t += 0.1) {
         var v = routeVel(sim, t);
-        sim.x += v.vx * 0.1; sim.y += v.vy * 0.1;
+        sim.x += v.vx * 0.1;
+        sim.y = clamp(sim.y + v.vy * 0.1, FIELD_TOP + 3, FIELD_BOT - 3);
         pts.push({ x: sim.x, y: sim.y });
       }
       routeLine(pts, p.role === "RB" ? "rgba(255,203,5,0.95)" : "rgba(255,255,255,0.9)");
@@ -815,11 +1064,12 @@
         var d = G.play.dir, x = rb.x, y = rb.y, pts2 = [{ x: x, y: y }];
         for (var k = 0; k < 12; k++) {
           if (G.play.cut && k > 5) d = G.play.cut;
-          x += d[0] * 4; y += d[1] * 4; pts2.push({ x: x, y: y });
+          x += d[0] * 4; y = clamp(y + d[1] * 4, FIELD_TOP + 3, FIELD_BOT - 3); pts2.push({ x: x, y: y });
         }
         routeLine(pts2, "rgba(255,203,5,0.95)");
       }
     }
+    ctx.restore();
   }
   function wrapText(text, x, y, maxW, lh) {
     var words = text.split(" "), line = "";
