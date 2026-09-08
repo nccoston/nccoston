@@ -629,41 +629,6 @@
   var FIELD_W = yardToPx(110);          // -10 .. 110 yards
   var fieldCanvas = null;
 
-  function blockM(g, cx, cy, size, fill, edge) {
-    // A block M in the classic collegiate proportions: wider than tall,
-    // heavy uprights, a wide notch off the top edge and a V that drives
-    // most of the way to the baseline. Traced clockwise as one outline so
-    // the uprights keep flat tops and vertical outer edges, and the two
-    // counters open downward.
-    var w = size, h = size * 0.72;
-    var P = [
-      [0.00, 0.00],   // top-left
-      [0.32, 0.00],   // top edge, to the notch
-      [0.50, 0.44],   // down into the notch — its point
-      [0.68, 0.00],   // back up out of the notch
-      [1.00, 0.00],   // top edge, right half
-      [1.00, 1.00],   // right outer edge
-      [0.72, 1.00],   // right foot
-      [0.72, 0.00],   // up the right upright's inner edge
-      [0.50, 0.86],   // down the right diagonal — the point of the V
-      [0.28, 0.00],   // up the left diagonal
-      [0.28, 1.00],   // down the left upright's inner edge
-      [0.00, 1.00]    // left foot
-    ];
-    var x0 = cx - w / 2, y0 = cy - h / 2;
-    g.save();
-    g.beginPath();
-    for (var i = 0; i < P.length; i++) {
-      var X = x0 + P[i][0] * w, Y = y0 + P[i][1] * h;
-      if (i === 0) g.moveTo(X, Y); else g.lineTo(X, Y);
-    }
-    g.closePath();
-    g.lineJoin = "round"; g.lineCap = "round";
-    g.strokeStyle = edge; g.lineWidth = Math.max(1.5, size * 0.075); g.stroke();
-    g.fillStyle = fill; g.fill();
-    g.restore();
-  }
-
   function endzone(g, x, w, color, label, flip) {
     g.fillStyle = color; g.fillRect(x, FIELD_TOP, w, FIELD_BOT - FIELD_TOP);
     // diagonal weave, barely there — paint on grass, not a flat block
@@ -754,8 +719,6 @@
 
     endzone(g, yardToPx(-10), 10 * PX, BLUE, "MICHIGAN", false);
     endzone(g, yardToPx(100), 10 * PX, oppColor, (opp.name || "OPP").toUpperCase().slice(0, 11), true);
-
-    blockM(g, yardToPx(50), (FIELD_TOP + FIELD_BOT) / 2, 52, "rgba(255,203,5,0.7)", "rgba(0,18,42,0.6)");
 
     // yard lines
     for (var y2 = 0; y2 <= 100; y2 += 5) {
