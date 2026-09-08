@@ -32,6 +32,17 @@ REDDIT_RE = re.compile(
     r"https?://(?:www\.|old\.)?reddit\.com/r/[^/\s]+/comments/\S+")
 TIKTOK_RE = re.compile(
     r"https?://(?:www\.)?tiktok\.com/@[^/\s]+/video/(\d+)")
+# [fart] in a post becomes a button. Injected after escaping, so nobody can
+# smuggle markup in through it, and capped so one post can't be all buttons.
+FART_RE = re.compile(r"\[fart\]", re.IGNORECASE)
+FART_HTML = ('<button type="button" class="fart-btn" data-fart '
+             'title="you know what this does">&#128168;</button>')
+FART_MAX = 3
+
+
+def _escape(text):
+    """Escape post text, then let the one token we allow back through."""
+    return FART_RE.sub(FART_HTML, escape(text), count=FART_MAX)
 
 
 def _linkify(url):
@@ -125,10 +136,10 @@ class _Renderer(HTMLParser):
         pieces = []
         last = 0
         for m in URL_RE.finditer(data):
-            pieces.append(escape(data[last:m.start()]))
+            pieces.append(_escape(data[last:m.start()]))
             pieces.append(_linkify(m.group(1)))
             last = m.end()
-        pieces.append(escape(data[last:]))
+        pieces.append(_escape(data[last:]))
         self.out.append("".join(pieces).replace("\n", "<br>\n"))
 
     def result(self):

@@ -115,6 +115,23 @@
 })();
 </script>
 <script>
+// [fart] in a post renders a button; this plays the thing. One Audio for
+// the page, built on the first click so nobody downloads 190KB to read a
+// thread, and restarted rather than layered if it is clicked again.
+(function () {
+  var sfx = null;
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("[data-fart]");
+    if (!b) return;
+    if (!sfx) {
+      sfx = new Audio("{{ url_for('static', filename='fart.mp3') }}");
+      sfx.preload = "none";
+    }
+    try { sfx.currentTime = 0; sfx.play(); } catch (err) {}
+  });
+})();
+</script>
+<script>
 // the third theme. you either know or you don't.
 (function () {
   var egg = document.getElementById("goblue-egg");

@@ -578,3 +578,14 @@ body.seal-bg::before {
 :root[data-theme="dark"] .countdown-clock,
 :root[data-theme="goblue"] .countdown-clock { background: #FFCB05; color: #00274C; }
 .countdown-done .countdown-clock { background: none; color: var(--hint); font-weight: normal; }
+
+/* [fart] in a post */
+.fart-btn {
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 8px;
+  vertical-align: -2px;
+  background: #00274C;
+  border-color: #FFCB05;
+}
+.fart-btn:active { transform: translateY(1px); }
