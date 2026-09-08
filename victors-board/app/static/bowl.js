@@ -576,30 +576,21 @@
   var fieldCanvas = null;
 
   function blockM(g, cx, cy, size, fill, edge) {
-    // a Block M, painted at midfield
-    var ROWS = [
-      "MMM.......MMM",
-      "MMMM.....MMMM",
-      "MM.MM...MM.MM",
-      "MM..MM.MM..MM",
-      "MM...MMM...MM",
-      "MM....M....MM",
-      "MM.........MM",
-      "MM.........MM",
-      "MM.........MM",
-      "MM.........MM",
-      "MMM.......MMM"
-    ];
-    var cols = ROWS[0].length, rows = ROWS.length;
-    var u = size / cols, x0 = cx - size / 2, y0 = cy - (rows * u) / 2;
-    g.fillStyle = edge;
-    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
-      if (ROWS[r][c] === "M") g.fillRect(x0 + c * u - 0.6, y0 + r * u - 0.6, u + 1.2, u + 1.2);
-    }
-    g.fillStyle = fill;
-    for (var r2 = 0; r2 < rows; r2++) for (var c2 = 0; c2 < cols; c2++) {
-      if (ROWS[r2][c2] === "M") g.fillRect(x0 + c2 * u, y0 + r2 * u, u + 0.4, u + 0.4);
-    }
+    // Drawn as one thick stroked polyline — two uprights and the V between
+    // them — so the strokes stay even and the corners stay sharp at any
+    // size. A pixel grid at this scale just crumbles.
+    var w = size, h = size * 0.95;
+    var x0 = cx - w / 2, y0 = cy - h / 2;
+    function P(fx, fy) { return [x0 + fx * w, y0 + fy * h]; }
+    var pts = [P(0.14, 1.0), P(0.14, 0.0), P(0.5, 0.58), P(0.86, 0.0), P(0.86, 1.0)];
+    g.save();
+    g.lineJoin = "miter"; g.miterLimit = 3; g.lineCap = "butt";
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.strokeStyle = edge; g.lineWidth = size * 0.30; g.stroke();
+    g.strokeStyle = fill; g.lineWidth = size * 0.21; g.stroke();
+    g.restore();
   }
 
   function endzone(g, x, w, color, label, flip) {
@@ -693,7 +684,7 @@
     endzone(g, yardToPx(-10), 10 * PX, BLUE, "MICHIGAN", false);
     endzone(g, yardToPx(100), 10 * PX, oppColor, (opp.name || "OPP").toUpperCase().slice(0, 11), true);
 
-    blockM(g, yardToPx(50), (FIELD_TOP + FIELD_BOT) / 2, 34, "rgba(255,203,5,0.5)", "rgba(0,20,46,0.45)");
+    blockM(g, yardToPx(50), (FIELD_TOP + FIELD_BOT) / 2, 36, "rgba(255,203,5,0.62)", "rgba(0,18,42,0.5)");
 
     // yard lines
     for (var y2 = 0; y2 <= 100; y2 += 5) {
