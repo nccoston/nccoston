@@ -543,9 +543,8 @@ body.seal-bg::before {
 .sg-final h3 { margin: 4px 0; }
 .sg-link { display: inline-block; margin-left: 12px; }
 .sg-status { padding: 20px 0; text-align: center; opacity: 0.75; }
-.game-card { border-top: 1px solid var(--table-border); padding: 10px 0 4px; }
-.game-card h3 { margin: 0 0 4px; font-size: 16px; }
-.game-card p { margin: 0; }
+.game-list { list-style: none; margin: 12px 0; padding: 0; font-size: 15px; }
+.game-list li { margin: 10px 0; }
 @media (max-width: 480px) {
   /* keep the picture and the map on screen together */
   .sg-shot img { height: 26vh; min-height: 130px; }

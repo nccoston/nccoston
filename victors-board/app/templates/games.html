@@ -5,23 +5,16 @@
 <div class="message-box">
   <h2>Games</h2>
 
-  <div class="game-card">
-    <h3><a href="{{ url_for('bowl') }}">&#127944; Victard Bowl</a></h3>
-    <p>Michigan's schedule, twelve games, you call the plays. Play defense
-      too, or sim it.
-      <a href="{{ url_for('bowl_leaderboard') }}">Leaderboard</a></p>
-  </div>
+  <ul class="game-list">
+    <li><a href="{{ url_for('bowl') }}">&#127944; Victard Bowl</a>
+      <span class="nb">&middot; <a href="{{ url_for('bowl_leaderboard') }}">Leaderboard</a></span></li>
 
-  <div class="game-card">
-    <h3><a href="{{ url_for('stadium_game') }}">&#127943; Stadium Guesser</a></h3>
-    <p>Five photos, five stadiums. Drop a pin on the map and find out how far
-      off you were.
-      {% if stadium_ready %}
-      <a href="{{ url_for('stadium_leaderboard') }}">Leaderboard</a>
-      {% else %}
-      <span class="hint">&mdash; not loaded yet ({{ stadium_count }} photos on
-        the board)</span>
-      {% endif %}</p>
-  </div>
+    <li><a href="{{ url_for('stadium_game') }}">&#127943; Stadium Guesser</a>
+      {%- if stadium_ready %}
+      <span class="nb">&middot; <a href="{{ url_for('stadium_leaderboard') }}">Leaderboard</a></span>
+      {%- else %}
+      <span class="hint">&mdash; not loaded yet</span>
+      {%- endif %}</li>
+  </ul>
 </div>
 {% endblock %}
