@@ -46,7 +46,10 @@
   <span class="nb"><a href="{{ url_for('index', board_name='scores') }}">Scores</a> ||
   <a href="{{ url_for('index', board_name='cards') }}">Cards</a> ||
   <a href="{{ url_for('chat') }}">Chat</a> ||
-  <a href="{{ url_for('hof') }}">HOF</a></span></p>
+  <a href="{{ url_for('hof') }}">HOF</a> ||
+  {# "Games", not "Victard Bowl" — there will be more than one, and when
+     there are this link becomes the index instead of the game itself #}
+  <a href="{{ url_for('bowl') }}">Games</a></span></p>
 
 {% set cur_board = 'scores' if request.path.startswith('/scores')
    else ('cards' if request.path.startswith('/cards') else None) %}
@@ -64,9 +67,6 @@
     <span class="nb">| <a href="{{ url_for('register') }}">Register</a></span>
   {% endif %}
   <span class="nb">| <a href="{{ url_for('settings') }}">Settings</a></span>
-  {# "Games", not "Victard Bowl" — there will be more than one, and when
-     there are this link becomes the index instead of the game itself #}
-  <span class="nb">| <a href="{{ url_for('bowl') }}">Games</a></span>
 </p>
 
 {% with msgs = get_flashed_messages(with_categories=true) %}
