@@ -468,6 +468,10 @@ def index(board_name):
                     pickem = pickem_ticker(db, gm, mid)
         except Exception:
             pass   # the banner must never die over pick 'em bookkeeping
+        try:
+            seed_bowl_standings(db)
+        except Exception:
+            pass   # nor over the bowl standings
     return render_template("index.html", threads=threads, page=page, pages=pages,
                            board_name=board_name,
                            gameday=gameday, pickem=pickem,
@@ -1810,6 +1814,63 @@ def bowl_score():
          best_w, best_l, margin, longest, us, now_utc_iso(), uid))
     db.commit()
     return {"ok": True}
+
+
+BOWL_LOCK = threading.Lock()
+
+
+def _bowl_month_key():
+    day = datetime.now(timezone.utc).astimezone(BOARD_TZ)
+    return "bowl_msg_" + day.strftime("%Y-%m")
+
+
+def seed_bowl_standings(db):
+    """Once a calendar month, Skeeps posts the Victard Bowl standings to
+    Scores. Held until somebody has actually finished a season, so the
+    first one says something."""
+    with BOWL_LOCK:
+        key = _bowl_month_key()
+        if get_setting(key):
+            return None
+        rows = db.execute(
+            "SELECT b.*, u.handle FROM bowl_scores b JOIN users u ON u.id = b.user_id"
+            " WHERE b.games > 0"
+            " ORDER BY b.best_w DESC, b.best_l ASC, b.wins DESC, b.games ASC"
+            " LIMIT 10").fetchall()
+        if not rows or not any(r["seasons"] for r in rows):
+            return None
+        uid = board_user_id(db)
+        if uid is None:
+            return None
+        month = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%B")
+        lines = []
+        for i, r in enumerate(rows, 1):
+            best = ("%d-%d" % (r["best_w"], r["best_l"]) if r["seasons"]
+                    else "still playing one")
+            crown = " \U0001F3C6" if r["seasons"] and r["best_l"] == 0 else ""
+            lines.append(
+                "%d. <b>%s</b>%s — best season %s · career %d-%d · longest %d yds"
+                % (i, r["handle"], crown, best, r["wins"], r["losses"],
+                   r["longest_td"]))
+        unbeaten = [r["handle"] for r in rows if r["seasons"] and r["best_l"] == 0]
+        body = ("Victard Bowl standings for %s, ranked by best finished season.\n\n%s"
+                % (month, "\n".join(lines)))
+        if unbeaten:
+            body += ("\n\nUndefeated, and therefore above suspicion: <b>%s</b>."
+                     % ", ".join(unbeaten))
+        body += ('\n\n<a href="/bowl/leaderboard">Full leaderboard</a> · '
+                 '<a href="/bowl">Play a game</a>')
+        cur = db.execute(
+            "INSERT INTO messages (thread_id, parent_id, subject, body,"
+            " author_name, user_id, created_at, board)"
+            " VALUES (NULL, NULL, ?, ?, 'Skeeps', ?, ?, 'scores')",
+            ("\U0001F3C8 Victard Bowl standings — %s*" % month, body, uid,
+             now_utc_iso()))
+        mid = cur.lastrowid
+        db.execute("UPDATE messages SET thread_id = ? WHERE id = ?", (mid, mid))
+        db.commit()
+        set_setting(key, str(mid))
+        return mid
 
 
 @app.route("/bowl/leaderboard")
