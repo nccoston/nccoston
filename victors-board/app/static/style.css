@@ -179,12 +179,23 @@ form.board-form textarea {
   box-sizing: border-box;
   font-family: inherit;
   font-size: 13px;
-  padding: 3px;
+  /* generous side padding: on a phone this is the difference between
+     tapping just past what you typed and missing the field entirely */
+  padding: 5px 10px;
   background: var(--input-bg);
   color: var(--input-text);
   border: 1px solid var(--border);
 }
 form.board-form textarea { height: 160px; }
+/* jjwalker: the subject bar ran to the very edge of the screen, so getting
+   the caret back to the end of a long subject took precision engineering.
+   Hold it in, clear of where phones put their edge-swipe. This has to sit
+   AFTER the width:100% above — same specificity, so last one wins. */
+@media (max-width: 480px) {
+  form.board-form input[type=text],
+  form.board-form input[type=password],
+  form.board-form textarea { width: calc(100% - 12px); }
+}
 form.board-form button {
   margin-top: 12px;
   font-size: 13px;
