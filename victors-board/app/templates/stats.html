@@ -30,6 +30,22 @@
   </table>
 
 
+  {% if busiest %}
+  <h3>Busiest day</h3>
+  <p><b>{{ busiest.label }}</b> &mdash; {{ '{:,}'.format(busiest.posts) }}
+    post{{ '' if busiest.posts == 1 else 's' }}.
+    {% if peak and peak['day'] != busiest.day %}
+    <br>Most visitors: <b>{{ peak_label }}</b> &mdash;
+      {{ '{:,}'.format(peak['uniques']) }} visitor{{ '' if peak['uniques'] == 1 else 's' }},
+      {{ '{:,}'.format(peak['pageviews']) }} pageviews.
+    {% elif peak %}
+    <br>Also the most visitors: {{ '{:,}'.format(peak['uniques']) }},
+      and {{ '{:,}'.format(peak['pageviews']) }} pageviews.
+    {% endif %}</p>
+  <p class="hint">Posts go back to everything the board has ever held. Visitor
+    counts only start from when the counters went in.</p>
+  {% endif %}
+
   {% if traffic_days %}
   <h3>Traffic</h3>
   <p class="hint">Counts only — no individual tracking, nothing tied to handles.

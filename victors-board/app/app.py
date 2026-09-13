@@ -2450,8 +2450,10 @@ def stats():
         " WHERE m.parent_id IS NULL GROUP BY m.id"
         " ORDER BY replies DESC LIMIT 10").fetchall()
 
-    # rush hour needs board-timezone hours; compute in Python
+    # rush hour and the busiest day both need board-timezone dates, so both
+    # come out of the one pass over the posts
     hour_counts = [0] * 24
+    day_counts = {}
     for row in db.execute("SELECT created_at FROM messages"):
         try:
             dt = datetime.fromisoformat(row["created_at"])
@@ -2459,9 +2461,33 @@ def stats():
             continue
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        hour_counts[dt.astimezone(BOARD_TZ).hour] += 1
+        local = dt.astimezone(BOARD_TZ)
+        hour_counts[local.hour] += 1
+        key = local.strftime("%Y-%m-%d")
+        day_counts[key] = day_counts.get(key, 0) + 1
     rush_hour = max(range(24), key=lambda h: hour_counts[h]) if total else 0
     rush_label = datetime(2000, 1, 1, rush_hour).strftime("%I %p").lstrip("0")
+
+    # the busiest day the board has ever had, by posts. Goes back further
+    # than the traffic counters do — those only started when they were built
+    busiest = None
+    if day_counts:
+        day, count = max(day_counts.items(), key=lambda kv: (kv[1], kv[0]))
+        when = datetime.strptime(day, "%Y-%m-%d")
+        busiest = {"day": day, "posts": count,
+                   "label": when.strftime("%A, %B %-d, %Y").replace(" 0", " ")}
+
+    # and the busiest by people through the door
+    peak = db.execute(
+        "SELECT day, uniques, pageviews FROM traffic"
+        " ORDER BY pageviews DESC, day DESC LIMIT 1").fetchone()
+    peak_label = None
+    if peak:
+        try:
+            peak_label = datetime.strptime(peak["day"], "%Y-%m-%d").strftime(
+                "%A, %B %-d, %Y").replace(" 0", " ")
+        except ValueError:
+            peak_label = peak["day"]
 
     traffic_days = db.execute(
         "SELECT * FROM traffic ORDER BY day DESC LIMIT 14").fetchall()
@@ -2472,6 +2498,7 @@ def stats():
     return render_template("stats.html", total=total, members=members,
                            top_posters=top_posters, top_threads=top_threads,
                            rush_label=rush_label, rush_count=hour_counts[rush_hour],
+                           busiest=busiest, peak=peak, peak_label=peak_label,
                            traffic_days=traffic_days, month=month,
                            month_name=datetime.now(timezone.utc)
                                .astimezone(BOARD_TZ).strftime("%B"))
