@@ -1751,6 +1751,16 @@ def story():
     games = db.execute("SELECT COUNT(*) c FROM polls").fetchone()["c"] \
         + db.execute("SELECT COUNT(*) c FROM games").fetchone()["c"]
     photos = sum(1 for p in UPLOAD_DIR.glob("*") if p.is_file())
+
+    def count(sql):
+        """The showcase page must never 500 on a table that isn't there."""
+        try:
+            return get_db().execute(sql).fetchone()[0] or 0
+        except sqlite3.Error:
+            return 0
+
+    arcade = (count("SELECT COALESCE(SUM(games), 0) FROM bowl_scores")
+              + count("SELECT COALESCE(SUM(games), 0) FROM stadium_scores"))
     launched = datetime(2026, 8, 3, tzinfo=BOARD_TZ)
     days_live = (datetime.now(timezone.utc).astimezone(BOARD_TZ)
                  - launched).days
@@ -1762,7 +1772,7 @@ def story():
     loc = (APP_DIR / "app.py").read_text().count("\n")
     return render_template("story.html", members=members, messages=messages,
                            pageviews=row["pageviews"] if row else 0,
-                           hof=hof, games=games, photos=photos,
+                           hof=hof, games=games, photos=photos, arcade=arcade,
                            days_live=days_live, chart=chart,
                            chart_max=chart_max, loc=loc)
 

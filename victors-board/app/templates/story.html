@@ -151,11 +151,16 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
     <div class="stat"><b>{{ "{:,}".format(photos) }}</b><span>photos &amp; clips hosted</span><i>compressed, EXIF-corrected</i></div>
     <div class="stat"><b>{{ games }}</b><span>polls &amp; pick 'em games</span><i>member-created</i></div>
     <div class="stat"><b>{{ hof }}</b><span>Hall of Fame posts</span><i>enshrined by member vote</i></div>
+    {% if arcade %}
+    <div class="stat"><b>{{ "{:,}".format(arcade) }}</b><span>arcade games played</span><i>on games built for the board</i></div>
+    {% else %}
     <div class="stat"><b>{{ days_live }}</b><span>days since launch</span><i>zero data lost</i></div>
+    {% endif %}
   </div>
   <p style="font-size:12px; font-family: Verdana, sans-serif; color: var(--soft)">
     These figures are queried live from the board's database every time this
-    page loads &mdash; this page is served by the same $7 server it describes.</p>
+    page loads &mdash; this page is served by the same $7 server it describes.
+    {{ days_live }} days live, zero data lost.</p>
 
   {% if chart %}
   <div class="chart">
@@ -245,7 +250,56 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
     <li><b>Week 3</b> — Live scoreboards, game-day mode, a weekly podcast
       integration, tested disaster recovery. 350 members, ~35,000 pageviews a
       day.</li>
+    <li><b>Week 5</b> — The season opens. The first football Saturday
+      finds the ceilings: the server hits its memory limit under real load,
+      and the month's bandwidth allowance goes in six days. Both fixed
+      inside the weekend.</li>
+    <li><b>Week 6</b> — Two games, built from nothing and put on the
+      board. A member asks for a countdown clock at one in the morning and
+      has one by breakfast.</li>
   </ul>
+</section>
+
+<section>
+  <h2>Game day</h2>
+  <p class="lede">A football board is only as good as it is on a Saturday.</p>
+  <p>The Scores board carries a live scoreboard for all of college football
+    — every game in the top division, not just Michigan's, refreshed from the
+    wire and with rules about when a game is finished enough to leave the
+    page. On game day the whole board changes: a banner, a waving flag, the
+    marching band's pregame one tap away.</p>
+  <p>The week's pick 'em thread is posted by <b>Skeeps</b>, a reserved
+    account that is not a person. It goes up on Monday so there is a week to
+    think about it, locks itself at kickoff, counts the picks — including the
+    ones left the old-fashioned way, as replies — and posts the standings
+    when the game is over.</p>
+  <p>The scoring rule was not designed. It was <i>remembered</i>: closest to
+    the final total, win or lose, which is how this board has always done it.
+    A member corrected the first version from memory and the correction
+    shipped that afternoon. The board also tracks Slippery Rock, a Division
+    II school in Pennsylvania, for reasons every Michigan fan understands and
+    nobody else ever will.</p>
+</section>
+
+<section>
+  <h2>The arcade</h2>
+  <p class="lede">Six weeks in, the members stopped asking for features and
+    started asking for toys.</p>
+  <p>So the board grew two games of its own. <b>Victard Bowl</b> is a pixel
+    football game — Michigan's real schedule, twelve weeks, you call the
+    plays and you can take the field on defense too. <b>Stadium Guesser</b>
+    drops you in front of a college football stadium and asks you to find it
+    on a map of the lower 48; 135 of them, scored on how many miles you were
+    off.</p>
+  <p>Neither one phones anywhere. The football game is a canvas and a few
+    hundred lines of JavaScript. The map is not a mapping service — it is
+    public-domain census outlines projected once at build time, so there is no
+    key to buy, no bill to run up, and nothing to break when somebody else's
+    service changes. Both keep leaderboards on the board itself, and the
+    house robot posts the standings to the Scores page once a month.</p>
+  {% if arcade >= 50 %}
+  <p>{{ "{:,}".format(arcade) }} games played so far. On a message board.</p>
+  {% endif %}
 </section>
 
 <section>
@@ -286,6 +340,26 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
       new day.</p>
     <p class="fix">Fix: caught before it ever shipped, by an actual restore
       drill. Untested backups are hope; these are tested.</p>
+  </div>
+  <div class="incident">
+    <b>A 48-megapixel phone photo against a 512MB server</b>
+    <p>Modern phone cameras produce files that decode to roughly 150MB of raw
+      pixels. Two members uploading at once on game day was enough to walk the
+      instance into its memory ceiling and restart it.</p>
+    <p class="fix">Fix: decode at reduced scale rather than full size, rotate
+      after shrinking instead of before, and allow only two decodes at a time.
+      The ceiling stopped being reachable.</p>
+  </div>
+  <div class="incident">
+    <b>Four Memorial Stadiums</b>
+    <p>Illinois and Indiana were both handed a photograph of Nebraska's
+      stadium. Four schools call their ground Memorial Stadium, and the lookup
+      was keyed by the stadium's name — so all four shared one slot and
+      overwrote each other.</p>
+    <p class="fix">Fix: key by the school, and stop trusting names altogether.
+      Every photograph is now checked against the stadium's real coordinates
+      and rejected if it sits more than 25 miles away. Champaign to Lincoln is
+      450.</p>
   </div>
 </section>
 
@@ -344,8 +418,8 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
   <b>The Victors</b> &middot; est. 1995, rebuilt August 2026 &middot;
   Flask + SQLite on a $7 server &middot; built with Claude Code<br>
   Community architecture by <b>Nick Coston</b><br>
-  <span style="color:#7d8ea1">P.S. — the board hides two easter eggs.
-  Days since launch with neither found: {{ days_live }}.</span>
+  <span style="color:#7d8ea1">P.S. — the board hid two easter eggs.
+  The members found both. Of course they did.</span>
 </div>
 
 </body>
