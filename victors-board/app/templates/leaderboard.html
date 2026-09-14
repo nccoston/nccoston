@@ -4,20 +4,26 @@
 {% block content %}
 <div class="message-box">
   <h2>Pick 'em Leaderboard</h2>
-  <p class="byline">{{ total_games }} game{{ '' if total_games == 1 else 's' }} decided.
-    Closest combined score wins; ties share the crown.</p>
+  {# Ken read the old "Wins 0 | Games played 2" columns as a 0-2 record and
+     thought he'd got two picks wrong. One column with a word in it can't be
+     misread that way. #}
+  <p class="byline">One winner a week: whoever lands closest to the combined
+    final score, win or lose. Picking the right team isn't what scores &mdash;
+    being closest is. Ties share the crown.</p>
   {% if rows %}
   <table class="admin-table">
-    <tr><th></th><th>Poster</th><th>Wins</th><th>Games played</th></tr>
+    <tr><th></th><th>Poster</th><th>Weeks won</th></tr>
     {% for r in rows %}
     <tr>
       <td>{% if loop.index == 1 and r['wins'] > 0 %}&#127942;{% else %}{{ loop.index }}{% endif %}</td>
       <td><b>{{ r['handle'] }}</b></td>
-      <td>{{ r['wins'] }}</td>
-      <td>{{ r['played'] }}</td>
+      <td><b>{{ r['wins'] }}</b> of {{ r['played'] }}
+        week{{ '' if r['played'] == 1 else 's' }} entered</td>
     </tr>
     {% endfor %}
   </table>
+  <p class="hint">{{ total_games }} game{{ '' if total_games == 1 else 's' }}
+    decided so far.</p>
   {% else %}
   <p>No games decided yet. Post one on the
     <a href="{{ url_for('index', board_name='scores') }}">Scores board</a>.</p>
