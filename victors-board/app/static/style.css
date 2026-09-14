@@ -600,3 +600,19 @@ body.seal-bg::before {
   border-color: #FFCB05;
 }
 .fart-btn:active { transform: translateY(1px); }
+
+/* voice memos (admin-only) */
+.voice { margin: 10px 0; }
+.voice-tag {
+  display: block;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--hint);
+  margin-bottom: 3px;
+}
+.voice audio { width: 100%; max-width: 420px; display: block; }
+/* the recorder on the post form */
+.rec-row { margin: 6px 0 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rec-btn.recording { background: #a3141e; border-color: #ffd7d7; }
+.rec-time { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: bold; }
+.rec-row audio { height: 32px; vertical-align: middle; max-width: 240px; }

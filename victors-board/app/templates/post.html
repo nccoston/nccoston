@@ -34,8 +34,13 @@
     </label>
     <label>Or upload pictures or a short video <span class="hint">(or just
       paste a screenshot anywhere on this page)</span>
-      <input type="file" name="image_file" multiple accept="image/*,video/mp4,video/quicktime,video/webm">
+      <input type="file" name="image_file" multiple accept="image/*,video/mp4,video/quicktime,video/webm,audio/mpeg">
     </label>
+    {% if user and user['is_admin'] %}
+    <label>Voice memo <span class="hint">(admin only, two minutes max)</span></label>
+    <div id="voice-memo" data-max="{{ voice_seconds }}"
+         data-lame="{{ url_for('static', filename='lame.min.js') }}"></div>
+    {% endif %}
     <label>Picture display size</label>
     <p class="size-row">
       {% for s in ('small', 'medium', 'large', 'full') %}
@@ -64,4 +69,7 @@
     <button type="submit">Post Message</button>
   </form>
 </div>
+{% if user and user['is_admin'] %}
+<script src="{{ url_for('static', filename='voice.js') }}"></script>
+{% endif %}
 {% endblock %}

@@ -63,6 +63,13 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 ALLOWED_VIDEO_EXT = {".mp4", ".mov", ".webm"}
+# Voice memos. Only .mp3 is accepted because the browser encodes to MP3
+# before it uploads — iPhones and Android phones record different formats
+# and Android's does not play back on an iPhone, so the recorder settles
+# that on the way out rather than leaving half the board in silence.
+ALLOWED_AUDIO_EXT = {".mp3"}
+VOICE_SECONDS = 120                  # hard cap on a memo
+VOICE_CAP = 3 * 1024 * 1024          # ~10x what two minutes should weigh
 
 app = Flask(__name__)
 # behind Render's proxy: trust X-Forwarded-For so remote_addr is the real client
@@ -336,6 +343,7 @@ def inject_globals():
         "header_html": get_setting("header_html"),
         "links_html": get_setting("links_html"),
         "countdown": board_countdown(),
+        "voice_seconds": VOICE_SECONDS,
         "has_flag": FLAG_FILE.exists(),
         "has_song": SONG_FILE.exists(),
         "pinned_threads": pinned,
@@ -678,6 +686,22 @@ def _save_one_upload(f):
     untouched to preserve animation.
     """
     ext = Path(f.filename).suffix.lower()
+    if ext in ALLOWED_AUDIO_EXT:
+        # voice memos are an admin thing, by request: the person who wanted
+        # them is the only one who posts them, and audio cannot be skimmed
+        # the way a bad post can
+        u = current_user()
+        if not (u and u["is_admin"]):
+            flash("Voice memos are admin-only.")
+            return None
+        name = secrets.token_hex(8) + ext
+        path = UPLOAD_DIR / name
+        f.save(path)
+        if path.stat().st_size > VOICE_CAP:
+            path.unlink(missing_ok=True)
+            flash("That memo is too big — keep it under two minutes.")
+            return None
+        return url_for("uploads", filename=name)
     if ext not in ALLOWED_IMAGE_EXT | ALLOWED_VIDEO_EXT:
         flash("Uploads must be a picture (jpg, png, gif, webp) or a short "
               "video clip (mp4, mov, webm).")
