@@ -446,7 +446,7 @@ def user_read_ids(db, u, ids):
 # ----------------------------------------------------------- traffic counts
 
 UNCOUNTED_PATHS = ("/static", "/uploads", "/chat/messages", "/favicon",
-                   "/apple-touch", "/rss")
+                   "/apple-touch", "/rss", "/mcp")
 
 
 @app.before_request
@@ -3268,6 +3268,14 @@ def delete_message(message_id):
 
 
 init_db()
+
+# The board as an MCP server: an AI assistant can search the archive and read
+# threads over the network, read-only, at /mcp. Its own connection is opened
+# in SQLite's read-only mode, so nothing there can write no matter what.
+# Set MCP_TOKEN to require a bearer token; unset, it's as public as the board.
+from mcp_server import register_mcp
+
+register_mcp(app, DB_PATH, SITE_URL, os.environ.get("MCP_TOKEN"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=False)
