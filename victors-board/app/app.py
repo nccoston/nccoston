@@ -1171,26 +1171,58 @@ WEEK_LOCK = threading.Lock()
 
 def fetch_week_michigan():
     """Michigan's upcoming CFB game in the current Mon-Sun board week,
-    or None on an idle week (or once the game is behind us)."""
+    or None on an idle week (or once the game is behind us).
+
+    Writes what it saw to WEEK_CACHE["why"], so a Monday with no thread
+    can be explained from /admin/pickem-check instead of guessed at."""
     import requests
     today = datetime.now(timezone.utc).astimezone(BOARD_TZ).date()
     monday = today - timedelta(days=today.weekday())
     span = f"{monday:%Y%m%d}-{monday + timedelta(days=6):%Y%m%d}"
+    why = {"span": span, "today": str(today), "events": 0, "michigan": [],
+           "skipped": 0, "error": None, "result": None,
+           "at": now_utc_iso()}
+    found = None
     try:
         joiner = "&" if "?" in SCOREBOARD_URLS["CFB"] else "?"
         data = requests.get(f"{SCOREBOARD_URLS['CFB']}{joiner}dates={span}",
                             timeout=6).json()
-        for ev in data.get("events", []):
-            gm = _parse_event("CFB", ev)
+        events = data.get("events", [])
+        why["events"] = len(events)
+        for ev in events:
+            # one malformed event elsewhere on the slate — a TBD opponent,
+            # a postponed game with half a competitor — must not cost us
+            # Michigan's, so each is parsed on its own
+            try:
+                gm = _parse_event("CFB", ev)
+            except Exception:
+                why["skipped"] += 1
+                continue
             if "MICH" not in (gm["away"], gm["home"]):
                 continue
-            gd = datetime.fromisoformat(
-                gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ).date()
-            if gd >= today and gm["state"] != "post":
-                return gm
-    except Exception:
-        pass
-    return None
+            seen = {"game": f"{gm['away']} at {gm['home']}",
+                    "date": gm["date"], "state": gm["state"]}
+            why["michigan"].append(seen)
+            try:
+                gd = datetime.fromisoformat(
+                    gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ).date()
+            except ValueError:
+                seen["skipped"] = "unreadable date"
+                continue
+            seen["board_date"] = str(gd)
+            if found is None and gd >= today and gm["state"] != "post":
+                found = gm
+        if found:
+            why["result"] = "found"
+        elif why["michigan"]:
+            why["result"] = "michigan's game this week is already over"
+        else:
+            why["result"] = "no michigan game in this mon-sun span (idle week)"
+    except Exception as e:
+        why["error"] = f"{type(e).__name__}: {e}"
+        why["result"] = "error"
+    WEEK_CACHE["why"] = why
+    return found
 
 
 def michigan_game_this_week():
@@ -1647,6 +1679,48 @@ def pod_check():
         "note": "box needs: Wednesday + filter match + (published <48h "
                 "OR stream_window upcoming/today); playable is info only",
     }
+
+
+@app.route("/admin/pickem-check")
+@admin_required
+def pickem_check():
+    """Why is there (or isn't there) a Skeeps pick 'em thread right now?
+    Runs the week lookup fresh, past the hourly cache, and says what ESPN
+    returned for the current Mon-Sun span."""
+    now_local = datetime.now(timezone.utc).astimezone(BOARD_TZ)
+    with WEEK_LOCK:
+        previous = WEEK_CACHE.get("why")
+        gm = fetch_week_michigan()
+        WEEK_CACHE["game"] = gm
+        WEEK_CACHE["at"] = time.monotonic()
+        fresh = WEEK_CACHE.get("why")
+    thread = None
+    if gm:
+        key = _pickem_key(gm)
+        mid = get_setting(key)
+        thread = {"setting": key,
+                  "message_id": int(mid) if mid else None,
+                  "url": url_for("message", message_id=int(mid)) if mid else None}
+    if not gm:
+        verdict = ("No thread is correct: no Michigan game in this Mon-Sun "
+                   "span. It goes up on the Monday of the game's own week.")
+    elif thread["message_id"]:
+        verdict = "The thread exists."
+    else:
+        verdict = ("A game was found and no thread exists yet — it seeds on "
+                   "the next load of the main board.")
+    return app.response_class(json.dumps({
+        "board_now": now_local.isoformat(timespec="seconds"),
+        "weekday": now_local.strftime("%A"),
+        "verdict": verdict,
+        "game": gm,
+        "thread": thread,
+        "fresh_lookup": fresh,
+        "previous_lookup": previous,
+        "how_it_works": ("Skeeps posts on a main-board page load, not a clock: "
+                         "Mon-Fri the week feed, Saturday the live feed. The "
+                         "week lookup is cached for an hour."),
+    }, indent=2, default=str), mimetype="application/json")
 
 
 @app.route("/admin/sru-check")
