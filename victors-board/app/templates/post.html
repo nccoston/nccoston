@@ -24,7 +24,8 @@
     <label>Subject
       <span class="hint">(use "*" or "nm" for subject-only)</span>
       <input type="text" name="subject" maxlength="300" required
-             value="{{ request.form.get('subject', subject_prefill) }}">
+             value="{{ request.form.get('subject', subject_prefill) }}"
+             {% if parent %}data-default="{{ subject_prefill }}"{% endif %}>
     </label>
     <label>Message
       <textarea name="body">{{ request.form.get('body', '') }}</textarea>
@@ -69,6 +70,7 @@
     <button type="submit">Post Message</button>
   </form>
 </div>
+<script src="{{ url_for('static', filename='postcheck.js') }}"></script>
 {% if user and user['is_admin'] %}
 <script src="{{ url_for('static', filename='voice.js') }}"></script>
 {% endif %}

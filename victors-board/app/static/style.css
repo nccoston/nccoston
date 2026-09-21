@@ -616,3 +616,17 @@ body.seal-bg::before {
 .rec-btn.recording { background: #a3141e; border-color: #ffd7d7; }
 .rec-time { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: bold; }
 .rec-row audio { height: 32px; vertical-align: middle; max-width: 240px; }
+
+/* postcheck: the look-before-you-post panel, sits above the submit button */
+.postcheck {
+  border: 1px solid var(--flash-border);
+  background: var(--flash-bg);
+  padding: 6px 10px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.postcheck ul { margin: 4px 0 6px 18px; padding: 0; }
+.postcheck li { margin: 2px 0; }
+.postcheck-row { margin: 4px 0 2px; }
+.postcheck-row button { margin: 2px 6px 2px 0; }
+.postcheck-anyway { opacity: 0.75; }

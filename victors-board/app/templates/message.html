@@ -200,7 +200,7 @@
         action="{{ url_for('post', reply_to=msg['id']) }}">
     <label>Subject
       <input type="text" name="subject" maxlength="300" required
-             value="{{ reply_subject }}">
+             value="{{ reply_subject }}" data-default="{{ reply_subject }}">
     </label>
     <label>Message
       <textarea name="body"></textarea>
@@ -230,6 +230,9 @@
   <p><a href="{{ url_for('login') }}">Log in to reply.</a></p>
   {% endif %}
 </div>
+{% if user %}
+<script src="{{ url_for('static', filename='postcheck.js') }}"></script>
+{% endif %}
 {% if user and user['is_admin'] %}
 <script src="{{ url_for('static', filename='voice.js') }}"></script>
 {% endif %}
