@@ -639,3 +639,9 @@ body.seal-bg::before {
 }
 .postcheck-anyway { opacity: 0.7; }
 .postcheck-wait { font-style: italic; }
+
+/* the running log on /stats: dense, dated, newest first */
+.changelog { font-size: 13px; }
+.changelog-day { margin: 10px 0 2px; }
+.changelog ul { margin: 0 0 0 18px; padding: 0; }
+.changelog li { margin: 1px 0; }

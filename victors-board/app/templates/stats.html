@@ -56,5 +56,20 @@
     {% endfor %}
   </table>
   {% endif %}
+
+  {% if changelog_days %}
+  <h3 id="log">The running log</h3>
+  <p class="hint">Every change to the board since it went up on August 3,
+    newest first &mdash; {{ '{:,}'.format(changelog_count) }} so far. Requested
+    by Voltron Blue.</p>
+  <div class="changelog">
+  {% for day, whats in changelog_days %}
+    <p class="changelog-day"><b>{{ day | logday }}</b></p>
+    <ul>
+      {% for w in whats %}<li>{{ w }}</li>{% endfor %}
+    </ul>
+  {% endfor %}
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

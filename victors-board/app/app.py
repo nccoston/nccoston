@@ -247,6 +247,16 @@ from postmarkup import render_post
 from stadiums import load as load_stadiums
 
 
+@app.template_filter("logday")
+def logday(day):
+    """'2026-09-21' -> 'Monday, September 21' for the running log."""
+    try:
+        d = datetime.strptime(day, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        return day
+    return d.strftime("%A, %B ") + str(d.day)
+
+
 @app.template_filter("boardtime")
 def boardtime(iso):
     """Stored UTC timestamp -> 'July 31, 2026 at 07:55:25 PM' in board time."""
@@ -2694,7 +2704,33 @@ def stats():
                            busiest=busiest, peak=peak, peak_label=peak_label,
                            traffic_days=traffic_days, month=month,
                            month_name=datetime.now(timezone.utc)
-                               .astimezone(BOARD_TZ).strftime("%B"))
+                               .astimezone(BOARD_TZ).strftime("%B"),
+                           changelog_days=changelog_days(),
+                           changelog_count=len(CHANGELOG))
+
+
+# The running log: one line per change to the board, newest first, from
+# tools/changelog.py (the server can't read git itself). Voltron Blue asked
+# for it — "I'd check in on a running log if it were published."
+def _load_changelog():
+    try:
+        return json.loads((APP_DIR / "changelog.json").read_text())
+    except (OSError, ValueError):
+        return []
+
+
+CHANGELOG = _load_changelog()
+
+
+def changelog_days():
+    """[(day, [what, ...]), ...] newest day first, in commit order within."""
+    days, order = {}, []
+    for e in CHANGELOG:
+        if e["day"] not in days:
+            days[e["day"]] = []
+            order.append(e["day"])
+        days[e["day"]].append(e["what"])
+    return [(d, days[d]) for d in order]
 
 
 @app.route("/rss.xml")

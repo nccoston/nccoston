@@ -1,0 +1,766 @@
+[
+ {
+  "day": "2026-09-21",
+  "what": "The running log, at the bottom of Stats"
+ },
+ {
+  "day": "2026-09-21",
+  "what": "Pick 'em gets its own admin page"
+ },
+ {
+  "day": "2026-09-21",
+  "what": "Record what ESPN actually said when a week comes back empty"
+ },
+ {
+  "day": "2026-09-21",
+  "what": "Pick 'em survives an empty ESPN week, and can be posted by hand"
+ },
+ {
+  "day": "2026-09-21",
+  "what": "A Monday with no pick 'em thread can now explain itself"
+ },
+ {
+  "day": "2026-09-20",
+  "what": "The post warning is maize and blue, like everything else here"
+ },
+ {
+  "day": "2026-09-20",
+  "what": "Warn before posting a picture link that won't load"
+ },
+ {
+  "day": "2026-09-20",
+  "what": "A look before you post: warn on the accidents the board used to accept"
+ },
+ {
+  "day": "2026-09-20",
+  "what": "Members can delete their own posts, while nobody has replied"
+ },
+ {
+  "day": "2026-09-15",
+  "what": "The board as an MCP server, read-only, at /mcp"
+ },
+ {
+  "day": "2026-09-14",
+  "what": "Voice memos on the post form, admin only"
+ },
+ {
+  "day": "2026-09-14",
+  "what": "Pick 'em board: stop reading like an 0-2 record"
+ },
+ {
+  "day": "2026-09-13",
+  "what": "Story: game day, the arcade, and the eggs are found"
+ },
+ {
+  "day": "2026-09-13",
+  "what": "Drop the footnote under the busiest day"
+ },
+ {
+  "day": "2026-09-13",
+  "what": "Stats: say what the busiest day has been"
+ },
+ {
+  "day": "2026-09-10",
+  "what": "Pull the post form's fields in from the phone screen edge"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "[fart] in a post, and a button that says Do not click"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Move the countdown to the bottom of the page"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "A countdown clock in the header, per danny"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Stadium Guesser: tell four Memorial Stadiums apart"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Stadium Guesser: identify ourselves properly, and a way in when barred"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Games index: just the links"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Stadium Guesser: stop hammering Wikimedia"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Stadium Guesser: photos, and one admin page for both games"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Stadium Guesser: the game, the map, and the scoring"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Move Games back up to the links row, after HOF"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Call the nav link Games, not Victard Bowl"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Victard Bowl: an admin page for who is actually trying it"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Victard Bowl: move the link down beside Settings"
+ },
+ {
+  "day": "2026-09-08",
+  "what": "Victard Bowl: put it in the nav, and let Skeeps start the standings"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: render at 4x so the movement stops stepping"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: you can no longer play their offense, and your man can run"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: playing defense is the default"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: play defense, or keep simulating it"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: fix the field-goal freeze"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Skeeps posts the Victard Bowl standings to Scores, monthly"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: plain grass at midfield"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: a leaderboard on the board"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: block M in collegiate proportions"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: season mode"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: draw the midfield M as a real letterform"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: rebuild the midfield Block M as a stroked path"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: a proper art pass"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: chasers close on a ball carrier"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: corners' coverage priority applies to run plays only"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: corners stay in coverage until the runner is near or loose"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: real blocking; coverage back to eight yards"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: 2x resolution, 16x26 sprites, a real gait, and a real defensive box"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: record who made each tackle (diagnostic)"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: pursuit can take an angle again"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: corners trail behind, defense reads the throw late"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: real route lines, ESPN short names, and a defense that doesn't swarm"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: playbook, slower pace with aim-time bullet-time, aim assist"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: real school colors for opponents, never navy"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Victard Bowl: first playable build at /bowl (members only)"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Admin subpages; feedback becomes plain email buttons"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Settings page grows: feedback, logout, and the big titties button"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Trim the settings page copy — the controls speak for themselves"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Add a settings page: per-device theme and text size"
+ },
+ {
+  "day": "2026-09-07",
+  "what": "Slim the hot page queries so gameday load fits in memory"
+ },
+ {
+  "day": "2026-09-06",
+  "what": "Stop uploads from eating the instance's memory"
+ },
+ {
+  "day": "2026-09-05",
+  "what": "Cache static files and uploads for 30 days (Cloudflare does the serving)"
+ },
+ {
+  "day": "2026-09-05",
+  "what": "Condense the page row — history is infinite, the link row is not"
+ },
+ {
+  "day": "2026-09-05",
+  "what": "Band pregame button in the GAME DAY banner"
+ },
+ {
+  "day": "2026-09-05",
+  "what": "Fight song in the GAME DAY banner (armed, awaiting the mp3)"
+ },
+ {
+  "day": "2026-09-05",
+  "what": "Fix the blinking GAME DAY flag"
+ },
+ {
+  "day": "2026-09-02",
+  "what": "Pod box anticipation actually works for scheduled streams"
+ },
+ {
+  "day": "2026-09-02",
+  "what": "Pod box goes up Wednesday morning again, scheduled streams included"
+ },
+ {
+  "day": "2026-09-02",
+  "what": "Admin pod-check: why is the pod box showing (or not) right now"
+ },
+ {
+  "day": "2026-09-01",
+  "what": "Form picks lock at kickoff, matching the thread's own rules"
+ },
+ {
+  "day": "2026-09-01",
+  "what": "Skeeps pins its thread for the week; consensus line on the pick page"
+ },
+ {
+  "day": "2026-09-01",
+  "what": "Skeeps counts old-fashioned picks too"
+ },
+ {
+  "day": "2026-09-01",
+  "what": "Embedded images load with no referrer"
+ },
+ {
+  "day": "2026-08-31",
+  "what": "Revert \"Text size toggle for the old guys\""
+ },
+ {
+  "day": "2026-08-31",
+  "what": "Text size toggle for the old guys"
+ },
+ {
+  "day": "2026-08-31",
+  "what": "Scoreboard stops trusting games ESPN forgot to finish"
+ },
+ {
+  "day": "2026-08-29",
+  "what": "Scoreboard carries all of FBS, and only today's games"
+ },
+ {
+  "day": "2026-08-26",
+  "what": "Pod box follows Michigan Weekly, not the whole channel"
+ },
+ {
+  "day": "2026-08-26",
+  "what": "Pod box only embeds videos that actually play"
+ },
+ {
+  "day": "2026-08-23",
+  "what": "Pick 'em opens Monday, not game morning"
+ },
+ {
+  "day": "2026-08-23",
+  "what": "GAME DAY banner and Skeeps pick 'em are football-only"
+ },
+ {
+  "day": "2026-08-23",
+  "what": "Trim the seeded pick 'em subject — the [PICK 'EM] tag already says it"
+ },
+ {
+  "day": "2026-08-23",
+  "what": "Rename the reserved scorekeeping account to Skeeps"
+ },
+ {
+  "day": "2026-08-23",
+  "what": "Game-day Pick 'em engine: auto-seeded, auto-scored, on the banner"
+ },
+ {
+  "day": "2026-08-23",
+  "what": "External links open in a new tab; board links never do"
+ },
+ {
+  "day": "2026-08-21",
+  "what": "File the Hall of Fame by year past the newest three"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Drop the LIVE dot from the game day banner"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Fly the waving M on the game day banner"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Game day banner can fly a waving flag"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Game day LIVE dot goes blue"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Put SQLite in WAL mode for game-day write load"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Game day banner no longer funnels to chat"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Show the Slippery Rock line any day they play"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Fix Slippery Rock line: ESPN abbreviates them SLI, not SRU"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Edit page takes multiple pictures too"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Make pasted images work on iPhones"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Carry the Slippery Rock score on Saturdays"
+ },
+ {
+  "day": "2026-08-19",
+  "what": "Fix pasting multiple images"
+ },
+ {
+  "day": "2026-08-18",
+  "what": "Rate-limit login attempts"
+ },
+ {
+  "day": "2026-08-18",
+  "what": "Multiple pictures per post"
+ },
+ {
+  "day": "2026-08-16",
+  "what": "Resolve Reddit mobile share links at post time so they embed"
+ },
+ {
+  "day": "2026-08-16",
+  "what": "Embed Reddit posts, TikToks, and bare image/GIF links in post bodies"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Story footer: easter egg joke as a live day counter"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Story: Nick was a poster, not the admin — the title came from the build"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Story copy: date consistency in the crash lede"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Web app manifest with display:browser"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Story footer: no easter eggs found yet"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Grow the story page; remove its admin link entirely"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Unlisted /story page: the rescue case study with live numbers"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Goblue theme: links in maize, visited links in antique gold"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Hidden maize-and-blue theme behind the footer 'by'"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Drop the ephemerality copy from the chat page"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Fix chat double-draw; mention highlight; unread tab counter"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "Chat is ROCKING banner when the room is genuinely lively"
+ },
+ {
+  "day": "2026-08-15",
+  "what": "GAME DAY banner on the homepage whenever Michigan plays"
+ },
+ {
+  "day": "2026-08-13",
+  "what": "Trim form hints further"
+ },
+ {
+  "day": "2026-08-13",
+  "what": "Trim form hint copy; size radios on one line"
+ },
+ {
+  "day": "2026-08-13",
+  "what": "Picture display size: small / medium / large / full"
+ },
+ {
+  "day": "2026-08-13",
+  "what": "Big maize-and-blue poll widget"
+ },
+ {
+  "day": "2026-08-13",
+  "what": "Admin user actions back inline, one tidy line per row"
+ },
+ {
+  "day": "2026-08-13",
+  "what": "Clean up the admin Users table"
+ },
+ {
+  "day": "2026-08-13",
+  "what": "Tuck the rename control behind a click in the user table"
+ },
+ {
+  "day": "2026-08-13",
+  "what": "Allow & in handles; admins can rename members"
+ },
+ {
+  "day": "2026-08-12",
+  "what": "Backups: nightly snapshots, admin download, tested restore path"
+ },
+ {
+  "day": "2026-08-12",
+  "what": "Refresh the pod feed every 15 minutes on pod day"
+ },
+ {
+  "day": "2026-08-12",
+  "what": "Keep board links together when the links row wraps"
+ },
+ {
+  "day": "2026-08-09",
+  "what": "Wednesday pod box: newest Blue By Ninety episode on the homepage"
+ },
+ {
+  "day": "2026-08-09",
+  "what": "Admin can clear the chat room without a restart"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Inline action buttons back to normal weight"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Maize and blue buttons"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Tidy mobile header wrapping and unify action buttons as links"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Collapse the live scoreboard by default"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Sync read links across devices; make scoreboard 3-4 columns"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Add live CFB/CBB scoreboard to Scores board, rename Scores Only to Scores"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Record real client IPs behind Cloudflare"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Drop the HOF subtitle blurb"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Add the Hall of Fame with democratic enshrinement"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Password reset signs the user out everywhere"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Forward video uploads to Streamable"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Allow short video clip uploads"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Keep portrait photos upright through compression"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Rename card board to Cards"
+ },
+ {
+  "day": "2026-08-08",
+  "what": "Add Lods' Card Site as a third board"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Align chat roster and message box bottoms"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Show who's in the chat room"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "University seal watermark on the chat page"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Use the official Block M artwork for all icons and the banner"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Block M bookends on the Go Blue splash"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Calibrate block M favicon to the official mark"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Upgrade favicon to serif block M geometry"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Replace emoji favicon with a maize-on-blue block M"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Move traffic section to the bottom of the stats page"
+ },
+ {
+  "day": "2026-08-07",
+  "what": "Add daily traffic counter to the Stats page"
+ },
+ {
+  "day": "2026-08-06",
+  "what": "Restore Enter-to-post in post forms"
+ },
+ {
+  "day": "2026-08-06",
+  "what": "Move pinned threads into the header notice area"
+ },
+ {
+  "day": "2026-08-06",
+  "what": "Posted banner in maize and blue"
+ },
+ {
+  "day": "2026-08-06",
+  "what": "Stray Enter in a post form no longer submits it"
+ },
+ {
+  "day": "2026-08-06",
+  "what": "Board-voice banner copy"
+ },
+ {
+  "day": "2026-08-06",
+  "what": "Show a green confirmation banner after posting"
+ },
+ {
+  "day": "2026-08-05",
+  "what": "Add pinned threads"
+ },
+ {
+  "day": "2026-08-05",
+  "what": "Prevent accidental double posts"
+ },
+ {
+  "day": "2026-08-05",
+  "what": "Remove the 3 AM Club from stats"
+ },
+ {
+  "day": "2026-08-05",
+  "what": "Add public board stats page and clipboard image paste"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Serve PNG/ICO icons so the M-flag shows on mobile"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Even out header row spacing"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Give Post a New Message its own nav line"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Drop the In-response-to line, superseded by the full thread tree"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Show the full thread tree on every message page"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Repeat the page links below the thread list"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Compress uploaded images and show disk usage in Admin"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Add ephemeral members-only chat"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Update default board rules and staff roster"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Back link preserves scroll; nav and banner tweaks"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Fix title and redirect links resolving to /scores"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Add Pick 'em: auto-scored prediction games on the Scores board"
+ },
+ {
+  "day": "2026-08-04",
+  "what": "Display board times in Eastern"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Keep members logged in for a year"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add polls, Scores Only board, RSS feed, media embeds, and image uploads"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add dark mode toggle"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Allow safe HTML in post bodies"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Record poster IPs, visible to admins only"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "80 threads per page, matching the old board's density"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Longer front page and admin account management"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Sort replies newest-first to match the old board"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add vb redirect service for a short parallel URL"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Match the old board's message page layout"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add post editing"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Credit Nick Coston in the footer"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add M-flag favicon and Home nav link"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Simplify to a clean board: drop Boards2Go scraper and importer"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add Boards2Go migration kit: scraper, importer, and self-hosted Victors board"
+ }
+]
