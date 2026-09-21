@@ -1185,10 +1185,20 @@ def fetch_week_michigan():
     found = None
     try:
         joiner = "&" if "?" in SCOREBOARD_URLS["CFB"] else "?"
-        data = requests.get(f"{SCOREBOARD_URLS['CFB']}{joiner}dates={span}",
-                            timeout=6).json()
+        resp = requests.get(f"{SCOREBOARD_URLS['CFB']}{joiner}dates={span}",
+                            timeout=6)
+        data = resp.json()
         events = list(data.get("events", []))
         if not events:
+            # keep enough of what ESPN actually said to tell "the range
+            # form is dead" from "we're being told no": status, the
+            # body's top-level keys, and a short piece of it
+            why["range_reply"] = {
+                "status": resp.status_code,
+                "keys": sorted(data.keys())[:12] if isinstance(data, dict)
+                        else type(data).__name__,
+                "snippet": resp.text[:300],
+            }
             # A whole week with nothing in it isn't a bye, it's the feed:
             # the range form of the query came back empty on 2026-09-21
             # with Iowa five days out. Ask for each day on its own — the
