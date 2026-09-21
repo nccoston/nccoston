@@ -1180,14 +1180,33 @@ def fetch_week_michigan():
     monday = today - timedelta(days=today.weekday())
     span = f"{monday:%Y%m%d}-{monday + timedelta(days=6):%Y%m%d}"
     why = {"span": span, "today": str(today), "events": 0, "michigan": [],
-           "skipped": 0, "error": None, "result": None,
+           "skipped": 0, "error": None, "result": None, "method": "range",
            "at": now_utc_iso()}
     found = None
     try:
         joiner = "&" if "?" in SCOREBOARD_URLS["CFB"] else "?"
         data = requests.get(f"{SCOREBOARD_URLS['CFB']}{joiner}dates={span}",
                             timeout=6).json()
-        events = data.get("events", [])
+        events = list(data.get("events", []))
+        if not events:
+            # A whole week with nothing in it isn't a bye, it's the feed:
+            # the range form of the query came back empty on 2026-09-21
+            # with Iowa five days out. Ask for each day on its own — the
+            # single-day form is what the live scoreboard uses every
+            # Saturday, and it works.
+            why["method"] = "per-day"
+            why["days"] = {}
+            for i in range(7):
+                day = monday + timedelta(days=i)
+                try:
+                    got = requests.get(
+                        f"{SCOREBOARD_URLS['CFB']}{joiner}dates={day:%Y%m%d}",
+                        timeout=6).json().get("events", [])
+                except Exception as e:
+                    why["days"][str(day)] = f"{type(e).__name__}: {e}"
+                    continue
+                why["days"][str(day)] = len(got)
+                events.extend(got)
         why["events"] = len(events)
         for ev in events:
             # one malformed event elsewhere on the slate — a TBD opponent,
@@ -1216,6 +1235,9 @@ def fetch_week_michigan():
             why["result"] = "found"
         elif why["michigan"]:
             why["result"] = "michigan's game this week is already over"
+        elif not events:
+            why["result"] = ("espn returned no games at all for the week —"
+                             " a feed problem, not a bye")
         else:
             why["result"] = "no michigan game in this mon-sun span (idle week)"
     except Exception as e:
@@ -1701,7 +1723,12 @@ def pickem_check():
         thread = {"setting": key,
                   "message_id": int(mid) if mid else None,
                   "url": url_for("message", message_id=int(mid)) if mid else None}
-    if not gm:
+    if not gm and not fresh.get("events"):
+        verdict = ("ESPN returned no games at all for this week, so the board "
+                   "can't see Michigan's. That's a feed problem, not a bye. "
+                   "Post the pick 'em by hand from the admin page; Saturday's "
+                   "live feed will pick the same thread up and enter the final.")
+    elif not gm:
         verdict = ("No thread is correct: no Michigan game in this Mon-Sun "
                    "span. It goes up on the Monday of the game's own week.")
     elif thread["message_id"]:
@@ -1721,6 +1748,51 @@ def pickem_check():
                          "Mon-Fri the week feed, Saturday the live feed. The "
                          "week lookup is cached for an hour."),
     }, indent=2, default=str), mimetype="application/json")
+
+
+@app.route("/admin/pickem-seed", methods=["POST"])
+@admin_required
+def pickem_seed():
+    """Post the week's pick 'em by hand, for when ESPN's week feed has
+    nothing to say. Builds the same game record the feed would have, so
+    Saturday's live feed finds the same thread (keyed by the game's local
+    date), enters the final, and crowns the winner as usual."""
+    opp = re.sub(r"\s+", " ", request.form.get("opponent", "")).strip()
+    site = request.form.get("site", "home")
+    day = request.form.get("date", "").strip()
+    at = request.form.get("time", "").strip()
+    try:
+        local = datetime.strptime(f"{day} {at or '12:00'}", "%Y-%m-%d %H:%M") \
+            .replace(tzinfo=BOARD_TZ)
+    except ValueError:
+        flash("Give the game's date as YYYY-MM-DD (and the time as HH:MM, if you know it).")
+        return redirect(url_for("admin"))
+    if not opp:
+        flash("Who's the opponent?")
+        return redirect(url_for("admin"))
+    abbr = re.sub(r"[^A-Z]", "", opp.upper())[:4] or "OPP"
+    us, them = {"abbreviation": "MICH", "name": "Michigan"}, \
+               {"abbreviation": abbr, "name": opp}
+    home, away = (us, them) if site == "home" else (them, us)
+    gm = {"sport": "CFB",
+          "away": away["abbreviation"], "home": home["abbreviation"],
+          "away_name": away["name"], "home_name": home["name"],
+          "away_score": "", "home_score": "", "status": "", "state": "pre",
+          "date": local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")}
+    db = get_db()
+    existed = get_setting(_pickem_key(gm))
+    mid = seed_gameday_pickem(db, gm)
+    if mid is None:
+        flash("Couldn't post it — the Skeeps account is missing.")
+        return redirect(url_for("admin"))
+    if not at and not existed:
+        # no kickoff given: leave it open, and Saturday's feed fills in
+        # the real time so picks lock at the true kickoff
+        db.execute("UPDATE games SET kickoff_at = NULL WHERE message_id = ?", (mid,))
+        db.commit()
+    flash("That thread was already up." if existed
+          else f"Skeeps posted the {opp} pick 'em.")
+    return redirect(url_for("message", message_id=mid))
 
 
 @app.route("/admin/sru-check")

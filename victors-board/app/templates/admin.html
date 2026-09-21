@@ -19,6 +19,31 @@
     &mdash; each answers "why is this showing (or not) right now" as raw JSON.
   </p>
 
+  <h3>Pick 'em by hand</h3>
+  <p class="hint">Skeeps posts the week's pick 'em on Monday from ESPN's
+    schedule. If ESPN has nothing to say (the check above will tell you),
+    post it here — Saturday's live feed finds this same thread, enters the
+    final, and crowns the winner as usual.</p>
+  <form class="board-form" method="post" action="{{ url_for('pickem_seed') }}">
+    <label>Opponent
+      <input type="text" name="opponent" maxlength="60" placeholder="Iowa" required>
+    </label>
+    <label>Where
+      <select name="site">
+        <option value="home">Michigan at home (vs)</option>
+        <option value="away">Michigan on the road (at)</option>
+      </select>
+    </label>
+    <label>Game date
+      <input type="date" name="date" required>
+    </label>
+    <label>Kickoff <span class="hint">(Eastern; leave blank and the board
+      fills it in from ESPN on game day)</span>
+      <input type="time" name="time">
+    </label>
+    <button type="submit">Post the pick 'em</button>
+  </form>
+
   <p class="hint">To delete a message, open it and use the Delete button
     (removes the message and all its replies).</p>
 </div>
