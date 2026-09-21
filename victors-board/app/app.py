@@ -556,6 +556,8 @@ def message(message_id):
         " WHERE thread_id = ?", (msg["thread_id"],)).fetchall()
     roots = build_tree(thread_rows)
     thread = roots[0] if roots else None
+    # a member may delete their own post only while it has no replies
+    has_replies = any(r["parent_id"] == message_id for r in thread_rows)
     reply_subject = msg["subject"]
     if not reply_subject.lower().startswith("re"):
         reply_subject = "Re: " + reply_subject
@@ -615,7 +617,8 @@ def message(message_id):
                            game=game,
                            game_picks=game_picks, my_pick=my_pick,
                            game_winners=game_winners,
-                           game_consensus=game_consensus)
+                           game_consensus=game_consensus,
+                           has_replies=has_replies)
 
 
 def upload_to_streamable(path):
@@ -3232,6 +3235,30 @@ def pin_message(message_id):
     return redirect(url_for("message", message_id=message_id))
 
 
+def purge_messages(db, ids):
+    """Remove messages and everything hanging off them. Shared by the admin
+    delete (a whole subtree) and a member deleting their own post."""
+    marks = ",".join("?" * len(ids))
+    db.execute(f"DELETE FROM poll_votes WHERE poll_id IN "
+               f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
+    db.execute(f"DELETE FROM poll_options WHERE poll_id IN "
+               f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
+    db.execute(f"DELETE FROM polls WHERE message_id IN ({marks})", ids)
+    db.execute(f"DELETE FROM game_picks WHERE game_id IN "
+               f"(SELECT id FROM games WHERE message_id IN ({marks}))", ids)
+    db.execute(f"DELETE FROM games WHERE message_id IN ({marks})", ids)
+    db.execute(f"DELETE FROM hof_votes WHERE message_id IN ({marks})", ids)
+    db.execute(f"DELETE FROM message_reads WHERE message_id IN ({marks})", ids)
+    db.execute(f"DELETE FROM messages WHERE id IN ({marks})", ids)
+    db.commit()
+
+
+def _after_delete(msg):
+    if msg["parent_id"]:
+        return redirect(url_for("message", message_id=msg["parent_id"]))
+    return redirect(url_for("index", board_name=msg["board"]))
+
+
 @app.route("/admin/delete/<int:message_id>", methods=["POST"])
 @admin_required
 def delete_message(message_id):
@@ -3248,23 +3275,33 @@ def delete_message(message_id):
             f"SELECT id FROM messages WHERE parent_id IN ({marks})", frontier)]
         ids.extend(children)
         frontier = children
-    marks = ",".join("?" * len(ids))
-    db.execute(f"DELETE FROM poll_votes WHERE poll_id IN "
-               f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
-    db.execute(f"DELETE FROM poll_options WHERE poll_id IN "
-               f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
-    db.execute(f"DELETE FROM polls WHERE message_id IN ({marks})", ids)
-    db.execute(f"DELETE FROM game_picks WHERE game_id IN "
-               f"(SELECT id FROM games WHERE message_id IN ({marks}))", ids)
-    db.execute(f"DELETE FROM games WHERE message_id IN ({marks})", ids)
-    db.execute(f"DELETE FROM hof_votes WHERE message_id IN ({marks})", ids)
-    db.execute(f"DELETE FROM message_reads WHERE message_id IN ({marks})", ids)
-    db.execute(f"DELETE FROM messages WHERE id IN ({marks})", ids)
-    db.commit()
+    purge_messages(db, ids)
     flash(f"Deleted {len(ids)} message(s).")
-    if msg["parent_id"]:
-        return redirect(url_for("message", message_id=msg["parent_id"]))
-    return redirect(url_for("index", board_name="main"))
+    return _after_delete(msg)
+
+
+@app.route("/delete/<int:message_id>", methods=["POST"])
+@login_required
+def delete_own(message_id):
+    """A member taking back their own post. Only while nobody has replied:
+    once someone has, the post is part of a conversation that isn't only
+    theirs any more, and the same goes for anything the board enshrined."""
+    db = get_db()
+    msg = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
+    if msg is None:
+        abort(404)
+    if msg["user_id"] != current_user()["id"]:
+        abort(403)
+    if msg["hof_at"]:
+        flash("That one's in the Hall of Fame. It belongs to the board now.")
+        return redirect(url_for("message", message_id=message_id))
+    if db.execute("SELECT 1 FROM messages WHERE parent_id = ? LIMIT 1",
+                  (message_id,)).fetchone():
+        flash("Someone has already replied, so this one stays. You can still edit it.")
+        return redirect(url_for("message", message_id=message_id))
+    purge_messages(db, [message_id])
+    flash("Post deleted.")
+    return _after_delete(msg)
 
 
 init_db()
