@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Admin pick 'em - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Admin</h2>
+  {% include "_admin_nav.html" %}
+
+  <h3>This week</h3>
+  {% if why %}
+  <p>
+    {% if why['result'] == 'found' and game %}
+      <b>{{ game['away_name'] }} at {{ game['home_name'] }}</b>
+      {% if game['status'] %}&mdash; {{ game['status'] }}{% endif %}.
+      Skeeps posts the thread on the next load of the main board if it isn't
+      up already.
+    {% elif why['result'] == 'found' %}
+      A game was found this week.
+    {% elif 'feed problem' in why['result'] %}
+      <b>ESPN returned no games at all for this week.</b> That's a feed
+      problem, not a bye &mdash; post the pick 'em by hand below.
+    {% elif 'over' in why['result'] %}
+      Michigan's game this week is already over.
+    {% elif why['result'] == 'error' %}
+      <b>ESPN couldn't be reached:</b> {{ why['error'] }}
+    {% else %}
+      No Michigan game this week. The next thread goes up on the Monday of
+      the game's own week.
+    {% endif %}
+  </p>
+  <p class="hint">Last looked {{ why['at'] | boardtime }} &middot;
+    {{ why['events'] }} games on ESPN's slate for {{ why['span'] }}
+    ({{ why['method'] }} query)
+    {%- if why.get('skipped') %} &middot; {{ why['skipped'] }} unreadable{% endif %}
+    &middot; <a href="{{ url_for('pickem_check') }}">run the check now</a>
+    (raw JSON, asks ESPN fresh).</p>
+  {% else %}
+  <p class="hint">Nothing looked up yet since the board last started.
+    <a href="{{ url_for('pickem_check') }}">Run the check</a> to ask ESPN now.</p>
+  {% endif %}
+
+  <h3>Pick 'em by hand</h3>
+  <p class="hint">Skeeps posts the week's pick 'em on Monday from ESPN's
+    schedule. If ESPN has nothing to say, post it here &mdash; Saturday's
+    live feed finds this same thread, enters the final, and crowns the
+    winner as usual. Posting the same game twice is refused.</p>
+  <form class="board-form" method="post" action="{{ url_for('pickem_seed') }}">
+    <label>Opponent
+      <input type="text" name="opponent" maxlength="60" placeholder="Iowa" required>
+    </label>
+    <label>Where
+      <select name="site">
+        <option value="home">Michigan at home (vs)</option>
+        <option value="away">Michigan on the road (at)</option>
+      </select>
+    </label>
+    <label>Game date
+      <input type="date" name="date" required>
+    </label>
+    <label>Kickoff <span class="hint">(Eastern; leave blank and the board
+      fills it in from ESPN on game day)</span>
+      <input type="time" name="time">
+    </label>
+    <button type="submit">Post the pick 'em</button>
+  </form>
+
+  <h3>Posted so far</h3>
+  {% if games %}
+  <table class="admin-table">
+    <tr><th>Thread</th><th>By</th><th>Kickoff</th><th>Picks</th><th>Final</th></tr>
+    {% for g in games %}
+    <tr>
+      <td><a href="{{ url_for('message', message_id=g['message_id']) }}">{{ g['subject'] }}</a></td>
+      <td>{{ g['author_name'] }}</td>
+      <td>{% if g['kickoff_at'] %}{{ g['kickoff_at'] | boardtime }}{% else %}<i>from ESPN on game day</i>{% endif %}</td>
+      <td>{{ g['picks'] }}</td>
+      <td>{% if g['final_a'] is not none %}{{ g['team_a'] }} {{ g['final_a'] }}, {{ g['team_b'] }} {{ g['final_b'] }}{% else %}&mdash;{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="hint">No pick 'em games yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1776,10 +1776,10 @@ def pickem_seed():
             .replace(tzinfo=BOARD_TZ)
     except ValueError:
         flash("Give the game's date as YYYY-MM-DD (and the time as HH:MM, if you know it).")
-        return redirect(url_for("admin"))
+        return redirect(url_for("admin_pickem"))
     if not opp:
         flash("Who's the opponent?")
-        return redirect(url_for("admin"))
+        return redirect(url_for("admin_pickem"))
     abbr = re.sub(r"[^A-Z]", "", opp.upper())[:4] or "OPP"
     us, them = {"abbreviation": "MICH", "name": "Michigan"}, \
                {"abbreviation": abbr, "name": opp}
@@ -1794,7 +1794,7 @@ def pickem_seed():
     mid = seed_gameday_pickem(db, gm)
     if mid is None:
         flash("Couldn't post it — the Skeeps account is missing.")
-        return redirect(url_for("admin"))
+        return redirect(url_for("admin_pickem"))
     if not at and not existed:
         # no kickoff given: leave it open, and Saturday's feed fills in
         # the real time so picks lock at the true kickoff
@@ -2990,8 +2990,8 @@ def _admin_post(db):
 
 def _admin_nav():
     return [("admin", "Overview"), ("admin_settings", "Settings"),
-            ("admin_users", "Members"), ("admin_games", "Games"),
-            ("admin_backups", "Backups")]
+            ("admin_users", "Members"), ("admin_pickem", "Pick 'em"),
+            ("admin_games", "Games"), ("admin_backups", "Backups")]
 
 
 @app.route("/admin")
@@ -3261,6 +3261,25 @@ def admin_games():
                            sg_rows=sg_rows, sg=sg, shelf=shelf,
                            total_stadiums=len(load_stadiums()),
                            needed=STADIUM_ROUNDS, batch=PHOTO_BATCH)
+
+
+@app.route("/admin/pickem")
+@admin_required
+def admin_pickem():
+    """The Skeeps pick 'em: what this week's lookup last saw, the threads
+    posted so far, and the by-hand form for when ESPN has nothing to say."""
+    db = get_db()
+    with WEEK_LOCK:
+        why = WEEK_CACHE.get("why")
+        game = WEEK_CACHE.get("game")
+    games = db.execute(
+        "SELECT g.id, g.team_a, g.team_b, g.final_a, g.final_b, g.kickoff_at,"
+        " g.created_at, m.id message_id, m.subject, m.author_name,"
+        " (SELECT COUNT(*) FROM game_picks p WHERE p.game_id = g.id) picks"
+        " FROM games g JOIN messages m ON m.id = g.message_id"
+        " ORDER BY g.created_at DESC LIMIT 20").fetchall()
+    return render_template("admin_pickem.html", admin_nav=_admin_nav(),
+                           why=why, game=game, games=games)
 
 
 @app.route("/admin/backups")
