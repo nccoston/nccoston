@@ -617,10 +617,13 @@ body.seal-bg::before {
 .rec-time { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: bold; }
 .rec-row audio { height: 32px; vertical-align: middle; max-width: 240px; }
 
-/* postcheck: the look-before-you-post panel, sits above the submit button */
+/* postcheck: the look-before-you-post panel, sits above the submit button.
+   Maize and blue in every theme, like the "Go Blue!" flash — this is a
+   Michigan board, and a warning here is a nudge, not an alarm. */
 .postcheck {
-  border: 1px solid var(--flash-border);
-  background: var(--flash-bg);
+  border: 2px solid #00274C;
+  background: #FFCB05;
+  color: #00274C;
   padding: 6px 10px;
   margin: 8px 0;
   font-size: 13px;
@@ -628,6 +631,11 @@ body.seal-bg::before {
 .postcheck ul { margin: 4px 0 6px 18px; padding: 0; }
 .postcheck li { margin: 2px 0; }
 .postcheck-row { margin: 4px 0 2px; }
-.postcheck-row button { margin: 2px 6px 2px 0; }
-.postcheck-anyway { opacity: 0.75; }
-.postcheck-wait { color: var(--hint); font-style: italic; }
+.postcheck-row button {
+  margin: 2px 6px 2px 0;
+  background: #00274C;
+  color: #FFCB05;
+  border-color: #00274C;
+}
+.postcheck-anyway { opacity: 0.7; }
+.postcheck-wait { font-style: italic; }
