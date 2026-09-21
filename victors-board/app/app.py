@@ -2705,8 +2705,13 @@ def stats():
                            traffic_days=traffic_days, month=month,
                            month_name=datetime.now(timezone.utc)
                                .astimezone(BOARD_TZ).strftime("%B"),
-                           changelog_days=changelog_days(),
                            changelog_count=len(CHANGELOG))
+
+
+@app.route("/stats/log")
+def changelog():
+    return render_template("changelog.html", days=changelog_days(),
+                           count=len(CHANGELOG))
 
 
 # The running log: one line per change to the board, newest first, from

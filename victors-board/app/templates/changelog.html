@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}The Running Log - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>The Running Log</h2>
+  <p class="byline">Every change to the board since it went up on August 3,
+    newest first &mdash; {{ '{:,}'.format(count) }} so far.
+    Requested by Voltron Blue.
+    &middot; <a href="{{ url_for('stats') }}">Back to Stats</a></p>
+
+  {% if days %}
+  <div class="changelog">
+  {% for day, whats in days %}
+    <p class="changelog-day"><b>{{ day | logday }}</b></p>
+    <ul>
+      {% for w in whats %}<li>{{ w }}</li>{% endfor %}
+    </ul>
+  {% endfor %}
+  </div>
+  {% else %}
+  <p class="hint">Nothing logged yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
