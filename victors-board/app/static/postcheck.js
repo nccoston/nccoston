@@ -65,8 +65,72 @@
       return out;
     }
 
+    // --- pictures that won't load ---------------------------------------
+    // The board turns the Image URL box, and any bare picture link in the
+    // message, into an <img>. Pasting a page there (an Instagram post, a
+    // Google Images result, a share link) shows as a broken picture and
+    // nothing said so. The browser can find out: load it as a picture the
+    // same way the board will, before the post goes.
+    var IMG_LINK = /https?:\/\/\S+\.(?:gif|jpe?g|png|webp)(?:\?\S*)?(?=\s|$)/gi;
+    var NOT_AN_IMG = /^https:\/\/streamable\.com\/|\.(?:mp3|mp4|mov|webm)(?:\?.*)?$/i;
+    var verdicts = {};          // url -> true (loads) / false (doesn't)
+    var CHECK_MS = 4000;        // slow isn't broken; past this we let it go
+
+    function pictureUrls() {
+      var urls = [];
+      var u = imageUrl ? imageUrl.value.trim() : "";
+      if (/^https?:\/\//i.test(u) && !NOT_AN_IMG.test(u)) urls.push(u);
+      var m, b = body.value;
+      IMG_LINK.lastIndex = 0;
+      while ((m = IMG_LINK.exec(b))) if (urls.indexOf(m[0]) < 0) urls.push(m[0]);
+      return urls;
+    }
+
+    function probe(url) {
+      return new Promise(function (done) {
+        if (url in verdicts) return done(verdicts[url]);
+        var img = new Image();
+        var settled = false;
+        function finish(ok) {
+          if (settled) return;
+          settled = true;
+          verdicts[url] = ok;
+          done(ok);
+        }
+        img.referrerPolicy = "no-referrer";     // exactly as the board loads it
+        img.onload = function () { finish(true); };
+        img.onerror = function () { finish(false); };
+        setTimeout(function () { finish(true); }, CHECK_MS);
+        img.src = url;
+      });
+    }
+
+    function pictureProblems(urls) {
+      var out = [];
+      var field = imageUrl ? imageUrl.value.trim() : "";
+      urls.forEach(function (u) {
+        if (verdicts[u] !== false) return;
+        if (u === field) {
+          out.push({ text: "That picture link doesn't load as a picture — it may " +
+                           "be a page (an Instagram post, a Google result, a share " +
+                           "link) rather than the image itself. It'll show up broken." });
+        } else {
+          out.push({ text: "A picture link in the message doesn't load: " + u });
+        }
+      });
+      return out;
+    }
+
     function clear() {
       if (panel) { panel.remove(); panel = null; }
+    }
+
+    function checking() {
+      clear();
+      panel = document.createElement("div");
+      panel.className = "postcheck postcheck-wait";
+      panel.textContent = "Checking that picture link…";
+      submit.parentNode.insertBefore(panel, submit);
     }
 
     function show(list) {
@@ -128,11 +192,20 @@
     form.addEventListener("submit", function (e) {
       if (bypass) { bypass = false; return; }
       var list = problems();
-      if (list.length) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        show(list);
+      var urls = pictureUrls();
+      var unchecked = urls.filter(function (u) { return !(u in verdicts); });
+      if (!list.length && !unchecked.length) {
+        list = pictureProblems(urls);
+        if (!list.length) return;              // nothing to say — off it goes
       }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (!unchecked.length) { show(list.concat(pictureProblems(urls))); return; }
+      checking();
+      Promise.all(unchecked.map(probe)).then(function () {
+        var all = list.concat(pictureProblems(urls));
+        if (all.length) show(all); else go();
+      });
     });
 
     // typing again after a warning means they're fixing it

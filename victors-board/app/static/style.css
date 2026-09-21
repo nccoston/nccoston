@@ -630,3 +630,4 @@ body.seal-bg::before {
 .postcheck-row { margin: 4px 0 2px; }
 .postcheck-row button { margin: 2px 6px 2px 0; }
 .postcheck-anyway { opacity: 0.75; }
+.postcheck-wait { color: var(--hint); font-style: italic; }
