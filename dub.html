@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dub Room</title>
+<meta name="description" content="One scene carried from English into Spanish: a literal translation against an adapted dub, measured against the picture.">
+<!--
+  Dub Room — a scene, its literal translation, and its adapted dub, measured against the picture.
+
+  Runs standalone: the demo scene is voiced with the browser's speech synthesis and drawn on a canvas.
+  To show real work, load a scene manifest:  dub.html?scene=path/to/scene.json
+
+  {
+    "title": "…", "logline": "…",
+    "video": "scene.mp4",                          // optional: replaces the canvas; played muted
+    "audio": { "original": "en.wav",               // optional per track: played in sync with the video
+               "literal": "es-literal.wav",        //   tracks without audio fall back to speech synthesis
+               "adapted": "es-adapted.wav" },
+    "cast":  { "MARA": "left", "TEO": "right" },
+    "cues": [
+      { "who": "MARA", "start": 0.4, "end": 2.8,
+        "original": "You came back.", "literal": "Volviste.", "adapted": "Has vuelto.",
+        "note": "Why the adapted line is the way it is." }
+    ]
+  }
+-->
+<style>
+  :root {
+    --bg: #111014;
+    --panel: #1a191e;
+    --panel-2: #222127;
+    --line: #34323b;
+    --text: #ebe7e0;
+    --muted: #9a958d;
+    --faint: #6d6962;
+    --amber: #e3a857;
+    --teal: #5fb3a8;
+    --good: #7fb069;
+    --warn: #e3a857;
+    --bad: #d8645a;
+    --orig: #9fb4d8;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: radial-gradient(1100px 600px at 20% -10%, #1f1d24, var(--bg));
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    line-height: 1.45;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 28px 16px 60px; }
+
+  header h1 { font-size: 28px; margin: 0; letter-spacing: .01em; }
+  header h1 span { color: var(--amber); }
+  header p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
+
+  /* ---------- stage ---------- */
+  .stage-wrap {
+    margin-top: 22px;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 16px 50px rgba(0,0,0,.55), 0 0 0 1px var(--line);
+    position: relative;
+  }
+  #stage, #video { display: block; width: 100%; aspect-ratio: 16 / 9; }
+  #video { display: none; background: #000; }
+  .subtitle {
+    position: absolute; left: 0; right: 0; bottom: 7%;
+    text-align: center; pointer-events: none;
+    font-size: clamp(14px, 2.4vw, 22px);
+    text-shadow: 0 2px 6px #000, 0 0 2px #000;
+    padding: 0 6%;
+    min-height: 1.4em;
+  }
+  .subtitle .who { color: var(--amber); font-size: .7em; letter-spacing: .12em; display: block; }
+  .badge {
+    position: absolute; top: 12px; left: 12px;
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.15);
+    padding: 4px 8px; border-radius: 4px; color: #ddd;
+  }
+  .badge b { color: var(--amber); font-weight: 600; }
+
+  /* ---------- timeline ---------- */
+  .timeline { background: var(--panel); border-top: 1px solid var(--line); padding: 10px 12px 12px; }
+  .lane { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 10px; }
+  .lane + .lane { margin-top: 6px; }
+  .lane label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .track { position: relative; height: 22px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+  .block { position: absolute; top: 3px; bottom: 3px; border-radius: 3px; }
+  .block.pic { background: rgba(159,180,216,.28); border: 1px solid rgba(159,180,216,.55); cursor: pointer; }
+  .block.snd { background: rgba(95,179,168,.45); }
+  .block.over { background: rgba(216,100,90,.7); }
+  .tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--orig); opacity: .9; }
+  .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--amber); left: 0; pointer-events: none; }
+
+  /* ---------- controls ---------- */
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
+    margin-top: 16px;
+  }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    background: var(--panel-2); color: var(--muted); border: 0; padding: 9px 14px;
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--amber); color: #1a1408; }
+  .btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .btn.primary { background: var(--teal); border-color: var(--teal); color: #08201d; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .ctl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+  .ctl select {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px; font: inherit; font-size: 13px; max-width: 210px;
+  }
+  .readout { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .readout b { color: var(--text); }
+
+  /* ---------- score ---------- */
+  .scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 22px; }
+  .score {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+  }
+  .score h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .score .big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .score .sub { font-size: 13px; color: var(--muted); }
+  .score.active { border-color: var(--amber); }
+
+  /* ---------- cues ---------- */
+  h2 { font-size: 16px; margin: 30px 0 10px; letter-spacing: .02em; }
+  .cues { display: flex; flex-direction: column; gap: 10px; }
+  .cue {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; display: grid; grid-template-columns: 70px 1fr 1fr 1fr; gap: 12px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .cue:hover { border-color: #4a4752; }
+  .cue.live { border-color: var(--amber); background: #221f1a; }
+  .cue .meta { font-size: 12px; color: var(--muted); }
+  .cue .meta b { display: block; color: var(--amber); font-size: 12px; letter-spacing: .1em; }
+  .col-h { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-bottom: 3px; }
+  .line { font-size: 15px; }
+  .line .lab { color: var(--amber); font-weight: 700; }
+  .meters { margin-top: 7px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .strip { position: relative; height: 14px; margin-top: 5px; background: var(--panel-2); border-radius: 3px; }
+  .strip i { position: absolute; width: 2px; }
+  .strip i.o { top: 0; height: 7px; background: var(--orig); }
+  .strip i.d { bottom: 0; height: 7px; background: var(--amber); }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 10px; font-weight: 700; color: #111; }
+  .note {
+    grid-column: 2 / -1; font-size: 13px; color: var(--muted); border-top: 1px dashed var(--line);
+    padding-top: 8px; font-style: italic;
+  }
+  .measured { color: var(--text); }
+
+  details { margin-top: 30px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+  details summary { cursor: pointer; font-weight: 600; }
+  details p, details li { color: var(--muted); font-size: 14px; max-width: 80ch; }
+  .legend-o { color: var(--orig); font-weight: 700; }
+  .legend-d { color: var(--amber); font-weight: 700; }
+  .warn { color: var(--warn); font-size: 13px; margin-top: 10px; }
+  a { color: var(--teal); }
+
+  @media (max-width: 760px) {
+    .cue { grid-template-columns: 1fr; }
+    .note { grid-column: 1; }
+    .scores { grid-template-columns: 1fr; }
+    .lane { grid-template-columns: 64px 1fr; }
+    .readout { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Dub <span>Room</span></h1>
+    <p id="logline"></p>
+  </header>
+
+  <div class="stage-wrap">
+    <canvas id="stage" width="1280" height="720"></canvas>
+    <video id="video" playsinline muted></video>
+    <div class="badge">Picture: <b>original</b> · Sound: <b id="badge-track">adapted</b></div>
+    <div class="subtitle" id="subtitle"></div>
+    <div class="timeline">
+      <div class="lane"><label>Picture</label><div class="track" id="lane-pic"><div class="playhead" id="ph1"></div></div></div>
+      <div class="lane"><label>Sound</label><div class="track" id="lane-snd"><div class="playhead" id="ph2"></div></div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="seg" id="track-seg" role="group" aria-label="Soundtrack">
+      <button data-track="original">Original · EN</button>
+      <button data-track="literal">Literal · ES</button>
+      <button data-track="adapted" class="on">Adapted · ES</button>
+    </div>
+    <button class="btn primary" id="play">▶ Play scene</button>
+    <button class="btn" id="stop" disabled>■ Stop</button>
+    <label class="ctl" title="Speed the voice up or down to fit each picture window, the way an actor would"><input type="checkbox" id="fit" checked> Fit to picture</label>
+    <label class="ctl">EN <select id="voice-en"></select></label>
+    <label class="ctl">ES <select id="voice-es"></select></label>
+    <div class="readout" id="readout">Drift <b>—</b></div>
+  </div>
+  <div class="warn" id="tts-warn" hidden></div>
+
+  <div class="scores" id="scores"></div>
+
+  <h2>Cue sheet <span style="color:var(--faint);font-weight:400;font-size:13px">— click a cue to play it in the selected track</span></h2>
+  <div class="cues" id="cues"></div>
+
+  <details>
+    <summary>How it's measured</summary>
+    <p>The picture is fixed. Every soundtrack has to live inside the English actor's mouth: the same windows, and the lips closing on the same frames. Two things are checked per line:</p>
+    <ul>
+      <li><b>Timing.</b> Syllables are converted to expected speaking time using average spontaneous rates: English about 6.2 syllables/sec, Spanish about 7.8 (Pellegrino, Coupé &amp; Marsico, 2011). Spanish counting applies synalepha, so vowels merge across word boundaries the way they do when spoken. A ratio of 1.00 means the line fills the window exactly.</li>
+      <li><b>Lip closures.</b> Bilabials, where the lips visibly shut (<i>b, p, m</i>, and Spanish <i>v</i>), are placed along the line. <span class="legend-o">Blue</span> ticks are the picture's closures and <span class="legend-d">amber</span> ticks are the dub's. A tick scores when it has a partner within 12% of the line. Closures in the wrong place count against you, because a shut mouth on screen under an open vowel is the error audiences notice.</li>
+    </ul>
+    <p>These are heuristics over spelling, not phoneme alignment. They're built to be roughly right and easy to read. The sync score is 55% timing and 45% lips. When you play a scene, the page also measures the synthetic voice's real durations. With <i>Fit to picture</i> on, the voice's rate is set per line to fill the window, and the rate needed is reported. A literal line that only fits at 1.4× is a line an actor can't deliver.</p>
+  </details>
+</main>
+
+<script>
+/* ============================================================ scene */
+const DEMO = {
+  title: "The Last Boat",
+  logline: "One scene, carried into Spanish twice: once as a literal translation, once as a dub. Both are measured against the same picture. Play either one and watch the lips.",
+  cast: { MARA: "left", TEO: "right" },
+  cues: [
+    { who: "MARA", start: 0.4, end: 2.8,
+      original: "You came back. I told you not to.",
+      literal: "Volviste. Te dije que no lo hicieras.",
+      adapted: "Has vuelto. Te pedí que no lo hicieras.",
+      note: "“Pedí” puts a p on the frame where Mara closes on “came back.” The literal closes on its first syllable, before her mouth does." },
+    { who: "TEO", start: 3.3, end: 5.3,
+      original: "You told me a lot of things.",
+      literal: "Me dijiste muchas cosas.",
+      adapted: "Tú me dijiste muchas cosas.",
+      note: "A near miss, and I'm leaving it visible. “Tú” fixes the timing, but the closure still lands a beat after “me.” That's fine on a two-shot. On a close-up I'd re-cut it." },
+    { who: "MARA", start: 6.0, end: 9.6,
+      original: "The boat leaves at midnight. Be on it, or be gone.",
+      literal: "El barco sale a medianoche. Súbete a él, o desaparece.",
+      adapted: "El barco sale a medianoche. Sube, o márchate.",
+      note: "The literal needs about 20% more time than the picture gives it. “Sube, o márchate” keeps a closure under each “be,” and lands the open vowel under “gone.”" },
+    { who: "TEO", start: 10.2, end: 11.4,
+      original: "And if I don't?",
+      literal: "¿Y si no lo hago?",
+      adapted: "¿Y si no lo hago?",
+      note: "The literal already fits, so it stays. Adaptation means making the line fit. It doesn't mean rewriting for its own sake." },
+    { who: "MARA", start: 12.2, end: 15.2,
+      original: "Then I was wrong about you. Again.",
+      literal: "Entonces me equivoqué contigo. Otra vez.",
+      adapted: "Entonces me equivoqué. Por ti. Otra vez.",
+      note: "“Contigo” has no closure where “about” has one. “Por ti” puts the p under the b, and the line reads as sharper Spanish anyway." },
+    { who: "TEO", start: 16.0, end: 18.0,
+      original: "Maybe. But you're still here.",
+      literal: "Tal vez. Pero sigues aquí.",
+      adapted: "Puede. Pero sigues aquí.",
+      note: "The two versions score the same. I took “Puede” because it shuts the lips on frame one, under “Maybe.” That's a call a meter can't make." },
+    { who: "MARA", start: 18.8, end: 20.4,
+      original: "Get in the boat, Teo.",
+      literal: "Súbete al barco, Teo.",
+      adapted: "Métete en el barco, Teo.",
+      note: "Close call on the numbers. “Métete” moves “barco” toward “boat.” It also sounds like an order, which this line is." },
+    { who: "TEO", start: 21.0, end: 23.0,
+      original: "Only if you come with me.",
+      literal: "Solo si vienes conmigo.",
+      adapted: "Solo si vienes tú conmigo.",
+      note: "“Tú” goes back in. Spanish drops the pronoun when there's no emphasis to carry, and here there is. It also fills the window." },
+  ],
+};
+const TRACKS = ["original", "literal", "adapted"];
+const TRACK_LABEL = { original: "Original · EN", literal: "Literal · ES", adapted: "Adapted · ES" };
+const langOf = t => t === "original" ? "en" : "es";
+
+/* ============================================================ metrics */
+const EN_EXC = { maybe: 2, teo: 2, mara: 2, every: 3, being: 2, idea: 3, quiet: 2, real: 1, create: 2 };
+function sylEN(text) {
+  let n = 0;
+  for (let w of text.toLowerCase().replace(/[’']/g, "").match(/[a-z]+/g) || []) {
+    if (EN_EXC[w]) { n += EN_EXC[w]; continue; }
+    if (w.length <= 3) { n += 1; continue; }
+    w = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "").replace(/^y/, "");
+    n += Math.max(1, (w.match(/[aeiouy]{1,2}/g) || []).length);
+  }
+  return n;
+}
+const STRONG = "aeoáéíóú";
+function sylES(text) {
+  const words = (text.toLowerCase().match(/[a-záéíóúüñ]+/g) || [])
+    .map(w => w.replace(/qu([eéií])/g, "q$1").replace(/gu([eéií])/g, "g$1"));
+  let n = 0;
+  words.forEach((w, i) => {
+    const groups = w.match(/[aeiouáéíóúüy]+/g) || [];
+    for (const g of groups) {
+      let c = 1;                                   // strong+strong vowels = hiatus, two syllables
+      for (let k = 1; k < g.length; k++) if (STRONG.includes(g[k - 1]) && STRONG.includes(g[k])) c++;
+      n += c;
+    }
+    const next = words[i + 1];                     // synalepha: vowel meets vowel across a word boundary
+    if (next && /[aeiouáéíóúy]$/.test(w) && /^h?[aeiouáéíóúy]/.test(next)) n -= 1;
+  });
+  return Math.max(n, 1);
+}
+const syl = (text, lang) => lang === "en" ? sylEN(text) : sylES(text);
+const RATE = { en: 6.19, es: 7.82 };               // syllables/sec, Pellegrino et al. 2011
+
+function labials(text, lang) {
+  const s = text.toLowerCase().normalize("NFD").replace(/[^a-z]/g, "");
+  const set = lang === "es" ? "bpmv" : "bpm";
+  const out = [];
+  for (let i = 0; i < s.length; i++)
+    if (set.includes(s[i]) && (i === 0 || !set.includes(s[i - 1]))) out.push(i / Math.max(1, s.length - 1));
+  return out;
+}
+function labialScore(o, d, tol = 0.12) {
+  if (!o.length && !d.length) return 1;
+  if (!o.length || !d.length) return 0;
+  const hit = (a, b) => a.filter(x => b.some(y => Math.abs(x - y) <= tol)).length;
+  const r = hit(o, d) / o.length, p = hit(d, o) / d.length;
+  return r + p ? 2 * r * p / (r + p) : 0;
+}
+function measure(cue, track) {
+  const lang = langOf(track);
+  const oSyl = sylEN(cue.original), dSyl = syl(cue[track], lang);
+  const ratio = (dSyl / RATE[lang]) / (oSyl / RATE.en);
+  const iso = Math.max(0, 1 - Math.abs(ratio - 1) * 2.5);
+  const oLab = labials(cue.original, "en"), dLab = labials(cue[track], lang);
+  const lab = track === "original" ? 1 : labialScore(oLab, dLab);
+  return { syl: dSyl, ratio, iso, lab, oLab, dLab, score: 0.55 * iso + 0.45 * lab };
+}
+const scoreColor = s => s >= 0.8 ? "var(--good)" : s >= 0.6 ? "var(--warn)" : "var(--bad)";
+
+/* ============================================================ state */
+let scene = DEMO;
+const state = {
+  track: "adapted", fit: true, playing: false, t0: 0, runId: 0,
+  voices: { en: null, es: null },
+  calib: { en: 3.9, es: 5.2 },                      // TTS syllables/sec at rate 1; refined as lines are spoken
+  heard: [],                                        // sound blocks actually played: {start,end,late}
+  speaking: null,                                   // cue index whose voice is sounding
+  measured: {},                                     // `${track}:${i}` -> {dur, rate}
+};
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const sceneEnd = () => Math.max(...scene.cues.map(c => c.end)) + 1;
+
+/* ============================================================ render */
+function markLabials(text, lang) {
+  const set = lang === "es" ? "bpmvBPMV" : "bpmBPM";
+  return esc(text).replace(/[A-Za-zÁÉÍÓÚáéíóúñÑü]+/g, w =>
+    w.replace(new RegExp(`[${set}]`, "g"), ch => `<span class="lab">${ch}</span>`));
+}
+function stripHTML(m) {
+  return m.oLab.map(x => `<i class="o" style="left:${(x * 100).toFixed(1)}%"></i>`).join("") +
+         m.dLab.map(x => `<i class="d" style="left:${(x * 100).toFixed(1)}%"></i>`).join("");
+}
+function renderCues() {
+  $("cues").innerHTML = scene.cues.map((c, i) => {
+    const cols = TRACKS.map(t => {
+      const m = measure(c, t), key = `${t}:${i}`, got = state.measured[key];
+      const meters = t === "original"
+        ? `${m.syl} syl · ${(c.end - c.start).toFixed(1)}s window`
+        : `timing ${m.ratio.toFixed(2)}× · lips ${Math.round(m.lab * 100)}% · <span class="pill" style="background:${scoreColor(m.score)}">${Math.round(m.score * 100)}</span>
+           <div class="strip" title="blue: picture closures · amber: dub closures">${stripHTML(m)}</div>`;
+      const heard = got ? `<div class="meters measured">heard ${got.dur.toFixed(2)}s${got.rate !== 1 ? ` at ${got.rate.toFixed(2)}×${got.rate > 1.3 ? " — rushed" : ""}` : ""}${got.dur > (c.end - c.start) + 0.15 ? " — overran" : ""}</div>` : "";
+      return `<div><div class="col-h">${TRACK_LABEL[t]}</div><div class="line">${markLabials(c[t], langOf(t))}</div><div class="meters">${meters}</div>${heard}</div>`;
+    }).join("");
+    return `<div class="cue" data-i="${i}">
+      <div class="meta"><b>${esc(c.who)}</b>${c.start.toFixed(1)}–${c.end.toFixed(1)}s</div>${cols}
+      ${c.note ? `<div class="note">${esc(c.note)}</div>` : ""}</div>`;
+  }).join("");
+}
+function renderScores() {
+  $("scores").innerHTML = TRACKS.map(t => {
+    if (t === "original") {
+      const total = scene.cues.reduce((a, c) => a + sylEN(c.original), 0);
+      return `<div class="score ${state.track === t ? "active" : ""}"><h3>Original · EN</h3><div class="big">ref</div>
+        <div class="sub">${scene.cues.length} lines · ${total} syllables · the picture everything is measured against</div></div>`;
+    }
+    const ms = scene.cues.map(c => measure(c, t));
+    const avg = k => ms.reduce((a, m) => a + m[k], 0) / ms.length;
+    const s = avg("score"), bad = ms.filter(m => m.score < 0.6).length;
+    return `<div class="score ${state.track === t ? "active" : ""}"><h3>${TRACK_LABEL[t]}</h3>
+      <div class="big" style="color:${scoreColor(s)}">${Math.round(s * 100)}</div>
+      <div class="sub">timing ${Math.round(avg("iso") * 100)} · lips ${Math.round(avg("lab") * 100)} · ${bad ? `${bad} line${bad > 1 ? "s" : ""} out of sync` : "no lines out of sync"}</div></div>`;
+  }).join("");
+}
+function renderTimeline() {
+  const T = sceneEnd();
+  const pct = x => (x / T * 100).toFixed(2) + "%";
+  $("lane-pic").innerHTML = scene.cues.map((c, i) =>
+    `<div class="block pic" data-i="${i}" style="left:${pct(c.start)};width:${pct(c.end - c.start)}" title="${esc(c.who)}: ${esc(c.original)}"></div>` +
+    labials(c.original, "en").map(x => `<div class="tick" style="left:${pct(c.start + x * (c.end - c.start))}"></div>`).join("")
+  ).join("") + `<div class="playhead" id="ph1"></div>`;
+  drawSound();
+}
+function drawSound() {
+  const T = sceneEnd(), pct = x => (Math.min(x, T) / T * 100).toFixed(2) + "%";
+  $("lane-snd").innerHTML = state.heard.map(h => {
+    const cue = scene.cues[h.i], parts = [];
+    const okEnd = Math.min(h.end, cue.end), s = Math.max(h.start, cue.start);
+    if (h.start < cue.start) parts.push([h.start, Math.min(h.end, cue.start), true]);
+    if (okEnd > s) parts.push([s, okEnd, false]);
+    if (h.end > cue.end) parts.push([Math.max(h.start, cue.end), h.end, true]);
+    return parts.map(([a, b, over]) => `<div class="block snd ${over ? "over" : ""}" style="left:${pct(a)};width:${pct(b - a)}"></div>`).join("");
+  }).join("") + `<div class="playhead" id="ph2"></div>`;
+}
+function setPlayhead(t) {
+  const p = (Math.max(0, t) / sceneEnd() * 100).toFixed(2) + "%";
+  const a = $("ph1"), b = $("ph2");
+  if (a) a.style.left = p;
+  if (b) b.style.left = p;
+}
+function renderAll() {
+  $("logline").textContent = scene.logline || "";
+  document.title = scene.title ? `Dub Room · ${scene.title}` : "Dub Room";
+  $("badge-track").textContent = state.track;
+  document.querySelectorAll("#track-seg button").forEach(b => b.classList.toggle("on", b.dataset.track === state.track));
+  renderCues(); renderScores(); renderTimeline();
+}
+
+/* ============================================================ stage (generative picture) */
+const cv = $("stage"), g = cv.getContext("2d");
+const W = cv.width, H = cv.height;
+const rain = Array.from({ length: 220 }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 9 + Math.random() * 9, l: 10 + Math.random() * 18 }));
+let flick = 1;
+
+function mouthOpen(cue, t) {                        // picture lips follow the ORIGINAL performance, always
+  if (!cue || t < cue.start || t > cue.end) return 0;
+  const f = (t - cue.start) / (cue.end - cue.start);
+  if (labials(cue.original, "en").some(x => Math.abs(x - f) < 0.035)) return 0;
+  const sps = sylEN(cue.original) / (cue.end - cue.start);
+  return 0.25 + 0.75 * Math.abs(Math.sin(f * Math.PI * sps * (cue.end - cue.start)));
+}
+function figure(x, facing, name, open, voiced, t) {
+  const y = H * 0.9;
+  g.save();
+  g.translate(x, y);
+  g.scale(facing, 1);
+  const breathe = Math.sin(t * 1.3 + x) * 2;
+  // coat
+  g.fillStyle = "#0b0a0d";
+  g.beginPath();
+  g.moveTo(-95, 0); g.quadraticCurveTo(-88, -250, -40, -300 + breathe);
+  g.lineTo(40, -300 + breathe); g.quadraticCurveTo(92, -250, 95, 0); g.closePath(); g.fill();
+  // head (profile, facing +x)
+  const hy = -370 + breathe;
+  g.beginPath();
+  g.ellipse(0, hy, 52, 64, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath();                                    // nose + chin profile
+  g.moveTo(40, hy - 30); g.lineTo(66, hy + 2); g.lineTo(46, hy + 10);
+  g.lineTo(50, hy + 24); g.lineTo(42, hy + 50); g.lineTo(20, hy + 60); g.fill();
+  // rim light from the lamp
+  g.strokeStyle = `rgba(227,168,87,${0.35 * flick})`; g.lineWidth = 3;
+  g.beginPath(); g.ellipse(0, hy, 52, 64, 0, -Math.PI * 0.55, Math.PI * 0.15); g.stroke();
+  // mouth
+  const m = open * 13;
+  g.fillStyle = "#000"; g.strokeStyle = `rgba(227,168,87,${0.55 * flick})`; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(47, hy + 22 - m / 2); g.lineTo(35, hy + 24); g.lineTo(47, hy + 26 + m / 2); g.closePath(); g.fill(); g.stroke();
+  g.restore();
+  // voice glow: where the SOUND is, regardless of the lips
+  if (voiced) {
+    const r = 18 + Math.sin(t * 22) * 5;
+    g.strokeStyle = "rgba(95,179,168,.8)"; g.lineWidth = 3;
+    for (let k = 0; k < 3; k++) {
+      g.globalAlpha = 0.8 - k * 0.25;
+      g.beginPath(); g.arc(x + facing * 70, y - 350, r + k * 14, facing > 0 ? -0.7 : Math.PI - 0.7, facing > 0 ? 0.7 : Math.PI + 0.7); g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+  g.fillStyle = "rgba(255,255,255,.35)"; g.font = "600 18px system-ui"; g.textAlign = "center";
+  g.fillText(name, x, y - 460);
+}
+function drawStage(t) {
+  flick = 0.85 + 0.15 * Math.sin(t * 7) * Math.sin(t * 2.3) + (Math.random() < 0.01 ? -0.4 : 0);
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, "#0d1016"); sky.addColorStop(0.62, "#161a22"); sky.addColorStop(0.63, "#0a0c10"); sky.addColorStop(1, "#050507");
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  // lamp pool
+  const lx = W * 0.5, ly = H * 0.18;
+  const pool = g.createRadialGradient(lx, ly, 10, lx, ly + 200, 620);
+  pool.addColorStop(0, `rgba(227,168,87,${0.42 * flick})`); pool.addColorStop(1, "rgba(227,168,87,0)");
+  g.fillStyle = pool; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#07070a"; g.fillRect(lx - 4, ly, 8, H * 0.5);
+  g.fillStyle = `rgba(255,214,150,${flick})`; g.beginPath(); g.arc(lx, ly, 10, 0, Math.PI * 2); g.fill();
+  // water reflections
+  for (let k = 0; k < 18; k++) {
+    const yy = H * 0.66 + k * 12, w = 40 + 80 * Math.sin(t * 0.8 + k);
+    g.fillStyle = `rgba(227,168,87,${(0.08 - k * 0.004) * flick})`;
+    g.fillRect(lx - w / 2 + Math.sin(t * 1.7 + k * 1.3) * 18, yy, w, 3);
+  }
+  // boat silhouette
+  const bob = Math.sin(t * 0.9) * 4;
+  g.fillStyle = "#040405";
+  g.beginPath(); g.moveTo(W * 0.58, H * 0.64 + bob); g.lineTo(W * 0.96, H * 0.64 + bob); g.lineTo(W * 0.92, H * 0.7 + bob); g.lineTo(W * 0.61, H * 0.7 + bob); g.fill();
+  g.fillRect(W * 0.8, H * 0.38 + bob, 5, H * 0.26);
+  // dock
+  g.fillStyle = "#08080b"; g.fillRect(0, H * 0.86, W, H * 0.14);
+  // characters
+  const tt = state.playing ? t : -1;
+  const liveCue = scene.cues.find(c => tt >= c.start && tt <= c.end);
+  const side = who => (scene.cast && scene.cast[who]) || (who === scene.cues[0].who ? "left" : "right");
+  const speakingWho = state.speaking != null ? scene.cues[state.speaking].who : null;
+  for (const who of [...new Set(scene.cues.map(c => c.who))].slice(0, 2)) {
+    const left = side(who) === "left";
+    const cue = liveCue && liveCue.who === who ? liveCue : null;
+    figure(left ? W * 0.3 : W * 0.7, left ? 1 : -1, who, mouthOpen(cue, tt), speakingWho === who, t);
+  }
+  // rain
+  g.strokeStyle = "rgba(180,190,210,.28)"; g.lineWidth = 1.2;
+  g.beginPath();
+  for (const d of rain) {
+    d.y += d.v; d.x -= d.v * 0.18;
+    if (d.y > H) { d.y = -20; d.x = Math.random() * (W + 100); }
+    g.moveTo(d.x, d.y); g.lineTo(d.x + d.l * 0.18, d.y - d.l);
+  }
+  g.stroke();
+  // vignette + grain
+  const vg = g.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.95);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.7)");
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+}
+
+/* ============================================================ clock + loop */
+const video = $("video");
+const usingVideo = () => !!scene.video;
+const now = () => usingVideo() ? video.currentTime : (performance.now() - state.t0) / 1000;
+function loop(ts) {
+  const t = state.playing ? now() : 0;
+  if (!usingVideo()) drawStage(state.playing ? t : ts / 1000);
+  if (state.playing) {
+    setPlayhead(t);
+    const live = scene.cues.findIndex(c => t >= c.start && t <= c.end);
+    document.querySelectorAll(".cue").forEach((el, i) => el.classList.toggle("live", i === live || i === state.speaking));
+    if (state.speaking == null && live < 0) $("subtitle").innerHTML = "";
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================ voice */
+const hasTTS = "speechSynthesis" in window;
+function loadVoices() {
+  if (!hasTTS) return;
+  const vs = speechSynthesis.getVoices();
+  for (const lang of ["en", "es"]) {
+    const sel = $("voice-" + lang), prev = sel.value;
+    const list = vs.filter(v => v.lang.toLowerCase().startsWith(lang));
+    sel.innerHTML = list.map(v => `<option value="${esc(v.name)}">${esc(v.name.replace(/^(Microsoft|Google)\s*/, ""))} (${v.lang})</option>`).join("");
+    const pick = list.find(v => v.name === prev) || list.find(v => /natural|neural|premium|enhanced/i.test(v.name)) ||
+                 list.find(v => lang === "es" ? /es-(ES|MX|US)/i.test(v.lang) : /en-US/i.test(v.lang)) || list[0];
+    if (pick) sel.value = pick.name;
+    state.voices[lang] = pick || null;
+  }
+  const missing = ["en", "es"].filter(l => !state.voices[l]);
+  $("tts-warn").hidden = !missing.length;
+  $("tts-warn").textContent = missing.length ? `No ${missing.map(l => l === "en" ? "English" : "Spanish").join(" or ")} voice is installed in this browser. The measurements still hold, but playback will use the default voice.` : "";
+}
+function speak(i, track, runId) {
+  return new Promise(resolve => {
+    const cue = scene.cues[i], lang = langOf(track), text = cue[track];
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang === "en" ? "en-US" : "es-ES";
+    if (state.voices[lang]) u.voice = state.voices[lang];
+    const n = syl(text, lang), win = cue.end - cue.start;
+    let rate = 1;
+    if (state.fit) rate = Math.min(2, Math.max(0.75, (n / state.calib[lang]) / win));
+    u.rate = rate;
+    let t0 = null, s0 = null;
+    const done = () => {
+      if (state.speaking === i) state.speaking = null;
+      if (t0 != null && runId === state.runId) {
+        const dur = (performance.now() - t0) / 1000;
+        state.calib[lang] = 0.7 * state.calib[lang] + 0.3 * (n / (dur * rate));
+        state.measured[`${track}:${i}`] = { dur, rate };
+        if (s0 != null) { state.heard.push({ i, start: s0, end: s0 + dur }); drawSound(); }
+        renderCues();
+      }
+      resolve();
+    };
+    u.onstart = () => {
+      t0 = performance.now(); state.speaking = i;
+      s0 = state.playing ? now() : null;
+      $("subtitle").innerHTML = `<span class="who">${esc(cue.who)}</span>${esc(text)}`;
+    };
+    u.onend = done; u.onerror = done;
+    speechSynthesis.speak(u);
+  });
+}
+
+/* ============================================================ transport */
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function playScene() {
+  stop();
+  const runId = ++state.runId;
+  state.playing = true; state.heard = []; drawSound();
+  $("play").disabled = true; $("stop").disabled = false;
+  const track = state.track;
+  const audioURL = scene.audio && scene.audio[track];
+
+  if (usingVideo()) {
+    video.currentTime = 0;
+    if (audioURL) {
+      const a = window.__dubAudio = new Audio(audioURL);
+      a.currentTime = 0;
+      await Promise.all([video.play(), a.play()]).catch(() => {});
+      await new Promise(r => video.addEventListener("ended", r, { once: true }));
+      if (runId === state.runId) finish();
+      return;
+    }
+    video.play().catch(() => {});
+  } else {
+    state.t0 = performance.now();
+  }
+  let drift = 0;
+  for (let i = 0; i < scene.cues.length; i++) {
+    if (runId !== state.runId) return;
+    const cue = scene.cues[i];
+    const lag = cue.start - now();
+    if (lag > 0) await wait(lag * 1000);
+    if (runId !== state.runId) return;
+    await speak(i, track, runId);
+    const last = state.heard[state.heard.length - 1];
+    if (!last || last.i !== i) continue;             // nothing was actually heard for this cue
+    drift = Math.max(0, last.end - cue.end);
+    $("readout").innerHTML = `Drift <b style="color:${drift > 0.3 ? "var(--bad)" : "var(--text)"}">${drift > 0.05 ? "+" + drift.toFixed(2) + "s" : "on picture"}</b>`;
+  }
+  if (runId !== state.runId) return;
+  await wait(800);
+  if (runId === state.runId) finish();
+}
+function finish() {
+  state.playing = false; state.speaking = null;
+  $("play").disabled = false; $("stop").disabled = true;
+  $("subtitle").innerHTML = "";
+  document.querySelectorAll(".cue").forEach(el => el.classList.remove("live"));
+  if (usingVideo()) video.pause();
+}
+function stop() {
+  state.runId++;
+  if (hasTTS) speechSynthesis.cancel();
+  if (window.__dubAudio) { window.__dubAudio.pause(); window.__dubAudio = null; }
+  finish();
+}
+async function playCue(i) {
+  stop();
+  const runId = state.runId;
+  $("stop").disabled = false;
+  await speak(i, state.track, runId);
+  if (runId === state.runId) { $("stop").disabled = true; $("subtitle").innerHTML = ""; }
+}
+
+/* ============================================================ wiring */
+$("track-seg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  stop(); state.track = b.dataset.track; state.heard = []; $("readout").innerHTML = "Drift <b>—</b>"; renderAll();
+});
+$("play").addEventListener("click", playScene);
+$("stop").addEventListener("click", stop);
+$("fit").addEventListener("change", e => { state.fit = e.target.checked; });
+for (const lang of ["en", "es"]) $("voice-" + lang).addEventListener("change", e => {
+  state.voices[lang] = speechSynthesis.getVoices().find(v => v.name === e.target.value) || null;
+});
+$("cues").addEventListener("click", e => { const c = e.target.closest(".cue"); if (c) playCue(+c.dataset.i); });
+$("lane-pic").addEventListener("click", e => { const b = e.target.closest(".block"); if (b) playCue(+b.dataset.i); });
+
+async function init() {
+  const src = new URLSearchParams(location.search).get("scene");
+  if (src) {
+    try {
+      const s = await (await fetch(src)).json();
+      if (!Array.isArray(s.cues) || !s.cues.length) throw new Error("no cues");
+      scene = s;
+      if (s.video) {
+        video.src = new URL(s.video, new URL(src, location.href)).href;
+        video.style.display = "block"; cv.style.display = "none";
+        if (s.audio) for (const k in s.audio) s.audio[k] = new URL(s.audio[k], new URL(src, location.href)).href;
+      }
+    } catch (err) {
+      $("tts-warn").hidden = false;
+      $("tts-warn").textContent = `Couldn't load scene “${src}” (${err.message}). Showing the demo scene.`;
+    }
+  }
+  if (hasTTS) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+  else { $("tts-warn").hidden = false; $("tts-warn").textContent = "This browser has no speech synthesis. Every measurement below still holds, but playback is silent."; $("play").disabled = true; }
+  renderAll();
+  requestAnimationFrame(loop);
+}
+init();
+</script>
+</body>
+</html>
