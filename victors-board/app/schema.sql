@@ -58,14 +58,19 @@ CREATE TABLE IF NOT EXISTS poll_votes (
 -- daily hash used solely to count uniques, is unlinkable across days,
 -- and is pruned as each new day begins. Nothing ties to accounts.
 CREATE TABLE IF NOT EXISTS traffic (
-    day       TEXT PRIMARY KEY,   -- YYYY-MM-DD board time
-    pageviews INTEGER NOT NULL DEFAULT 0,
-    uniques   INTEGER NOT NULL DEFAULT 0
+    day            TEXT PRIMARY KEY,   -- YYYY-MM-DD board time
+    pageviews      INTEGER NOT NULL DEFAULT 0,
+    uniques        INTEGER NOT NULL DEFAULT 0,
+    member_uniques INTEGER NOT NULL DEFAULT 0   -- of the uniques, how many were logged in
 );
 
+-- `member` says only that this day's hashed device was logged in at some
+-- point — never as whom. It answers "how many of today's visitors are
+-- members" and nothing finer.
 CREATE TABLE IF NOT EXISTS traffic_visitors (
     day     TEXT NOT NULL,
     visitor TEXT NOT NULL,
+    member  INTEGER NOT NULL DEFAULT 0,
     UNIQUE(day, visitor)
 );
 

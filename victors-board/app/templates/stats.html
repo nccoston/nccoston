@@ -53,11 +53,21 @@
     {{ month_name }} so far: <b>{{ month['uv'] }}</b> daily visitors,
     <b>{{ month['pv'] }}</b> pageviews.</p>
   <table class="admin-table">
-    <tr><th>Day</th><th>Visitors</th><th>Pageviews</th></tr>
+    <tr><th>Day</th><th>Visitors</th><th>Members</th><th>Lurkers</th><th>Pageviews</th></tr>
     {% for d in traffic_days %}
-    <tr><td>{{ d['day'] }}</td><td>{{ d['uniques'] }}</td><td>{{ d['pageviews'] }}</td></tr>
+    <tr><td>{{ d['day'] }}</td><td>{{ d['uniques'] }}</td>
+      {% if d['member_uniques'] %}
+      <td>{{ d['member_uniques'] }}</td><td>{{ d['uniques'] - d['member_uniques'] }}</td>
+      {% else %}
+      <td>&mdash;</td><td>&mdash;</td>
+      {% endif %}
+      <td>{{ d['pageviews'] }}</td></tr>
     {% endfor %}
   </table>
+  <p class="hint">A visitor is a device for a day, so a member on a phone and a
+    laptop is two. Members are devices that were logged in at some point that
+    day. Lurkers are everything else &mdash; readers, second devices before
+    login, and the search engines' robots.</p>
   {% endif %}
 
 </div>

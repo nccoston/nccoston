@@ -1,5 +1,9 @@
 [
  {
+  "day": "2026-09-25",
+  "what": "Stats: how many of the day's visitors are members"
+ },
+ {
   "day": "2026-09-21",
   "what": "The running log gets its own page, off Stats"
  },

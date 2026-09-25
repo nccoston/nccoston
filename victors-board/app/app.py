@@ -174,7 +174,9 @@ def init_db():
                       "ALTER TABLE games ADD COLUMN kickoff_at TEXT",
                       "ALTER TABLE bowl_scores ADD COLUMN opens INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE bowl_scores ADD COLUMN first_at TEXT",
-                      "ALTER TABLE bowl_scores ADD COLUMN last_at TEXT"):
+                      "ALTER TABLE bowl_scores ADD COLUMN last_at TEXT",
+                      "ALTER TABLE traffic ADD COLUMN member_uniques INTEGER NOT NULL DEFAULT 0",
+                      "ALTER TABLE traffic_visitors ADD COLUMN member INTEGER NOT NULL DEFAULT 0"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -480,12 +482,25 @@ def count_traffic():
         db.execute("DELETE FROM message_reads WHERE message_id IN"
                    " (SELECT id FROM messages WHERE created_at < ?)", (cutoff,))
     db.execute("UPDATE traffic SET pageviews = pageviews + 1 WHERE day = ?", (day,))
+    # a session cookie is enough to call the device a member's for the day;
+    # no account lookup, and the row never learns whose
+    member = 1 if session.get("user_id") is not None else 0
     cur = db.execute(
-        "INSERT OR IGNORE INTO traffic_visitors (day, visitor) VALUES (?, ?)",
-        (day, visitor))
+        "INSERT OR IGNORE INTO traffic_visitors (day, visitor, member)"
+        " VALUES (?, ?, ?)", (day, visitor, member))
     if cur.rowcount:
-        db.execute("UPDATE traffic SET uniques = uniques + 1 WHERE day = ?", (day,))
+        db.execute("UPDATE traffic SET uniques = uniques + 1,"
+                   " member_uniques = member_uniques + ? WHERE day = ?",
+                   (member, day))
         db.execute("DELETE FROM traffic_visitors WHERE day != ?", (day,))
+    elif member:
+        # first seen logged out, logged in since: promote the device once
+        cur = db.execute("UPDATE traffic_visitors SET member = 1"
+                         " WHERE day = ? AND visitor = ? AND member = 0",
+                         (day, visitor))
+        if cur.rowcount:
+            db.execute("UPDATE traffic SET member_uniques = member_uniques + 1"
+                       " WHERE day = ?", (day,))
     db.commit()
     if new_day:
         try:
