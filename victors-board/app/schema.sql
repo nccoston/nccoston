@@ -58,10 +58,21 @@ CREATE TABLE IF NOT EXISTS poll_votes (
 -- daily hash used solely to count uniques, is unlinkable across days,
 -- and is pruned as each new day begins. Nothing ties to accounts.
 CREATE TABLE IF NOT EXISTS traffic (
-    day            TEXT PRIMARY KEY,   -- YYYY-MM-DD board time
-    pageviews      INTEGER NOT NULL DEFAULT 0,
-    uniques        INTEGER NOT NULL DEFAULT 0,
-    member_uniques INTEGER NOT NULL DEFAULT 0   -- of the uniques, how many were logged in
+    day             TEXT PRIMARY KEY,   -- YYYY-MM-DD board time
+    pageviews       INTEGER NOT NULL DEFAULT 0,   -- by people; robots are below
+    uniques         INTEGER NOT NULL DEFAULT 0,   -- devices
+    member_uniques  INTEGER NOT NULL DEFAULT 0,   -- of the devices, how many were logged in
+    member_accounts INTEGER NOT NULL DEFAULT 0,   -- distinct accounts that visited
+    robots          INTEGER NOT NULL DEFAULT 0    -- requests from crawlers, kept apart
+);
+
+-- Distinct members per day, without a record of which: a hash of the
+-- account salted with the day and the app secret, unlinkable across days,
+-- pruned as each day rolls over. Only ever counted.
+CREATE TABLE IF NOT EXISTS traffic_members (
+    day    TEXT NOT NULL,
+    member TEXT NOT NULL,
+    UNIQUE(day, member)
 );
 
 -- `member` says only that this day's hashed device was logged in at some

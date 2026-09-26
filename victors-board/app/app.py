@@ -176,7 +176,9 @@ def init_db():
                       "ALTER TABLE bowl_scores ADD COLUMN first_at TEXT",
                       "ALTER TABLE bowl_scores ADD COLUMN last_at TEXT",
                       "ALTER TABLE traffic ADD COLUMN member_uniques INTEGER NOT NULL DEFAULT 0",
-                      "ALTER TABLE traffic_visitors ADD COLUMN member INTEGER NOT NULL DEFAULT 0"):
+                      "ALTER TABLE traffic_visitors ADD COLUMN member INTEGER NOT NULL DEFAULT 0",
+                      "ALTER TABLE traffic ADD COLUMN member_accounts INTEGER NOT NULL DEFAULT 0",
+                      "ALTER TABLE traffic ADD COLUMN robots INTEGER NOT NULL DEFAULT 0"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -460,18 +462,29 @@ def user_read_ids(db, u, ids):
 UNCOUNTED_PATHS = ("/static", "/uploads", "/chat/messages", "/favicon",
                    "/apple-touch", "/rss", "/mcp")
 
+# Crawlers announce themselves. A public board with thirty-six thousand
+# pages gets walked by search engines, AI scrapers and the odd copyright
+# robot, each from a spread of addresses — every one of which used to be a
+# "lurker". They're counted, but apart.
+BOT_RE = re.compile(
+    r"bot|crawl|spider|slurp|scrap|fetch|archive|monitor|uptime|headless|"
+    r"python-requests|curl/|wget/|httpclient|facebookexternalhit|preview",
+    re.IGNORECASE)
+
+
+def is_robot(ua):
+    return not ua or bool(BOT_RE.search(ua))
+
 
 @app.before_request
 def count_traffic():
     """Counts only. The visitor hash is salted with the day and the app
     secret, so it can't be reversed to an address or linked across days,
-    and it's pruned as each day rolls over. No connection to accounts."""
+    and it's pruned as each day rolls over. The member hash is the same
+    idea applied to an account: it says a member visited, never which."""
     if request.method != "GET" or request.path.startswith(UNCOUNTED_PATHS):
         return
     day = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%Y-%m-%d")
-    visitor = hashlib.sha256(
-        f"{day}|{app.secret_key}|{client_ip()}|"
-        f"{request.user_agent.string}".encode()).hexdigest()[:16]
     db = get_db()
     new_day = db.execute(
         "INSERT OR IGNORE INTO traffic (day) VALUES (?)", (day,)).rowcount
@@ -481,10 +494,32 @@ def count_traffic():
             .replace(tzinfo=None).isoformat(timespec="seconds")
         db.execute("DELETE FROM message_reads WHERE message_id IN"
                    " (SELECT id FROM messages WHERE created_at < ?)", (cutoff,))
+        db.execute("DELETE FROM traffic_members WHERE day != ?", (day,))
+    ua = request.user_agent.string
+    if is_robot(ua):
+        db.execute("UPDATE traffic SET robots = robots + 1 WHERE day = ?", (day,))
+        db.commit()
+        if new_day:
+            try:
+                nightly_snapshot(day)
+            except Exception:
+                pass
+        return
+    visitor = hashlib.sha256(
+        f"{day}|{app.secret_key}|{client_ip()}|{ua}".encode()).hexdigest()[:16]
     db.execute("UPDATE traffic SET pageviews = pageviews + 1 WHERE day = ?", (day,))
+    uid = session.get("user_id")
+    if uid is not None:
+        # one member, however many phones and addresses they had today
+        mh = hashlib.sha256(
+            f"{day}|{app.secret_key}|member|{uid}".encode()).hexdigest()[:16]
+        if db.execute("INSERT OR IGNORE INTO traffic_members (day, member)"
+                      " VALUES (?, ?)", (day, mh)).rowcount:
+            db.execute("UPDATE traffic SET member_accounts = member_accounts + 1"
+                       " WHERE day = ?", (day,))
     # a session cookie is enough to call the device a member's for the day;
     # no account lookup, and the row never learns whose
-    member = 1 if session.get("user_id") is not None else 0
+    member = 1 if uid is not None else 0
     cur = db.execute(
         "INSERT OR IGNORE INTO traffic_visitors (day, visitor, member)"
         " VALUES (?, ?, ?)", (day, visitor, member))

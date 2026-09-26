@@ -53,21 +53,21 @@
     {{ month_name }} so far: <b>{{ month['uv'] }}</b> daily visitors,
     <b>{{ month['pv'] }}</b> pageviews.</p>
   <table class="admin-table">
-    <tr><th>Day</th><th>Visitors</th><th>Members</th><th>Lurkers</th><th>Pageviews</th></tr>
+    <tr><th>Day</th><th>Visitors</th><th>Members</th><th>Lurkers</th><th>Pageviews</th><th>Robots</th></tr>
     {% for d in traffic_days %}
     <tr><td>{{ d['day'] }}</td><td>{{ d['uniques'] }}</td>
-      {% if d['member_uniques'] %}
-      <td>{{ d['member_uniques'] }}</td><td>{{ d['uniques'] - d['member_uniques'] }}</td>
-      {% else %}
-      <td>&mdash;</td><td>&mdash;</td>
-      {% endif %}
-      <td>{{ d['pageviews'] }}</td></tr>
+      <td>{% if d['member_accounts'] %}{{ d['member_accounts'] }}{% else %}&mdash;{% endif %}</td>
+      <td>{% if d['member_uniques'] %}{{ d['uniques'] - d['member_uniques'] }}{% else %}&mdash;{% endif %}</td>
+      <td>{{ d['pageviews'] }}</td>
+      <td>{% if d['robots'] %}{{ d['robots'] }}{% else %}&mdash;{% endif %}</td></tr>
     {% endfor %}
   </table>
-  <p class="hint">A visitor is a device for a day, so a member on a phone and a
-    laptop is two. Members are devices that were logged in at some point that
-    day. Lurkers are everything else &mdash; readers, second devices before
-    login, and the search engines' robots.</p>
+  <p class="hint"><b>Members</b> are distinct accounts that visited, however
+    many phones and laptops they used. <b>Visitors</b> and <b>Lurkers</b> are
+    devices for a day, not people &mdash; a phone that changes address on the
+    way to work is two &mdash; so Lurkers overstates readers. <b>Robots</b>
+    are requests from crawlers that said so; they're kept out of everything
+    else. Dashes mean the board wasn't counting that yet.</p>
   {% endif %}
 
 </div>
