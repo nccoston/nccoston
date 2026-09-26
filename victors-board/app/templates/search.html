@@ -16,7 +16,7 @@
       {% for r in results %}
       <li>
         <a href="{{ url_for('message', message_id=r['id']) }}">{{ r['subject'] }}</a>
-        <span class="byline">- By <b>{{ r['author_name'] }}</b>
+        <span class="byline">- By {{ r | poster }}
           <i>{{ r['created_at'] | boardtime }}</i></span>
       </li>
       {% endfor %}

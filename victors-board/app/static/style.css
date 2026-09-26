@@ -645,3 +645,15 @@ body.seal-bg::before {
 .changelog-day { margin: 10px 0 2px; }
 .changelog ul { margin: 0 0 0 18px; padding: 0; }
 .changelog li { margin: 1px 0; }
+
+/* alias posts: italic with a dotted underline, the web's "something's under
+   this" cue; a tap reveals the member beside it */
+.alias {
+  font-style: italic;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.alias-real { font-style: normal; font-weight: normal; color: var(--hint); }
+.alias-toggle { text-decoration: none; }
+.alias-toggle:hover { text-decoration: underline; }

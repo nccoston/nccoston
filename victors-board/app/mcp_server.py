@@ -142,17 +142,21 @@ def _url(path):
 
 
 def _post(row, body=True):
+    alias = row["alias"] if "alias" in row.keys() else None
     out = {
         "id": row["id"],
         "thread_id": row["thread_id"],
         "subject": row["subject"],
-        "author": row["author_name"],
+        "author": alias or row["author_name"],
         "posted_at": _when(row["created_at"]),
         "board": row["board"] if "board" in row.keys() else "main",
         "url": _url("/message/%d" % (row["thread_id"] or row["id"])),
     }
     if body:
         out["body"] = _plain(row["body"])
+    if alias:
+        # an alias is a costume the board lets anyone see under
+        out["posting_as"] = row["author_name"]
     if "hof_at" in row.keys() and row["hof_at"]:
         out["hall_of_fame"] = True
     return out
@@ -174,7 +178,7 @@ def t_search_board(query="", board=None, author=None, limit=10):
     if not query:
         raise ValueError("query is required")
     limit = max(1, min(int(limit or 10), MAX_RESULTS))
-    sql = ("SELECT id, thread_id, subject, body, author_name, created_at,"
+    sql = ("SELECT id, thread_id, subject, body, author_name, alias, created_at,"
            " board, hof_at FROM messages WHERE (subject LIKE ? OR body LIKE ?)")
     like = "%%%s%%" % query
     args = [like, like]
@@ -200,7 +204,7 @@ def t_get_thread(thread_id, limit=MAX_REPLIES):
     limit = max(1, min(int(limit or MAX_REPLIES), MAX_REPLIES))
     db = _db()
     root = db.execute(
-        "SELECT id, thread_id, subject, body, author_name, created_at, board,"
+        "SELECT id, thread_id, subject, body, author_name, alias, created_at, board,"
         " hof_at FROM messages WHERE id = ? AND parent_id IS NULL",
         (int(thread_id),)).fetchone()
     if root is None:
@@ -211,7 +215,7 @@ def t_get_thread(thread_id, limit=MAX_REPLIES):
             raise ValueError("no thread with id %s" % thread_id)
         return t_get_thread(child["thread_id"], limit)
     replies = db.execute(
-        "SELECT id, thread_id, subject, body, author_name, created_at, board,"
+        "SELECT id, thread_id, subject, body, author_name, alias, created_at, board,"
         " hof_at FROM messages WHERE thread_id = ? AND id != ?"
         " ORDER BY created_at LIMIT ?", (root["id"], root["id"], limit)).fetchall()
     total = db.execute(
@@ -230,7 +234,7 @@ def t_recent_threads(board="main", limit=15):
     limit = max(1, min(int(limit or 15), MAX_THREADS))
     rows = _db().execute(
         "SELECT m.id, m.thread_id, m.subject, m.body, m.author_name,"
-        " m.created_at, m.board, m.hof_at,"
+        " m.alias, m.created_at, m.board, m.hof_at,"
         " (SELECT COUNT(*) FROM messages r WHERE r.thread_id = m.id"
         "  AND r.id != m.id) replies,"
         " (SELECT MAX(r.created_at) FROM messages r WHERE r.thread_id = m.id) last_at"
@@ -250,7 +254,7 @@ def t_hall_of_fame(limit=10):
     limit = max(1, min(int(limit or 10), MAX_RESULTS))
     db = _db()
     rows = db.execute(
-        "SELECT id, thread_id, subject, body, author_name, created_at, board,"
+        "SELECT id, thread_id, subject, body, author_name, alias, created_at, board,"
         " hof_at FROM messages WHERE hof_at IS NOT NULL"
         " ORDER BY hof_at DESC, id DESC LIMIT ?", (limit,)).fetchall()
     total = db.execute("SELECT COUNT(*) c FROM messages"

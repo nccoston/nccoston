@@ -156,6 +156,45 @@
 <script async src="https://embed.reddit.com/widgets.js" charset="UTF-8"></script>
 <script async src="https://www.tiktok.com/embed.js"></script>
 <script>
+// tap an alias and the member under it appears beside it; tap again and it
+// folds away. The real handle is in the markup already — this only decides
+// whether it's showing.
+document.addEventListener("click", function (e) {
+  var el = e.target.closest && e.target.closest(".alias");
+  if (!el) return;
+  var next = el.nextSibling;
+  if (next && next.className === "alias-real") { next.remove(); return; }
+  var who = document.createElement("span");
+  who.className = "alias-real";
+  who.textContent = " · " + el.getAttribute("data-real");
+  el.parentNode.insertBefore(who, el.nextSibling);
+});
+document.addEventListener("keydown", function (e) {
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList &&
+      e.target.classList.contains("alias")) { e.preventDefault(); e.target.click(); }
+});
+// on the post form, the alias field stays folded behind "(alias)" until
+// asked for — unless it already holds something, or there's no script to
+// unfold it, in which case it just shows
+(function () {
+  var fields = document.querySelectorAll(".alias-field");
+  for (var i = 0; i < fields.length; i++) {
+    var input = fields[i].querySelector("input");
+    if (!input.value) fields[i].style.display = "none";
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest && e.target.closest(".alias-toggle");
+    if (!t) return;
+    e.preventDefault();
+    var field = t.closest("form").querySelector(".alias-field");
+    var open = field.style.display === "none";
+    field.style.display = open ? "" : "none";
+    if (open) field.querySelector("input").focus();
+    else field.querySelector("input").value = "";
+  });
+})();
+</script>
+<script>
 // one click per post: disable submit buttons once a post form is sent
 (function () {
   var forms = document.querySelectorAll("form.board-form");

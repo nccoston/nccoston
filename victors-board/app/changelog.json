@@ -1,5 +1,9 @@
 [
  {
+  "day": "2026-09-26",
+  "what": "Alias posts: tap the name to see who"
+ },
+ {
   "day": "2026-09-27",
   "what": "Cards question: just main or Cards"
  },
@@ -762,17 +766,5 @@
  {
   "day": "2026-08-03",
   "what": "Add vb redirect service for a short parallel URL"
- },
- {
-  "day": "2026-08-03",
-  "what": "Match the old board's message page layout"
- },
- {
-  "day": "2026-08-03",
-  "what": "Add post editing"
- },
- {
-  "day": "2026-08-03",
-  "what": "Credit Nick Coston in the footer"
  }
 ]

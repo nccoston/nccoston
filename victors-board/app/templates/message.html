@@ -9,7 +9,7 @@
     <a{% if node['id'] in read_ids %} class="read"{% endif %} href="{{ url_for('message', message_id=node['id']) }}">{{ node['subject'] }}</a>
   {% endif %}
   {%- if node.get('hof_at') %} &#127942;{% endif %}
-  <span class="byline">- By <b>{{ node['author_name'] }}</b>
+  <span class="byline">- By {{ node | poster }}
     <i>{{ node['created_at'] | boardtime }}</i></span>
   {% if node['children'] %}
   <ul>
@@ -22,7 +22,7 @@
 {% block content %}
 <div class="message-box">
   <h2>{{ msg['subject'] }}</h2>
-  <p class="byline">Posted on {{ msg['created_at'] | boardtime }} by <b>{{ msg['author_name'] }}</b>
+  <p class="byline">Posted on {{ msg['created_at'] | boardtime }} by {{ msg | poster }}
     {% if msg['hof_at'] %}<a href="{{ url_for('hof') }}" title="Hall of Fame">&#127942;</a>{% endif %}
     {% if msg['edited_at'] %}<span class="legacy-tag">(edited {{ msg['edited_at'] | boardtime }})</span>{% endif %}
     {% if user and user['is_admin'] and msg['ip_address'] %}<span class="legacy-tag">[IP: {{ msg['ip_address'] }}]</span>{% endif %}</p>
@@ -199,8 +199,12 @@
   <form class="board-form" method="post" enctype="multipart/form-data"
         action="{{ url_for('post', reply_to=msg['id']) }}">
     <label>Subject
+      <a href="#" class="hint alias-toggle">(alias)</a>
       <input type="text" name="subject" maxlength="300" required
              value="{{ reply_subject }}" data-default="{{ reply_subject }}">
+    </label>
+    <label class="alias-field">
+      <input type="text" name="alias" maxlength="30" placeholder="alias">
     </label>
     <label>Message
       <textarea name="body"></textarea>

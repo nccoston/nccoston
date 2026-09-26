@@ -30,7 +30,7 @@ from zoneinfo import ZoneInfo
 
 from flask import (Flask, abort, flash, g, redirect, render_template, request,
                    send_file, send_from_directory, session, url_for)
-from markupsafe import Markup
+from markupsafe import Markup, escape
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -178,7 +178,8 @@ def init_db():
                       "ALTER TABLE traffic ADD COLUMN member_uniques INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE traffic_visitors ADD COLUMN member INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE traffic ADD COLUMN member_accounts INTEGER NOT NULL DEFAULT 0",
-                      "ALTER TABLE traffic ADD COLUMN robots INTEGER NOT NULL DEFAULT 0"):
+                      "ALTER TABLE traffic ADD COLUMN robots INTEGER NOT NULL DEFAULT 0",
+                      "ALTER TABLE messages ADD COLUMN alias TEXT"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -249,6 +250,52 @@ def admin_required(f):
 
 from postmarkup import render_post
 from stadiums import load as load_stadiums
+
+
+@app.template_filter("poster")
+def poster(row):
+    """The byline name. Usually the handle. For an alias post it's the
+    alias, marked so a tap reveals who — the real handle rides along in the
+    markup, so it's there for everyone, always."""
+    keys = row.keys() if hasattr(row, "keys") else ()
+    alias = row["alias"] if "alias" in keys else None
+    real = escape(row["author_name"])
+    if not alias:
+        return Markup(f"<b>{real}</b>")
+    return Markup(f'<b class="alias" data-real="{real}" tabindex="0"'
+                  f' title="alias — tap to see who">{escape(alias)}</b>')
+
+
+# Aliases are the old board's costume tradition (Obitman, Capt. Louis
+# Renault), brought back with one difference: anyone can tap the name and
+# see who's under it. The rules below are what keep a costume from being a
+# mask — no alias may be, or look like, a member's handle.
+ALIAS_RESERVED = {"admin", "administrator", "moderator", "mod", "skeeps",
+                  "anonymous", "anon", "guest", "system"}
+
+
+def _lookalike(s):
+    """Fold the tricks: case, spacing, punctuation, and the digit/letter
+    swaps that make 'R1ch' read as Rich."""
+    s = re.sub(r"[^a-z0-9]", "", s.lower())
+    return s.translate(str.maketrans({"1": "l", "i": "l", "0": "o",
+                                      "5": "s", "3": "e", "4": "a"}))
+
+
+def clean_alias(raw, user, db):
+    """-> (alias or None, error or None). Empty or own handle means no alias."""
+    alias = re.sub(r"\s+", " ", (raw or "")).strip()
+    if not alias or alias.lower() == user["handle"].lower():
+        return None, None
+    if not re.fullmatch(HANDLE_RE, alias):
+        return None, "An alias is 2–30 characters: letters, numbers, spaces, and . _ - & ' @"
+    if alias.lower() in ALIAS_RESERVED:
+        return None, "That alias is reserved."
+    folded = _lookalike(alias)
+    for row in db.execute("SELECT handle FROM users"):
+        if _lookalike(row["handle"]) == folded:
+            return None, "An alias can't be a member's handle or look like one."
+    return alias, None
 
 
 @app.template_filter("logday")
@@ -565,7 +612,7 @@ def index(board_name):
     if root_ids:
         marks = ",".join("?" * len(root_ids))
         rows = db.execute(
-            f"SELECT id, thread_id, parent_id, subject, author_name, created_at, hof_at, pinned FROM messages"
+            f"SELECT id, thread_id, parent_id, subject, author_name, alias, created_at, hof_at, pinned FROM messages"
             f" WHERE thread_id IN ({marks})", root_ids).fetchall()
         by_thread = {}
         for root in build_tree(rows):
@@ -612,7 +659,7 @@ def message(message_id):
     if msg is None:
         abort(404)
     thread_rows = db.execute(
-        "SELECT id, thread_id, parent_id, subject, author_name, created_at, hof_at, pinned FROM messages"
+        "SELECT id, thread_id, parent_id, subject, author_name, alias, created_at, hof_at, pinned FROM messages"
         " WHERE thread_id = ?", (msg["thread_id"],)).fetchall()
     roots = build_tree(thread_rows)
     thread = roots[0] if roots else None
@@ -864,10 +911,14 @@ def post(reply_to=None):
         image_url = request.form.get("image_url", "").strip()
         poll_lines = [ln.strip() for ln in
                       request.form.get("poll_options", "").splitlines() if ln.strip()][:10]
+        alias, alias_err = clean_alias(request.form.get("alias", ""),
+                                       current_user(), db)
         if not subject:
             flash("A subject is required.")
         elif parent is None and len(poll_lines) == 1:
             flash("A poll needs at least two options (one per line).")
+        elif alias_err:
+            flash(alias_err)
         else:
             if image_url and not image_url.lower().startswith(("http://", "https://")):
                 image_url = ""
@@ -905,13 +956,13 @@ def post(reply_to=None):
             cur = db.execute(
                 "INSERT INTO messages (thread_id, parent_id, subject, body,"
                 " image_url, author_name, user_id, created_at, ip_address,"
-                " board, image_size)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " board, image_size, alias)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (parent["thread_id"] if parent else None,
                  parent["id"] if parent else None,
                  subject, body or None, image_url or None,
                  user["handle"], user["id"], now, client_ip(), board,
-                 image_size))
+                 image_size, alias))
             new_id = cur.lastrowid
             flash("Posted! Go Blue!", "goblue")
             if parent is None:
@@ -2870,8 +2921,9 @@ def search():
         like = f"%{q}%"
         results = get_db().execute(
             "SELECT * FROM messages WHERE subject LIKE ? OR body LIKE ? "
-            "OR author_name LIKE ? ORDER BY created_at DESC LIMIT 200",
-            (like, like, like)).fetchall()
+            "OR author_name LIKE ? OR alias LIKE ?"
+            " ORDER BY created_at DESC LIMIT 200",
+            (like, like, like, like)).fetchall()
     return render_template("search.html", q=q, results=results)
 
 

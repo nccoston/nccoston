@@ -25,9 +25,14 @@
     <input type="hidden" name="board" value="{{ board }}">
     <label>Subject
       <span class="hint">(use "*" or "nm" for subject-only)</span>
+      <a href="#" class="hint alias-toggle">(alias)</a>
       <input type="text" name="subject" maxlength="300" required
              value="{{ request.form.get('subject', subject_prefill) }}"
              {% if parent %}data-default="{{ subject_prefill }}"{% endif %}>
+    </label>
+    <label class="alias-field">
+      <input type="text" name="alias" maxlength="30" placeholder="alias"
+             value="{{ request.form.get('alias', '') }}">
     </label>
     <label>Message
       <textarea name="body">{{ request.form.get('body', '') }}</textarea>
