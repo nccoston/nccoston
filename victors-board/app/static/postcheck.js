@@ -232,5 +232,11 @@
     [subject, body].forEach(function (el) {
       el.addEventListener("input", clear);
     });
+
+    // an empty subject gets the house version of the browser's nag
+    subject.addEventListener("invalid", function () {
+      if (subject.validity.valueMissing) subject.setCustomValidity("Please go blue.");
+    });
+    subject.addEventListener("input", function () { subject.setCustomValidity(""); });
   });
 })();

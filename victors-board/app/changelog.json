@@ -1,6 +1,10 @@
 [
  {
   "day": "2026-09-27",
+  "what": "An empty subject says \"Please go blue.\""
+ },
+ {
+  "day": "2026-09-27",
   "what": "Running log: stop shedding the first day's commits"
  },
  {
