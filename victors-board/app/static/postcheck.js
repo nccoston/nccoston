@@ -232,12 +232,5 @@
     [subject, body].forEach(function (el) {
       el.addEventListener("input", clear);
     });
-
-    // an empty subject gets the house version of the browser's nag — set
-    // from the start, since Chrome shows it as a tooltip on hover, not
-    // only after a failed submit
-    function nag() { subject.setCustomValidity(subject.value.trim() ? "" : "Please go blue."); }
-    nag();
-    subject.addEventListener("input", nag);
   });
 })();
