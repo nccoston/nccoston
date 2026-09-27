@@ -11,16 +11,18 @@
     <div class="message-body">{{ parent['body'] | rendertext }}</div>
     {% endif %}
   {% else %}
-    <h2>Post a New Message</h2>
+    <h2>Post a New Message{% if board == 'scores' %} to Scores{% elif board == 'cards' %} to Cards{% endif %}</h2>
+    {% if board != 'main' %}
+    <p class="hint"><a href="{{ url_for('post', board='main') }}">Post to the main board instead</a></p>
+    {% endif %}
   {% endif %}
 
-  <form class="board-form" method="post" enctype="multipart/form-data">
+  {# Cards gets a confirmation before a new thread lands there: most of its
+     strays are people who read a card thread, tapped Post, and never
+     noticed where they were. #}
+  <form class="board-form" method="post" enctype="multipart/form-data"
+        {% if board == 'cards' and not parent %}data-confirm-board="Cards"{% endif %}>
     <input type="hidden" name="board" value="{{ board }}">
-    {% if board == 'scores' and not parent %}
-    <p class="hint">Posting to the <b>Scores</b> board.</p>
-    {% elif board == 'cards' and not parent %}
-    <p class="hint">Posting to the <b>Cards</b> board.</p>
-    {% endif %}
     <label>Subject
       <span class="hint">(use "*" or "nm" for subject-only)</span>
       <input type="text" name="subject" maxlength="300" required

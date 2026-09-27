@@ -1,5 +1,9 @@
 [
  {
+  "day": "2026-09-27",
+  "what": "Ask before a new thread lands on Cards"
+ },
+ {
   "day": "2026-09-26",
   "what": "Stats: members as people, and robots counted apart"
  },
@@ -766,13 +770,5 @@
  {
   "day": "2026-08-03",
   "what": "Add M-flag favicon and Home nav link"
- },
- {
-  "day": "2026-08-03",
-  "what": "Simplify to a clean board: drop Boards2Go scraper and importer"
- },
- {
-  "day": "2026-08-03",
-  "what": "Add Boards2Go migration kit: scraper, importer, and self-hosted Victors board"
  }
 ]

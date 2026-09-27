@@ -36,10 +36,21 @@
              !!window.__voiceFile;
     }
 
+    var confirmBoard = form.getAttribute("data-confirm-board");
+    var boardInput = form.querySelector('input[name="board"]');
+
     function problems() {
       var s = subject.value.trim(), b = body.value.trim(), out = [];
       var subjectOnly = SUBJECT_ONLY.test(s);
       var untouchedReply = !!prefill && s === prefill.trim();
+
+      // a board that asks first: read a card thread, tap Post, and the
+      // form quietly points at Cards — this is the "are you sure"
+      if (confirmBoard && boardInput && boardInput.value !== "main") {
+        out.push({ text: "This will post to the " + confirmBoard + " board.",
+                   fix: { label: "Post to the main board instead", run: function () {
+                     boardInput.value = "main"; } } });
+      }
 
       if (!b && !attached() && EMPTY_SUBJECT.test(s)) {
         out.push({ text: "This post is completely empty — no subject to speak of, " +
