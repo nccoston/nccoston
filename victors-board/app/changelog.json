@@ -1,6 +1,10 @@
 [
  {
   "day": "2026-09-27",
+  "what": "Cards question: just main or Cards"
+ },
+ {
+  "day": "2026-09-27",
   "what": "The Cards go-ahead says \"Post to Cards\", at full strength"
  },
  {
@@ -770,9 +774,5 @@
  {
   "day": "2026-08-03",
   "what": "Credit Nick Coston in the footer"
- },
- {
-  "day": "2026-08-03",
-  "what": "Add M-flag favicon and Home nav link"
  }
 ]

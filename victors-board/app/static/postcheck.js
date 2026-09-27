@@ -163,11 +163,16 @@
       panel.appendChild(ul);
       var row = document.createElement("p");
       row.className = "postcheck-row";
-      var back = document.createElement("button");
-      back.type = "button";
-      back.textContent = "Go back and fix it";
-      back.addEventListener("click", function () { clear(); body.focus(); });
-      row.appendChild(back);
+      // when the only question is which board, there's nothing to go
+      // back and fix — it's just main or Cards
+      var onlyWhere = list.every(function (p) { return p.anyway; });
+      if (!onlyWhere) {
+        var back = document.createElement("button");
+        back.type = "button";
+        back.textContent = "Go back and fix it";
+        back.addEventListener("click", function () { clear(); body.focus(); });
+        row.appendChild(back);
+      }
       list.forEach(function (p) {
         if (!p.fix) return;
         var b = document.createElement("button");
