@@ -47,7 +47,10 @@
       // a board that asks first: read a card thread, tap Post, and the
       // form quietly points at Cards — this is the "are you sure"
       if (confirmBoard && boardInput && boardInput.value !== "main") {
+        // posting to Cards is a real choice, not an override, so the
+        // go-ahead button says so and isn't faded
         out.push({ text: "This will post to the " + confirmBoard + " board.",
+                   anyway: "Post to " + confirmBoard,
                    fix: { label: "Post to the main board instead", run: function () {
                      boardInput.value = "main"; } } });
       }
@@ -178,8 +181,9 @@
       });
       var anyway = document.createElement("button");
       anyway.type = "button";
-      anyway.className = "postcheck-anyway";
-      anyway.textContent = "Post anyway";
+      var named = list.filter(function (p) { return p.anyway; })[0];
+      anyway.className = named ? "postcheck-go" : "postcheck-anyway";
+      anyway.textContent = named ? named.anyway : "Post anyway";
       anyway.addEventListener("click", go);
       row.appendChild(anyway);
       panel.appendChild(row);
