@@ -1,6 +1,10 @@
 [
  {
   "day": "2026-09-27",
+  "what": "Two former handles can't be aliases"
+ },
+ {
+  "day": "2026-09-27",
   "what": "Running log: date entries by when they shipped"
  },
  {
@@ -758,17 +762,5 @@
  {
   "day": "2026-08-03",
   "what": "80 threads per page, matching the old board's density"
- },
- {
-  "day": "2026-08-03",
-  "what": "Longer front page and admin account management"
- },
- {
-  "day": "2026-08-03",
-  "what": "Sort replies newest-first to match the old board"
- },
- {
-  "day": "2026-08-03",
-  "what": "Add vb redirect service for a short parallel URL"
  }
 ]

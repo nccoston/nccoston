@@ -271,7 +271,10 @@ def poster(row):
 # see who's under it. The rules below are what keep a costume from being a
 # mask — no alias may be, or look like, a member's handle.
 ALIAS_RESERVED = {"admin", "administrator", "moderator", "mod", "skeeps",
-                  "anonymous", "anon", "guest", "system"}
+                  "anonymous", "anon", "guest", "system",
+                  # the two handles of a former poster the board would
+                  # rather not see in costume — by the admin's ruling
+                  "beer", "guns"}
 
 
 def _lookalike(s):
@@ -289,9 +292,9 @@ def clean_alias(raw, user, db):
         return None, None
     if not re.fullmatch(HANDLE_RE, alias):
         return None, "An alias is 2–30 characters: letters, numbers, spaces, and . _ - & ' @"
-    if alias.lower() in ALIAS_RESERVED:
-        return None, "That alias is reserved."
     folded = _lookalike(alias)
+    if folded in {_lookalike(w) for w in ALIAS_RESERVED}:
+        return None, "That alias is reserved."
     for row in db.execute("SELECT handle FROM users"):
         if _lookalike(row["handle"]) == folded:
             return None, "An alias can't be a member's handle or look like one."
