@@ -18,7 +18,7 @@ SINCE = "2026-08-03"                       # the day the board went up
 TZ = ZoneInfo("America/Detroit")
 
 raw = subprocess.check_output(
-    ["git", "log", f"--since={SINCE}", "--format=%aI%x1f%s", "--", "victors-board"],
+    ["git", "log", f"--since={SINCE}", "--format=%cI%x1f%s", "--", "victors-board"],
     cwd=ROOT, text=True)
 SKIP = {"Add files via upload"}                  # GitHub's words, not ours
 
