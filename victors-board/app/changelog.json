@@ -1,6 +1,10 @@
 [
  {
   "day": "2026-09-27",
+  "what": "Running log: stop shedding the first day's commits"
+ },
+ {
+  "day": "2026-09-27",
   "what": "Two former handles can't be aliases"
  },
  {
@@ -762,5 +766,41 @@
  {
   "day": "2026-08-03",
   "what": "80 threads per page, matching the old board's density"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Longer front page and admin account management"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Sort replies newest-first to match the old board"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add vb redirect service for a short parallel URL"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Match the old board's message page layout"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add post editing"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Credit Nick Coston in the footer"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add M-flag favicon and Home nav link"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Simplify to a clean board: drop Boards2Go scraper and importer"
+ },
+ {
+  "day": "2026-08-03",
+  "what": "Add Boards2Go migration kit: scraper, importer, and self-hosted Victors board"
  }
 ]

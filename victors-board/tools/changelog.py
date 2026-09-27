@@ -17,8 +17,11 @@ OUT = BOARD / "app" / "changelog.json"
 SINCE = "2026-08-03"                       # the day the board went up
 TZ = ZoneInfo("America/Detroit")
 
+# No --since: git reads a bare date as "that day at the current time", so
+# the window crept through the day and shed the board's first commits.
+# The pathspec keeps it to the board; the day check below is the cutoff.
 raw = subprocess.check_output(
-    ["git", "log", f"--since={SINCE}", "--format=%cI%x1f%s", "--", "victors-board"],
+    ["git", "log", "--format=%cI%x1f%s", "--", "victors-board"],
     cwd=ROOT, text=True)
 SKIP = {"Add files via upload"}                  # GitHub's words, not ours
 
@@ -29,6 +32,8 @@ for line in raw.splitlines():
     if subject in SKIP:
         continue
     day = datetime.fromisoformat(when).astimezone(TZ).strftime("%Y-%m-%d")
+    if day < SINCE:
+        continue
     entries.append({"day": day, "what": subject})
 OUT.write_text(json.dumps(entries, indent=1, ensure_ascii=False) + "\n")
 if not entries:
