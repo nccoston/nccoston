@@ -154,7 +154,7 @@ for t in tools:
 _, out = rpc("resources/read", {"uri": "victors://about"})
 about = out["result"]["contents"][0]["text"]
 for want in ("asterisk", "Skeeps", "closest to the final score", "3 August 2026",
-             "posting_as", "deleted"):
+             "alias", "deleted"):
     if want not in about:
         fails.append("the about resource never mentions %r" % want)
 if "carrying its history" in about:
@@ -179,7 +179,7 @@ if c.get("/mcp").status_code != 405:
 # ------------------------------------------------------------------ the data
 
 res = call("search_board", query="Schembechler")
-if res.get("matches") != 1:
+if res.get("matches") != 1 or res.get("returned") != 1:
     fails.append("search missed the Bo post: %s" % res)
 hit = res["results"][0]
 if "<b>" in hit["body"] or "&amp;" in hit["body"]:
@@ -247,14 +247,14 @@ if "__error__" not in t or "deleted" not in t["__error__"]:
 
 # --- 4. search paging and a day filter ------------------------------------
 p1 = call("search_board", query="about Bo", limit=10)
-if p1["matches"] != 10 or not p1["has_more"] or p1.get("next_offset") != 10:
+if p1["matches"] != 30 or p1["returned"] != 10 or not p1["has_more"] or p1.get("next_offset") != 10:
     fails.append("search paging page 1 wrong: %s" % {k: p1.get(k) for k in ("matches", "has_more", "next_offset")})
 p2 = call("search_board", query="about Bo", limit=10, offset=10)
 if p2["offset"] != 10 or {r["id"] for r in p1["results"]} & {r["id"] for r in p2["results"]}:
     fails.append("search page 2 overlaps page 1")
 last = call("search_board", query="about Bo", limit=25, offset=25)
-if last["has_more"] or last["matches"] != 5:
-    fails.append("search last page wrong: matches=%s has_more=%s" % (last["matches"], last["has_more"]))
+if last["has_more"] or last["returned"] != 5 or last["matches"] != 30:
+    fails.append("search last page wrong: returned=%s matches=%s has_more=%s" % (last["returned"], last["matches"], last["has_more"]))
 day = call("search_board", query="Bo", day="2026-09-26")
 if {r["id"] for r in day["results"]} != {root, root + 1, root + 2}:
     fails.append("the day filter returned the wrong posts: %s" % [r["id"] for r in day["results"]])
@@ -269,8 +269,14 @@ if call("search_board", query="filler 0", day="2026-09-28")["matches"] != 0:
 
 # --- 6. aliases carry both names ------------------------------------------
 a = call("get_post", post_id=costume)
-if a["author"] != "Obitman" or a.get("posting_as") != "Ken":
-    fails.append("alias post lacks author/posting_as: %s" % a)
+if a["author"] != "Ken" or a.get("alias") != "Obitman":
+    fails.append("alias post should be author=member, alias=shown: %s" % a)
+if "alias" in call("get_post", post_id=root):
+    fails.append("a plain post carries an alias field")
+# a reply links to itself; the thread is a separate link
+rep1 = call("get_post", post_id=root + 1)
+if not rep1["url"].endswith("/message/%d" % (root + 1)) or not rep1["thread_url"].endswith("/message/%d" % root):
+    fails.append("reply url/thread_url wrong: %s %s" % (rep1["url"], rep1["thread_url"]))
 if call("search_board", query="Obituaries", author="Obitman")["matches"] != 1:
     fails.append("author filter does not match an alias")
 

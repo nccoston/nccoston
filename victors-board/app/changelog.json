@@ -1,6 +1,14 @@
 [
  {
   "day": "2026-10-14",
+  "what": "MCP: three things a reader noticed"
+ },
+ {
+  "day": "2026-10-14",
+  "what": "tests: ignore a local node_modules next to the client script"
+ },
+ {
+  "day": "2026-10-14",
   "what": "MCP: read the archive in order, whole posts, honest about its size"
  },
  {

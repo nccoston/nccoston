@@ -157,11 +157,16 @@ def _post(row, body=True, limit=BODY_CHARS):
         "id": row["id"],
         "thread_id": row["thread_id"],
         "subject": row["subject"],
-        "author": alias or row["author_name"],
+        "author": row["author_name"],          # the member, always
         "posted_at": _when(row["created_at"]),
         "board": row["board"] if "board" in row.keys() else "main",
-        "url": _url("/message/%d" % (row["thread_id"] or row["id"])),
+        "url": _url("/message/%d" % row["id"]),
+        "thread_url": _url("/message/%d" % (row["thread_id"] or row["id"])),
     }
+    if alias:
+        # the name the board shows for this post; anyone can tap it and see
+        # the member, so a reader here gets both
+        out["alias"] = alias
     if "parent_id" in row.keys():
         out["parent_id"] = row["parent_id"]      # None for a thread's root
     # the board's oldest convention: a subject ending in * or nm IS the post.
@@ -170,9 +175,6 @@ def _post(row, body=True, limit=BODY_CHARS):
     out["subject_only"] = not text
     if body:
         out["body"] = text
-    if alias:
-        # an alias is a costume the board lets anyone see under
-        out["posting_as"] = row["author_name"]
     if "hof_at" in row.keys() and row["hof_at"]:
         out["hall_of_fame"] = True
     return out
@@ -233,13 +235,16 @@ def t_search_board(query="", board=None, author=None, limit=10, offset=0, day=No
         args += [lo, hi]
     # id breaks the tie: on game day a dozen posts can share a second, and
     # without it "newest first" is whatever order SQLite feels like
+    where = sql[sql.index(" WHERE "):]
+    total = _db().execute("SELECT COUNT(*) c FROM messages" + where, args).fetchone()["c"]
     sql += " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?"
     args += [limit + 1, offset]             # one extra tells us if there's more
     rows = _db().execute(sql, args).fetchall()
     more = len(rows) > limit
     rows = rows[:limit]
-    out = {"query": query, "matches": len(rows), "offset": offset,
-           "has_more": more, "results": [_post(r) for r in rows]}
+    out = {"query": query, "matches": total, "returned": len(rows),
+           "offset": offset, "has_more": more,
+           "results": [_post(r) for r in rows]}
     if more:
         out["next_offset"] = offset + limit
     if day:
@@ -630,8 +635,8 @@ Conventions that will otherwise look like bugs:
 - "Skeeps" is a reserved account, not a person. It posts the weekly pick 'em
   thread and the monthly arcade standings.
 - A post may carry an alias — a name a member chose for that post. The
-  author field shows the alias and posting_as the member; anyone on the
-  board can tap the name and see the same.
+  author field is always the member; alias, when present, is the name the
+  board shows. Anyone on the board can tap the name and see the same.
 - The pick 'em is scored by closest to the final score, win or lose. Picking
   the winning team is not what scores, which confuses nearly everyone once.
 - Deleted posts leave a gap in the ids. get_post says deleted.

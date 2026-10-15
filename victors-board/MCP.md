@@ -54,8 +54,10 @@ curl -X POST https://the-victors-board.onrender.com/mcp \
 | `arcade_stats` | Totals for Victard Bowl and Stadium Guesser. |
 
 Every post carries `subject_only` — true when the subject is the whole post,
-which is about three posts in four here — and an aliased post carries both
-`author` (the alias) and `posting_as` (the member).
+which is about three posts in four here — and `author` is always the member.
+An aliased post also carries `alias`, the name the board shows for it. `url`
+is the post itself; `thread_url` is the top of its thread. Search's `matches`
+is the total; `returned` is this page.
 
 Two resources come with it. `victors://about` is the one that matters: it tells
 the model the conventions it would otherwise misread — that a subject ending in
