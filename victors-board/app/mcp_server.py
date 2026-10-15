@@ -122,15 +122,22 @@ def _rate_limited():
 
 
 _TAG = re.compile(r"<[^>]+>")
-_WS = re.compile(r"\s+")
+# tags that end a line or a paragraph become line breaks before the rest
+# are stripped, so a long post keeps its shape
+_BREAK = re.compile(r"<\s*(?:br|/p|/div|/li|/blockquote|/h[1-6]|/tr|/pre)\b[^>]*>",
+                    re.IGNORECASE)
+_SPACE = re.compile(r"[ \t\r\f\v]+")
+_BLANKS = re.compile(r"\n{3,}")
 
 
 def _plain(text, limit=BODY_CHARS):
     """Posts may contain safe HTML and the old board's markup. An AI wants
-    the words, not the tags."""
+    the words, not the tags — but it does want the paragraphs."""
     if not text:
         return ""
-    flat = _WS.sub(" ", unescape(_TAG.sub(" ", text))).strip()
+    flat = unescape(_TAG.sub(" ", _BREAK.sub("\n", text)))
+    flat = "\n".join(_SPACE.sub(" ", line).strip() for line in flat.split("\n"))
+    flat = _BLANKS.sub("\n\n", flat).strip()
     return flat if len(flat) <= limit else flat[:limit].rstrip() + "…"
 
 

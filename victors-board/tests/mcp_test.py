@@ -62,6 +62,10 @@ with appmod.app.app_context():
     post("Michigan vs Oklahoma", "game thread", "Skeeps", board="scores",
          when="2026-09-27T14:00:00")
     costume = post("Obituaries*", "", "Ken", alias="Obitman", when="2026-09-27T15:00:00")
+    essay = post("On the Rhino", "First paragraph, written   with   care.\n\n"
+                 "Second paragraph.<br>Same paragraph, next line.\n\n\n\n"
+                 "<p>Third, in a tag.</p><blockquote>a quote</blockquote>Last.",
+                 "Rich", when="2026-09-27T15:30:00")
     gone = post("to be deleted*", "", "Rich", when="2026-09-27T16:00:00")
     for i in range(30):
         post("filler %d about Bo*" % i, "", "Ken", when="2026-09-28T%02d:00:00" % (i % 24))
@@ -205,6 +209,17 @@ if one["body"] != LONG or one.get("hall_of_fame") is not True:
 hof = call("hall_of_fame")["posts"][0]
 if len(hof["body"]) > mcp_server.BODY_CHARS + 2:
     fails.append("the HOF list is not trimmed")
+
+# --- line breaks survive; tags and runs of spaces don't ------------------
+e = call("get_post", post_id=essay)["body"]
+want = ("First paragraph, written with care.\n\nSecond paragraph.\nSame paragraph, "
+        "next line.\n\nThird, in a tag.\na quote\nLast.")
+if e != want:
+    fails.append("long-post shape is wrong:\n%r\nwanted\n%r" % (e, want))
+if "\n" in call("search_board", query="Schembechler")["results"][0]["body"]:
+    fails.append("a one-paragraph post grew line breaks")
+if call("get_post", post_id=essay)["subject_only"]:
+    fails.append("a post with a body is marked subject_only")
 
 # --- 3. reading in order: get_posts pages the archive by id ---------------
 page1 = call("get_posts", since_id=0, limit=10)
