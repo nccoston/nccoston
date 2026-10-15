@@ -14,7 +14,7 @@
 {% for p in posts %}
 <div class="message-box hof-entry">
   <h2><a href="{{ url_for('message', message_id=p['id']) }}">{{ p['subject'] }}</a></h2>
-  <p class="byline">Posted on {{ p['created_at'] | boardtime }} by {{ p | poster }}
+  <p class="byline">Posted on <time datetime="{{ p['created_at'] | isoz }}">{{ p['created_at'] | boardtime }}</time> by {{ p | poster }}
     <span class="legacy-tag">&mdash; enshrined {{ p['hof_at'] | boardtime }}</span></p>
   <div class="message-body">
     {{ p['body'] | rendertext if p['body'] }}
@@ -46,7 +46,7 @@
     {% for p in entries %}
     <li><a href="{{ url_for('message', message_id=p['id']) }}">{{ p['subject'] }}</a>
       <span class="byline">- By {{ p | poster }}
-        <i>{{ p['hof_at'] | boarddate }}</i></span></li>
+        <i><time datetime="{{ p['hof_at'] | isoz }}">{{ p['hof_at'] | boarddate }}</time></i></span></li>
     {% endfor %}
   </ul>
 </div>

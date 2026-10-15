@@ -256,14 +256,29 @@ from stadiums import load as load_stadiums
 def poster(row):
     """The byline name. Usually the handle. For an alias post it's the
     alias, marked so a tap reveals who — the real handle rides along in the
-    markup, so it's there for everyone, always."""
+    markup, so it's there for everyone, always. Either way the member is in
+    data-author, for anyone reading the page as data."""
     keys = row.keys() if hasattr(row, "keys") else ()
     alias = row["alias"] if "alias" in keys else None
     real = escape(row["author_name"])
     if not alias:
-        return Markup(f"<b>{real}</b>")
-    return Markup(f'<b class="alias" data-real="{real}" tabindex="0"'
-                  f' title="alias — tap to see who">{escape(alias)}</b>')
+        return Markup(f'<b class="poster" data-author="{real}">{real}</b>')
+    return Markup(f'<b class="poster alias" data-author="{real}" data-real="{real}"'
+                  f' tabindex="0" title="alias — tap to see who">{escape(alias)}</b>')
+
+
+@app.template_filter("isoz")
+def isoz(iso):
+    """Stored naive-UTC timestamp -> an unambiguous value for <time datetime>."""
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso)
+    except ValueError:
+        return iso
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 # Aliases are the old board's costume tradition (Obitman, Capt. Louis

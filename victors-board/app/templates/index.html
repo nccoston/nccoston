@@ -8,7 +8,7 @@
   {%- if node.get('has_poll') %} <span class="poll-tag">[POLL]</span>{% endif %}
   {%- if node.get('has_game') %} <span class="poll-tag">[PICK 'EM]</span>{% endif %}
   <span class="byline">- By {{ node | poster }}
-    <i>{{ node['created_at'] | boardtime }}</i></span>
+    <i><time datetime="{{ node['created_at'] | isoz }}">{{ node['created_at'] | boardtime }}</time></i></span>
   {% if node['children'] %}
   <ul>
     {% for child in node['children'] %}{{ render_node(child) }}{% endfor %}

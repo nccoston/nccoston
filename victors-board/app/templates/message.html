@@ -10,7 +10,7 @@
   {% endif %}
   {%- if node.get('hof_at') %} &#127942;{% endif %}
   <span class="byline">- By {{ node | poster }}
-    <i>{{ node['created_at'] | boardtime }}</i></span>
+    <i><time datetime="{{ node['created_at'] | isoz }}">{{ node['created_at'] | boardtime }}</time></i></span>
   {% if node['children'] %}
   <ul>
     {% for child in node['children'] %}{{ render_node(child) }}{% endfor %}
@@ -22,7 +22,7 @@
 {% block content %}
 <div class="message-box">
   <h2>{{ msg['subject'] }}</h2>
-  <p class="byline">Posted on {{ msg['created_at'] | boardtime }} by {{ msg | poster }}
+  <p class="byline">Posted on <time datetime="{{ msg['created_at'] | isoz }}">{{ msg['created_at'] | boardtime }}</time> by {{ msg | poster }}
     {% if msg['hof_at'] %}<a href="{{ url_for('hof') }}" title="Hall of Fame">&#127942;</a>{% endif %}
     {% if msg['edited_at'] %}<span class="legacy-tag">(edited {{ msg['edited_at'] | boardtime }})</span>{% endif %}
     {% if user and user['is_admin'] and msg['ip_address'] %}<span class="legacy-tag">[IP: {{ msg['ip_address'] }}]</span>{% endif %}</p>

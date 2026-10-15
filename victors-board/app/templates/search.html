@@ -17,7 +17,7 @@
       <li>
         <a href="{{ url_for('message', message_id=r['id']) }}">{{ r['subject'] }}</a>
         <span class="byline">- By {{ r | poster }}
-          <i>{{ r['created_at'] | boardtime }}</i></span>
+          <i><time datetime="{{ r['created_at'] | isoz }}">{{ r['created_at'] | boardtime }}</time></i></span>
       </li>
       {% endfor %}
     </ul>

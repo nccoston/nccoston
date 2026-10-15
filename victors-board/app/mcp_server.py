@@ -33,6 +33,7 @@ how much it will return and there's a per-address rate limit in front.
 """
 
 import json
+import os
 import re
 import sqlite3
 import threading
@@ -40,8 +41,12 @@ import time
 from collections import deque, defaultdict
 from datetime import datetime, timedelta, timezone
 from html import unescape
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, Response, g, jsonify, request
+
+BOARD_TZ = ZoneInfo(os.environ.get("BOARD_TZ", "America/Detroit"))
+ARCHIVE_BEGINS = "2026-08-03"   # the community is older than its archive
 
 # MCP revisions this server understands. A client asking for one of these
 # gets it back; anything else is answered with our newest and the client
@@ -54,12 +59,17 @@ SERVER_VERSION = "1.0.0"
 
 # Ceilings. The board is on a $7 instance with a monthly bandwidth
 # allowance it has already blown through once, so nothing here is unbounded.
-MAX_RESULTS = 25          # search hits, HOF posts
+# They're sized so that reading the whole archive is a few hundred calls —
+# far lighter on the board than scraping it one page at a time, which is
+# what a reader does when the tool is too small.
+MAX_RESULTS = 25          # search hits, HOF posts, per call
 MAX_THREADS = 50          # recent threads
 MAX_REPLIES = 200         # replies returned for one thread
-BODY_CHARS = 1200         # a post is truncated past this
-RATE_LIMIT = 30           # requests...
-RATE_WINDOW = 60          # ...per address per minute
+MAX_BULK = 200            # posts per get_posts call
+BODY_CHARS = 1200         # a post is trimmed past this in lists and search
+FULL_BODY_CHARS = 20000   # ...and past this when read on its own or in a thread
+RATE_LIMIT = 60           # requests...
+RATE_WINDOW = 60          # ...per address per minute; 429 with Retry-After
 
 mcp = Blueprint("mcp", __name__)
 
@@ -141,7 +151,7 @@ def _url(path):
     return (_config["site_url"] or "").rstrip("/") + path
 
 
-def _post(row, body=True):
+def _post(row, body=True, limit=BODY_CHARS):
     alias = row["alias"] if "alias" in row.keys() else None
     out = {
         "id": row["id"],
@@ -152,14 +162,40 @@ def _post(row, body=True):
         "board": row["board"] if "board" in row.keys() else "main",
         "url": _url("/message/%d" % (row["thread_id"] or row["id"])),
     }
+    if "parent_id" in row.keys():
+        out["parent_id"] = row["parent_id"]      # None for a thread's root
+    # the board's oldest convention: a subject ending in * or nm IS the post.
+    # Say so as data, so nobody has to parse the asterisk
+    text = _plain(row["body"], limit) if "body" in row.keys() else ""
+    out["subject_only"] = not text
     if body:
-        out["body"] = _plain(row["body"])
+        out["body"] = text
     if alias:
         # an alias is a costume the board lets anyone see under
         out["posting_as"] = row["author_name"]
     if "hof_at" in row.keys() and row["hof_at"]:
         out["hall_of_fame"] = True
     return out
+
+
+def _missing(db, post_id):
+    """The right words for an id that isn't there: below the newest id it
+    existed and was deleted; above it, it hasn't been posted yet."""
+    newest = db.execute("SELECT MAX(id) m FROM messages").fetchone()["m"] or 0
+    if post_id <= newest:
+        return "post %d was deleted" % post_id
+    return "no post %d yet — the newest is %d" % (post_id, newest)
+
+
+def _day_bounds(day):
+    """A board-local calendar day -> the naive-UTC ISO range stored posts use."""
+    try:
+        start = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=BOARD_TZ)
+    except (TypeError, ValueError):
+        raise ValueError("day must be YYYY-MM-DD")
+    lo = start.astimezone(timezone.utc).replace(tzinfo=None)
+    hi = (start + timedelta(days=1)).astimezone(timezone.utc).replace(tzinfo=None)
+    return lo.isoformat(timespec="seconds"), hi.isoformat(timespec="seconds")
 
 
 # -------------------------------------------------------------------- tools
@@ -171,14 +207,15 @@ def _post(row, body=True):
 BOARD_NAMES = ("main", "scores", "cards")
 
 
-def t_search_board(query="", board=None, author=None, limit=10):
+def t_search_board(query="", board=None, author=None, limit=10, offset=0, day=None):
     """Subject, body and author, newest first — the same LIKE the board's own
-    search box runs."""
+    search box runs. Pages with offset; narrows to one board-local day."""
     query = (query or "").strip()
     if not query:
         raise ValueError("query is required")
     limit = max(1, min(int(limit or 10), MAX_RESULTS))
-    sql = ("SELECT id, thread_id, subject, body, author_name, alias, created_at,"
+    offset = max(0, int(offset or 0))
+    sql = ("SELECT id, thread_id, parent_id, subject, body, author_name, alias, created_at,"
            " board, hof_at FROM messages WHERE (subject LIKE ? OR body LIKE ?)")
     like = "%%%s%%" % query
     args = [like, like]
@@ -188,23 +225,71 @@ def t_search_board(query="", board=None, author=None, limit=10):
         sql += " AND board = ?"
         args.append(board)
     if author:
-        sql += " AND author_name LIKE ?"
-        args.append("%%%s%%" % author)
+        sql += " AND (author_name LIKE ? OR alias LIKE ?)"
+        args += ["%%%s%%" % author] * 2
+    if day:
+        lo, hi = _day_bounds(day)
+        sql += " AND created_at >= ? AND created_at < ?"
+        args += [lo, hi]
     # id breaks the tie: on game day a dozen posts can share a second, and
     # without it "newest first" is whatever order SQLite feels like
-    sql += " ORDER BY created_at DESC, id DESC LIMIT ?"
-    args.append(limit)
+    sql += " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?"
+    args += [limit + 1, offset]             # one extra tells us if there's more
     rows = _db().execute(sql, args).fetchall()
-    return {"query": query, "matches": len(rows),
-            "results": [_post(r) for r in rows]}
+    more = len(rows) > limit
+    rows = rows[:limit]
+    out = {"query": query, "matches": len(rows), "offset": offset,
+           "has_more": more, "results": [_post(r) for r in rows]}
+    if more:
+        out["next_offset"] = offset + limit
+    if day:
+        out["day"] = day
+    return out
+
+
+def t_get_posts(since_id=0, limit=MAX_BULK):
+    """Every post after an id, oldest first, full text. The way to read the
+    archive or keep a copy current: call again with next_since_id until
+    has_more is false."""
+    since_id = max(0, int(since_id or 0))
+    limit = max(1, min(int(limit or MAX_BULK), MAX_BULK))
+    db = _db()
+    rows = db.execute(
+        "SELECT id, thread_id, parent_id, subject, body, author_name, alias, created_at,"
+        " board, hof_at FROM messages WHERE id > ? ORDER BY id LIMIT ?",
+        (since_id, limit + 1)).fetchall()
+    more = len(rows) > limit
+    rows = rows[:limit]
+    newest = db.execute("SELECT MAX(id) m FROM messages").fetchone()["m"] or 0
+    out = {"since_id": since_id, "returned": len(rows), "newest_id": newest,
+           "has_more": more,
+           "posts": [_post(r, limit=FULL_BODY_CHARS) for r in rows]}
+    if rows:
+        out["next_since_id"] = rows[-1]["id"]
+    return out
+
+
+def t_get_post(post_id):
+    """One post, full text. A deleted one says so rather than vanishing."""
+    post_id = int(post_id)
+    db = _db()
+    row = db.execute(
+        "SELECT id, thread_id, parent_id, subject, body, author_name, alias, created_at,"
+        " board, hof_at FROM messages WHERE id = ?", (post_id,)).fetchone()
+    if row is None:
+        why = _missing(db, post_id)
+        if "deleted" in why:
+            return {"id": post_id, "deleted": True, "note": why}
+        raise ValueError(why)
+    return _post(row, limit=FULL_BODY_CHARS)
 
 
 def t_get_thread(thread_id, limit=MAX_REPLIES):
-    """A whole conversation in order, root first."""
+    """A whole conversation in order, root first, full text."""
     limit = max(1, min(int(limit or MAX_REPLIES), MAX_REPLIES))
     db = _db()
     root = db.execute(
-        "SELECT id, thread_id, subject, body, author_name, alias, created_at, board,"
+        "SELECT id, thread_id, parent_id, subject, body, author_name, alias, created_at, board,"
         " hof_at FROM messages WHERE id = ? AND parent_id IS NULL",
         (int(thread_id),)).fetchone()
     if root is None:
@@ -212,18 +297,18 @@ def t_get_thread(thread_id, limit=MAX_REPLIES):
         child = db.execute("SELECT thread_id FROM messages WHERE id = ?",
                            (int(thread_id),)).fetchone()
         if child is None or child["thread_id"] is None:
-            raise ValueError("no thread with id %s" % thread_id)
+            raise ValueError(_missing(db, int(thread_id)))
         return t_get_thread(child["thread_id"], limit)
     replies = db.execute(
-        "SELECT id, thread_id, subject, body, author_name, alias, created_at, board,"
+        "SELECT id, thread_id, parent_id, subject, body, author_name, alias, created_at, board,"
         " hof_at FROM messages WHERE thread_id = ? AND id != ?"
-        " ORDER BY created_at LIMIT ?", (root["id"], root["id"], limit)).fetchall()
+        " ORDER BY created_at, id LIMIT ?", (root["id"], root["id"], limit)).fetchall()
     total = db.execute(
         "SELECT COUNT(*) c FROM messages WHERE thread_id = ? AND id != ?",
         (root["id"], root["id"])).fetchone()["c"]
-    return {"thread": _post(root), "reply_count": total,
+    return {"thread": _post(root, limit=FULL_BODY_CHARS), "reply_count": total,
             "replies_returned": len(replies),
-            "replies": [_post(r) for r in replies]}
+            "replies": [_post(r, limit=FULL_BODY_CHARS) for r in replies]}
 
 
 def t_recent_threads(board="main", limit=15):
@@ -254,7 +339,7 @@ def t_hall_of_fame(limit=10):
     limit = max(1, min(int(limit or 10), MAX_RESULTS))
     db = _db()
     rows = db.execute(
-        "SELECT id, thread_id, subject, body, author_name, alias, created_at, board,"
+        "SELECT id, thread_id, parent_id, subject, body, author_name, alias, created_at, board,"
         " hof_at FROM messages WHERE hof_at IS NOT NULL"
         " ORDER BY hof_at DESC, id DESC LIMIT ?", (limit,)).fetchall()
     total = db.execute("SELECT COUNT(*) c FROM messages"
@@ -375,9 +460,12 @@ TOOLS = [
         "name": "search_board",
         "title": "Search the board",
         "description": (
-            "Search thirty years of posts on The Victors, a Michigan football "
-            "message board running since 1995. Matches subject and body, "
-            "newest first. Optionally narrow to one board or one author."),
+            "Search posts on The Victors, a Michigan football message board "
+            "whose community dates to 1995. The archive here begins "
+            + ARCHIVE_BEGINS + ", when the board moved to its own address. "
+            "Matches subject and body, newest first; up to " + str(MAX_RESULTS) +
+            " per call, page with offset, narrow to one board, one author, or "
+            "one day."),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -387,19 +475,58 @@ TOOLS = [
                           "description": "main (general), scores (game threads "
                                          "and pick 'em), or cards."},
                 "author": {"type": "string",
-                           "description": "Restrict to posts by this handle."},
+                           "description": "Restrict to posts by this handle or alias."},
+                "day": {"type": "string",
+                        "description": "Only posts from this board-local day, YYYY-MM-DD."},
                 "limit": {"type": "integer", "minimum": 1, "maximum": MAX_RESULTS,
                           "default": 10},
+                "offset": {"type": "integer", "minimum": 0, "default": 0,
+                           "description": "Skip this many hits; use next_offset "
+                                          "from the previous call."},
             },
             "required": ["query"],
         },
         "fn": t_search_board,
     },
     {
+        "name": "get_posts",
+        "title": "Read posts in order",
+        "description": (
+            "Every post after an id, oldest first, with full text — the way "
+            "to read the whole archive or keep a copy current. Up to " +
+            str(MAX_BULK) + " per call; pass next_since_id back until has_more "
+            "is false. The archive begins " + ARCHIVE_BEGINS + " at id 1."),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "since_id": {"type": "integer", "minimum": 0, "default": 0,
+                             "description": "Return posts with an id above this."},
+                "limit": {"type": "integer", "minimum": 1, "maximum": MAX_BULK,
+                          "default": MAX_BULK},
+            },
+        },
+        "fn": t_get_posts,
+    },
+    {
+        "name": "get_post",
+        "title": "Read one post",
+        "description": ("One post by id, full text. A post that was deleted "
+                        "comes back as {deleted: true} rather than an error."),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "post_id": {"type": "integer", "minimum": 1},
+            },
+            "required": ["post_id"],
+        },
+        "fn": t_get_post,
+    },
+    {
         "name": "get_thread",
         "title": "Read a thread",
         "description": ("Return a whole conversation — the opening post and its "
-                        "replies in order. Accepts a thread id or any reply's id."),
+                        "replies in order, full text. Accepts a thread id or any "
+                        "reply's id."),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -482,25 +609,32 @@ BY_NAME = {t["name"]: t for t in TOOLS}
 
 # ---------------------------------------------------------------- resources
 
-ABOUT = """The Victors — a Michigan football message board, continuously
-running since 1995.
+ABOUT = """The Victors — a Michigan football message board whose community has
+run continuously since 1995. The archive you can read here begins on
+3 August 2026 (post id 1), the day the board moved to its own address;
+nothing from the earlier hosts survived.
 
 The community began on a fan-run recruiting board in 1995, moved to the
 "VV board" in 1996, became The Victors around 1999, and spent decades on a
 free 1998-era host. In the summer of 2026 that host died without warning and
 without an export. The board was rebuilt in six evenings and self-hosted from
-August 2026, carrying its history with it.
+August 2026.
 
 It has three boards: main (general discussion), scores (game threads, the
 live college scoreboard, and the weekly pick 'em) and cards.
 
 Conventions that will otherwise look like bugs:
-- A subject line ending in an asterisk means the subject IS the whole post.
-  There is no body to fetch.
+- A subject line ending in an asterisk or "nm" means the subject IS the
+  whole post. There is no body to fetch; subject_only is true. About three
+  posts in four are like this.
 - "Skeeps" is a reserved account, not a person. It posts the weekly pick 'em
   thread and the monthly arcade standings.
+- A post may carry an alias — a name a member chose for that post. The
+  author field shows the alias and posting_as the member; anyone on the
+  board can tap the name and see the same.
 - The pick 'em is scored by closest to the final score, win or lose. Picking
   the winning team is not what scores, which confuses nearly everyone once.
+- Deleted posts leave a gap in the ids. get_post says deleted.
 - The board tracks Slippery Rock, a Division II school in Pennsylvania, for
   reasons every Michigan fan understands and nobody else ever will.
 """
@@ -562,11 +696,15 @@ def _handle(msg):
             "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION,
                            "title": "The Victors"},
             "instructions": (
-                "Read-only access to a Michigan football message board running "
-                "since 1995. Start with recent_threads to see what's live, or "
-                "search_board for history. Read victors://about first if you "
-                "plan to interpret anything — the board has conventions that "
-                "look like data errors and aren't."),
+                "Read-only access to a Michigan football message board whose "
+                "community dates to 1995; the archive here begins " +
+                ARCHIVE_BEGINS + ". Start with recent_threads to see what's "
+                "live, search_board for a topic, or get_posts to read in order. "
+                "Posts with subject_only true are complete as their subject — "
+                "the board's oldest convention. Limit: " + str(RATE_LIMIT) +
+                " calls a minute per address; a 429 carries Retry-After. Read "
+                "victors://about before interpreting anything — the board has "
+                "conventions that look like data errors and aren't."),
         })
 
     if is_notification:
