@@ -117,18 +117,25 @@
 </script>
 <script>
 // [fart] in a post renders a button; this plays the thing. One Audio for
-// the page, built on the first click so nobody downloads 190KB to read a
-// thread, and restarted rather than layered if it is clicked again.
+// the page, built on the first use so nobody downloads 190KB to read a
+// thread, and restarted rather than layered if it goes again. Exposed as
+// window.fart() because the post form has its own reasons to call it.
 (function () {
   var sfx = null;
-  document.addEventListener("click", function (e) {
-    var b = e.target.closest && e.target.closest("[data-fart]");
-    if (!b) return;
+  window.fart = function () {
     if (!sfx) {
       sfx = new Audio("{{ url_for('static', filename='fart.mp3') }}");
       sfx.preload = "none";
     }
-    try { sfx.currentTime = 0; sfx.play(); } catch (err) {}
+    try {
+      sfx.currentTime = 0;
+      var p = sfx.play();
+      if (p && p.catch) p.catch(function () {});
+    } catch (err) {}
+    return sfx;
+  };
+  document.addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest("[data-fart]")) window.fart();
   });
 })();
 </script>
