@@ -204,36 +204,19 @@
       if (form.requestSubmit) form.requestSubmit(submit); else form.submit();
     }
 
-    // One post in a hundred leaves with a sound effect, by the admin's
-    // decree. It plays inside the click, where browsers allow sound, and
-    // the post follows when it's done. Nobody is told why.
-    var farted = false;
-    function roll(e) {
-      if (farted || Math.random() >= 0.01) return false;
-      farted = true;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      form.setAttribute("data-farted", "1");
-      var sfx = window.fart ? window.fart() : null, sent = false;
-      function send() { if (!sent) { sent = true; go(); } }
-      if (sfx) sfx.addEventListener("ended", send);
-      setTimeout(send, sfx ? 2500 : 0);
-      return true;
-    }
-
     // This runs before the page's other submit listeners (it's registered
     // first), so when it stops a post, stopImmediatePropagation keeps the
     // double-click guard and the paste uploader out of it. It must not touch
     // the button itself: that guard reads a disabled button as a second
     // click and cancels the post.
     form.addEventListener("submit", function (e) {
-      if (bypass) { bypass = false; roll(e); return; }
+      if (bypass) { bypass = false; return; }
       var list = problems();
       var urls = pictureUrls();
       var unchecked = urls.filter(function (u) { return !(u in verdicts); });
       if (!list.length && !unchecked.length) {
         list = pictureProblems(urls);
-        if (!list.length) { roll(e); return; }    // nothing to say — off it goes
+        if (!list.length) return;              // nothing to say — off it goes
       }
       e.preventDefault();
       e.stopImmediatePropagation();
