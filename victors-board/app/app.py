@@ -1049,11 +1049,14 @@ def post(reply_to=None):
                 db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
                            (new_id, new_id))
                 if len(poll_lines) >= 2:
-                    # new polls are the old kind: the thread is the poll
+                    # a poll is a thread with a scoreboard, names and all —
+                    # unless the asker wants a secret ballot, which is the
+                    # old anonymous box
                     pcur = db.execute(
                         "INSERT INTO polls (message_id, created_at, multi, tally)"
-                        " VALUES (?, ?, ?, 'thread')",
-                        (new_id, now, 1 if request.form.get("poll_multi") else 0))
+                        " VALUES (?, ?, ?, ?)",
+                        (new_id, now, 1 if request.form.get("poll_multi") else 0,
+                         "ballot" if request.form.get("poll_secret") else "thread"))
                     for line in poll_lines:
                         db.execute(
                             "INSERT INTO poll_options (poll_id, text) VALUES (?, ?)",
@@ -1117,21 +1120,36 @@ def poll_matches(subject, options, multi):
 
 def poll_tally(db, poll, options, thread_id):
     """-> ({option_id: [handles]}, {user_id: (handle, [option_ids])}).
-    Counted fresh from the thread every time; the thread is the data."""
-    rows = db.execute(
-        "SELECT id, user_id, author_name, subject FROM messages"
-        " WHERE thread_id = ? AND id != ? AND user_id IS NOT NULL"
-        " ORDER BY created_at, id", (thread_id, thread_id)).fetchall()
-    voters = {}
-    for r in rows:
+
+    Two ways to vote, one tally. The buttons record a named pick without
+    posting anything (the board asked: names in the box, no reply posts).
+    A reply with a bare option as its subject counts too, the old way.
+    For each member, whichever is newer wins."""
+    latest = {}          # user_id -> (created_at, handle, [option_ids])
+    for r in db.execute(
+            "SELECT id, user_id, author_name, subject, created_at FROM messages"
+            " WHERE thread_id = ? AND id != ? AND user_id IS NOT NULL"
+            " ORDER BY created_at, id", (thread_id, thread_id)):
         hits = poll_matches(r["subject"], options, poll["multi"])
         if hits:
-            voters.pop(r["user_id"], None)      # newest wins, and goes last
-            voters[r["user_id"]] = (r["author_name"], hits)
+            latest[r["user_id"]] = (r["created_at"], r["author_name"], hits)
+    picks = {}
+    for r in db.execute(
+            "SELECT p.user_id, p.option_id, p.created_at, u.handle FROM poll_picks p"
+            " JOIN users u ON u.id = p.user_id WHERE p.poll_id = ?"
+            " ORDER BY p.created_at", (poll["id"],)):
+        when, handle, ids = picks.get(r["user_id"], (r["created_at"], r["handle"], []))
+        picks[r["user_id"]] = (when, handle, ids + [r["option_id"]])
+    for uid, pick in picks.items():
+        if uid not in latest or pick[0] >= latest[uid][0]:
+            latest[uid] = pick
+    voters = {uid: (h, ids) for uid, (when, h, ids)
+              in sorted(latest.items(), key=lambda kv: kv[1][0])}
     by_opt = {o["id"]: [] for o in options}
     for handle, hits in voters.values():
         for oid in hits:
-            by_opt[oid].append(handle)
+            if oid in by_opt:
+                by_opt[oid].append(handle)
     return by_opt, voters
 
 
@@ -1143,7 +1161,7 @@ def poll_vote(poll_id):
     if poll is None:
         abort(404)
     if poll["tally"] == "thread":
-        return _poll_vote_as_reply(db, poll)
+        return _poll_pick(db, poll)
     option_id = request.form.get("option_id", type=int)
     valid = db.execute("SELECT 1 FROM poll_options WHERE id = ? AND poll_id = ?",
                        (option_id, poll_id)).fetchone()
@@ -1160,19 +1178,27 @@ def poll_vote(poll_id):
     return redirect(url_for("message", message_id=poll["message_id"]))
 
 
-def _poll_vote_as_reply(db, poll):
-    """The vote button posts the reply a member would have typed: the
-    option as the subject, an asterisk, nothing inside."""
+def _poll_pick(db, poll):
+    """The buttons: a named vote in the box, no post in the thread. Replaces
+    whatever the member picked before."""
     user = current_user()
     ids = request.form.getlist("option_id", type=int)
-    options = db.execute("SELECT id, text FROM poll_options WHERE poll_id = ?"
-                         " ORDER BY id", (poll["id"],)).fetchall()
-    chosen = [o for o in options if o["id"] in ids]
+    options = db.execute("SELECT id FROM poll_options WHERE poll_id = ?",
+                         (poll["id"],)).fetchall()
+    chosen = [o["id"] for o in options if o["id"] in ids]
     if not poll["multi"]:
         chosen = chosen[:1]
     if not chosen:
         flash("Pick an option to vote.")
         return redirect(url_for("message", message_id=poll["message_id"]))
+    now = now_utc_iso()
+    db.execute("DELETE FROM poll_picks WHERE poll_id = ? AND user_id = ?",
+               (poll["id"], user["id"]))
+    db.executemany(
+        "INSERT INTO poll_picks (poll_id, user_id, option_id, created_at)"
+        " VALUES (?, ?, ?, ?)", [(poll["id"], user["id"], oid, now) for oid in chosen])
+    db.commit()
+    return redirect(url_for("message", message_id=poll["message_id"]))
     root = db.execute("SELECT * FROM messages WHERE id = ?",
                       (poll["message_id"],)).fetchone()
     subject = ", ".join(o["text"] for o in chosen) + "*"
@@ -3805,6 +3831,8 @@ def purge_messages(db, ids):
     delete (a whole subtree) and a member deleting their own post."""
     marks = ",".join("?" * len(ids))
     db.execute(f"DELETE FROM poll_votes WHERE poll_id IN "
+               f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
+    db.execute(f"DELETE FROM poll_picks WHERE poll_id IN "
                f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)
     db.execute(f"DELETE FROM poll_options WHERE poll_id IN "
                f"(SELECT id FROM polls WHERE message_id IN ({marks}))", ids)

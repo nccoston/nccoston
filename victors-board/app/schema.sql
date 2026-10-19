@@ -58,6 +58,17 @@ CREATE TABLE IF NOT EXISTS poll_votes (
     UNIQUE(poll_id, user_id)   -- one vote per member, changeable
 );
 
+-- Thread polls: a vote cast with the buttons, with the member's name on it.
+-- Several rows per member on a pick-all-that-apply poll, all sharing one
+-- created_at; a newer hand-typed reply naming an option outranks them.
+CREATE TABLE IF NOT EXISTS poll_picks (
+    poll_id    INTEGER NOT NULL REFERENCES polls(id),
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    option_id  INTEGER NOT NULL REFERENCES poll_options(id),
+    created_at TEXT NOT NULL,
+    UNIQUE(poll_id, user_id, option_id)
+);
+
 -- Daily traffic counters. Counts only: the visitor table holds a salted
 -- daily hash used solely to count uniques, is unlinkable across days,
 -- and is pruned as each new day begins. Nothing ties to accounts.

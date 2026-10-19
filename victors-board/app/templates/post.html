@@ -62,7 +62,9 @@
         placeholder="Yes&#10;No">{{ request.form.get('poll_options', '') }}</textarea>
     </label>
     <p class="size-row"><label class="size-opt"><input type="checkbox" name="poll_multi" value="1"
-      {% if request.form.get('poll_multi') %}checked{% endif %}> pick all that apply</label></p>
+      {% if request.form.get('poll_multi') %}checked{% endif %}> pick all that apply</label>
+      <label class="size-opt"><input type="checkbox" name="poll_secret" value="1"
+      {% if request.form.get('poll_secret') %}checked{% endif %}> secret ballot</label></p>
     {% endif %}
     {% if not parent and board == 'scores' %}
     <label>Pick 'em game <span class="hint">(optional — name both teams and posters
