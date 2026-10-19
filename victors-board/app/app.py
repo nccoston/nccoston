@@ -525,7 +525,53 @@ def user_read_ids(db, u, ids):
 # ----------------------------------------------------------- traffic counts
 
 UNCOUNTED_PATHS = ("/static", "/uploads", "/chat/messages", "/favicon",
-                   "/apple-touch", "/rss", "/mcp")
+                   "/apple-touch", "/rss", "/mcp", "/robots.txt")
+
+# How long each page takes, kept in memory for /admin/latency, so "is the
+# site slow?" gets an answer with numbers in it. (epoch, path, ms, status)
+LATENCY = deque(maxlen=3000)
+LATENCY_LOCK = threading.Lock()
+
+
+@app.before_request
+def _clock_in():
+    g._t0 = time.monotonic()
+
+
+@app.after_request
+def _clock_out(resp):
+    t0 = getattr(g, "_t0", None)
+    if t0 is not None and not request.path.startswith(("/static", "/uploads",
+                                                        "/favicon", "/apple-touch")):
+        with LATENCY_LOCK:
+            LATENCY.append((time.time(), request.path,
+                            round((time.monotonic() - t0) * 1000), resp.status_code))
+    return resp
+
+
+ROBOTS_TXT = """User-agent: *
+Crawl-delay: 5
+Disallow: /search
+Disallow: /chat
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+Disallow: /logout
+Disallow: /post
+Disallow: /edit/
+Disallow: /settings
+Disallow: /games/
+Disallow: /bowl
+Disallow: /mcp
+"""
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    """The board is public and stays that way; this just keeps crawlers out
+    of the pages that aren't content — search, forms, the arcade — and asks
+    the polite ones to take five seconds between pages."""
+    return app.response_class(ROBOTS_TXT, mimetype="text/plain")
 
 # Crawlers announce themselves. A public board with thirty-six thousand
 # pages gets walked by search engines, AI scrapers and the odd copyright
@@ -1238,12 +1284,7 @@ def fetch_slippery_rock():
 
 def slippery_rock_line():
     """One rendered line for the scoreboard on any day they play, or None."""
-    now = time.monotonic()
-    with SRU_LOCK:
-        if now - SRU_CACHE["at"] > 300:
-            SRU_CACHE["game"] = fetch_slippery_rock()
-            SRU_CACHE["at"] = now
-        gm = SRU_CACHE["game"]
+    gm = refresh_cache(SRU_CACHE, SRU_LOCK, "game", 300, fetch_slippery_rock)
     if not gm:
         return None
     versus = "vs" if gm["at_home"] else "at"
@@ -1253,16 +1294,49 @@ def slippery_rock_line():
             f" · {gm['status']}")
 
 
+def refresh_cache(cache, lock, key, ttl, fetch, keep_empty=False):
+    """Serve cache[key]. When it has gone stale, refresh it in a background
+    thread and hand back the stale value now — a page never waits on ESPN or
+    YouTube, and never queues behind another page that is.
+
+    Before this, the request that found a cache stale did the fetch itself,
+    under the lock, with every other request for the same thing waiting
+    behind it: once a minute on game day for the scoreboard, once an hour
+    for the week's game (eight ESPN calls, since their range query died),
+    every five minutes for Slippery Rock. Members read that as "the site is
+    slow, sometimes". Only the very first fill after a start waits, so a
+    fresh deploy doesn't show an empty scoreboard. keep_empty: an empty
+    fetch keeps the last good value, for ESPN's hiccups."""
+    now = time.monotonic()
+    with lock:
+        if now - cache["at"] <= ttl or cache.get("_busy"):
+            return cache[key]
+        cache["_busy"] = True
+        first = cache["at"] < 0
+
+    def run():
+        with app.app_context():
+            try:
+                fresh = fetch()
+            except Exception:
+                fresh = cache[key] if keep_empty else None
+        with lock:
+            if fresh or not keep_empty or not cache[key]:
+                cache[key] = fresh
+            cache["at"] = time.monotonic()
+            cache["_busy"] = False
+
+    if first:
+        run()
+    else:
+        threading.Thread(target=run, daemon=True, name="refresh-" + key).start()
+    return cache[key]
+
+
 def live_games():
     """The cached scoreboard slate, refreshed at most once a minute."""
-    now = time.monotonic()
-    with SCORE_LOCK:
-        if now - SCORE_CACHE["at"] > 60:
-            fresh = fetch_scoreboards()
-            if fresh or not SCORE_CACHE["games"]:
-                SCORE_CACHE["games"] = fresh
-            SCORE_CACHE["at"] = now
-        return SCORE_CACHE["games"]
+    return refresh_cache(SCORE_CACHE, SCORE_LOCK, "games", 60, fetch_scoreboards,
+                         keep_empty=True)
 
 
 def michigan_game_today():
@@ -1387,12 +1461,7 @@ def fetch_week_michigan():
 
 
 def michigan_game_this_week():
-    now = time.monotonic()
-    with WEEK_LOCK:
-        if now - WEEK_CACHE["at"] > 3600:
-            WEEK_CACHE["game"] = fetch_week_michigan()
-            WEEK_CACHE["at"] = now
-        return WEEK_CACHE["game"]
+    return refresh_cache(WEEK_CACHE, WEEK_LOCK, "game", 3600, fetch_week_michigan)
 
 
 def gameday_banner():
@@ -1766,20 +1835,19 @@ def pod_box():
     up the morning of the show in anticipation."""
     if datetime.now(timezone.utc).astimezone(BOARD_TZ).weekday() != 2:
         return None
-    now = time.monotonic()
-    with POD_LOCK:
-        # 15-minute cache: fetches only happen on Wednesdays, and the box
-        # should flip to the new episode soon after it uploads
-        if now - POD_CACHE["at"] > 900:
-            video = fetch_latest_pod()
-            if video:
-                fresh = (datetime.now(timezone.utc) - video["published"]
-                         <= timedelta(hours=48))
-                if not fresh and pod_stream_window(video["video_id"]) is None:
-                    video = None   # genuinely stale: a skipped week
-            POD_CACHE["video"] = video
-            POD_CACHE["at"] = now
-        return POD_CACHE["video"]
+
+    def fetch():
+        video = fetch_latest_pod()
+        if video:
+            fresh = (datetime.now(timezone.utc) - video["published"]
+                     <= timedelta(hours=48))
+            if not fresh and pod_stream_window(video["video_id"]) is None:
+                video = None   # genuinely stale: a skipped week
+        return video
+
+    # 15-minute cache: fetches only happen on Wednesdays, and the box
+    # should flip to the new episode soon after it uploads
+    return refresh_cache(POD_CACHE, POD_LOCK, "video", 900, fetch)
 
 
 @app.route("/scores/live.json")
@@ -1932,6 +2000,56 @@ def pickem_seed():
     flash("That thread was already up." if existed
           else f"Skeeps posted the {opp} pick 'em.")
     return redirect(url_for("message", message_id=mid))
+
+
+@app.route("/admin/latency")
+@admin_required
+def latency_check():
+    """Is the site slow? The last hour of page timings: percentiles, the
+    slowest pages, where the time goes by route, and whether any of the
+    external caches is mid-refresh."""
+    import statistics
+    cutoff = time.time() - 3600
+    with LATENCY_LOCK:
+        rows = [r for r in LATENCY if r[0] >= cutoff]
+    ms = sorted(r[2] for r in rows)
+
+    def pct(p):
+        return ms[min(len(ms) - 1, int(len(ms) * p))] if ms else None
+
+    by_route = {}
+    for ts, path, dur, status in rows:
+        route = re.sub(r"/\d+", "/N", path.split("?")[0])
+        by_route.setdefault(route, []).append(dur)
+    routes = sorted(
+        ({"route": k, "requests": len(v), "median_ms": int(statistics.median(v)),
+          "max_ms": max(v)} for k, v in by_route.items()),
+        key=lambda x: -x["requests"])[:15]
+    slowest = sorted(rows, key=lambda r: -r[2])[:25]
+    now = time.monotonic()
+
+    def cache_state(c):
+        return {"age_s": None if c["at"] < 0 else int(now - c["at"]),
+                "refreshing": bool(c.get("_busy"))}
+
+    return app.response_class(json.dumps({
+        "window": "last 60 minutes",
+        "requests": len(ms),
+        "p50_ms": pct(0.50), "p95_ms": pct(0.95), "max_ms": ms[-1] if ms else None,
+        "slowest": [{"at": datetime.fromtimestamp(ts, timezone.utc).astimezone(BOARD_TZ)
+                                .strftime("%H:%M:%S"), "path": p, "ms": d, "status": s}
+                    for ts, p, d, s in slowest],
+        "by_route": routes,
+        "caches": {"scoreboard": cache_state(SCORE_CACHE),
+                   "week_game": cache_state(WEEK_CACHE),
+                   "slippery_rock": cache_state(SRU_CACHE),
+                   "pod": cache_state(POD_CACHE),
+                   "schedule": cache_state(SCHED_CACHE)},
+        "threads": threading.active_count(),
+        "note": ("Timings are the server's own work per request, not the network. "
+                 "A page that is fast here and slow on a phone is the network or "
+                 "the phone."),
+    }, indent=2, default=str), mimetype="application/json")
 
 
 @app.route("/admin/sru-check")
@@ -2137,12 +2255,8 @@ def fetch_michigan_schedule():
 
 
 def michigan_schedule():
-    now = time.monotonic()
-    with SCHED_LOCK:
-        if SCHED_CACHE["games"] is None or now - SCHED_CACHE["at"] > 86400:
-            SCHED_CACHE["games"] = fetch_michigan_schedule()
-            SCHED_CACHE["at"] = now
-        return SCHED_CACHE["games"]
+    return refresh_cache(SCHED_CACHE, SCHED_LOCK, "games", 86400,
+                         fetch_michigan_schedule)
 
 
 @app.route("/bowl")
