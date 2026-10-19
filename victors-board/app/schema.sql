@@ -37,7 +37,10 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE TABLE IF NOT EXISTS polls (
     id         INTEGER PRIMARY KEY,
     message_id INTEGER NOT NULL UNIQUE REFERENCES messages(id),
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    multi      INTEGER NOT NULL DEFAULT 0,        -- pick all that apply
+    tally      TEXT NOT NULL DEFAULT 'ballot'     -- 'ballot': the old anonymous box;
+                                                  -- 'thread': votes are replies, counted from the thread
 );
 
 CREATE TABLE IF NOT EXISTS poll_options (

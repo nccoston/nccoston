@@ -102,7 +102,44 @@
   </div>
   {% endif %}
 
-  {% if poll %}
+  {% if poll and poll['tally'] == 'thread' %}
+  <div class="bigpoll">
+    <div class="bigpoll-head">&#128202; BOARD POLL{% if poll['multi'] %} &middot; pick all that apply{% endif %}
+      <span>{{ total_votes }} voted</span></div>
+    <div class="bigpoll-body">
+      {% for o in poll_options %}
+      <div class="bigpoll-result{% if total_votes and o['votes'] == top_votes %} bigpoll-leader{% endif %}">
+        <div class="bigpoll-line">
+          <span>{{ o['text'] }}
+            {%- if o['id'] in my_picks %} <span class="bigpoll-your">&#10003; you</span>{% endif %}
+            {%- if total_votes and o['votes'] == top_votes %} &#127942;{% endif %}</span>
+          <span class="bigpoll-pct">{{ o['votes'] }}</span>
+        </div>
+        <div class="bigpoll-track"><div class="bigpoll-bar"
+          style="width: {{ (100 * o['votes'] / total_votes) if total_votes else 0 }}%"></div></div>
+        {% if o['names'] %}<div class="bigpoll-names">{{ o['names'] | join(', ') }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      {% if user %}
+      <form method="post" action="{{ url_for('poll_vote', poll_id=poll['id']) }}" class="bigpoll-vote">
+        {% if poll['multi'] %}
+          {% for o in poll_options %}
+          <label class="bigpoll-opt"><input type="checkbox" name="option_id" value="{{ o['id'] }}"
+            {% if o['id'] in my_picks %}checked{% endif %}> {{ o['text'] }}</label>
+          {% endfor %}
+          <button type="submit">Vote</button>
+        {% else %}
+          {% for o in poll_options %}
+          <button type="submit" name="option_id" value="{{ o['id'] }}">{{ o['text'] }}</button>
+          {% endfor %}
+        {% endif %}
+      </form>
+      {% else %}
+      <p class="hint"><a href="{{ url_for('login') }}">Log in</a> to vote.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% elif poll %}
   <div class="bigpoll">
     <div class="bigpoll-head">&#128202; BOARD POLL
       <span>{{ total_votes }} vote{{ '' if total_votes == 1 else 's' }}</span></div>

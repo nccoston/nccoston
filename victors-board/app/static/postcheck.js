@@ -27,12 +27,15 @@
     if (!subject || !body || !submit) return;
     var imageUrl = form.querySelector('input[name="image_url"]');
     var file = form.querySelector('input[type="file"]');
+    var pollBox = form.querySelector('textarea[name="poll_options"]');
     var prefill = subject.getAttribute("data-default") || "";
     var panel = null, bypass = false;
 
     function attached() {
+      // a poll with its question in the subject is a complete post
       return (imageUrl && imageUrl.value.trim()) ||
              (file && file.files && file.files.length) ||
+             (pollBox && pollBox.value.trim()) ||
              !!window.__voiceFile;
     }
 

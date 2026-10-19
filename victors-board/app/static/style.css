@@ -657,3 +657,8 @@ body.seal-bg::before {
 .alias-real { font-style: normal; font-weight: normal; color: var(--hint); }
 .alias-toggle { text-decoration: none; }
 .alias-toggle:hover { text-decoration: underline; }
+
+/* thread polls: names under each option, vote buttons in a row */
+.bigpoll-names { font-size: 12px; color: var(--hint); margin-top: 3px; }
+.bigpoll-vote { margin-top: 12px; }
+.bigpoll-vote button { margin: 3px 6px 3px 0; }

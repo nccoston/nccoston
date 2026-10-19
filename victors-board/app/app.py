@@ -179,7 +179,9 @@ def init_db():
                       "ALTER TABLE traffic_visitors ADD COLUMN member INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE traffic ADD COLUMN member_accounts INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE traffic ADD COLUMN robots INTEGER NOT NULL DEFAULT 0",
-                      "ALTER TABLE messages ADD COLUMN alias TEXT"):
+                      "ALTER TABLE messages ADD COLUMN alias TEXT",
+                      "ALTER TABLE polls ADD COLUMN multi INTEGER NOT NULL DEFAULT 0",
+                      "ALTER TABLE polls ADD COLUMN tally TEXT NOT NULL DEFAULT 'ballot'"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -735,21 +737,34 @@ def message(message_id):
 
     poll = db.execute("SELECT * FROM polls WHERE message_id = ?",
                       (message_id,)).fetchone()
-    poll_options, my_vote, total_votes, top_votes = [], None, 0, 0
+    poll_options, my_vote, my_picks, total_votes, top_votes = [], None, set(), 0, 0
     if poll:
-        poll_options = db.execute(
-            "SELECT o.id, o.text, COUNT(v.id) votes FROM poll_options o"
-            " LEFT JOIN poll_votes v ON v.option_id = o.id"
-            " WHERE o.poll_id = ? GROUP BY o.id, o.text ORDER BY o.id",
-            (poll["id"],)).fetchall()
-        total_votes = sum(r["votes"] for r in poll_options)
-        top_votes = max((r["votes"] for r in poll_options), default=0)
+        options = db.execute("SELECT id, text FROM poll_options WHERE poll_id = ?"
+                             " ORDER BY id", (poll["id"],)).fetchall()
         u = current_user()
-        if u:
-            row = db.execute(
-                "SELECT option_id FROM poll_votes WHERE poll_id = ? AND user_id = ?",
-                (poll["id"], u["id"])).fetchone()
-            my_vote = row["option_id"] if row else None
+        if poll["tally"] == "thread":
+            by_opt, voters = poll_tally(db, poll, options, msg["thread_id"])
+            poll_options = [{"id": o["id"], "text": o["text"],
+                             "votes": len(by_opt[o["id"]]), "names": by_opt[o["id"]]}
+                            for o in options]
+            total_votes = len(voters)            # members, not ticks: multi counts once
+            if u and u["id"] in voters:
+                my_picks = set(voters[u["id"]][1])
+        else:
+            # the old ballot box, kept exactly as it was for the polls that
+            # were voted on anonymously
+            poll_options = db.execute(
+                "SELECT o.id, o.text, COUNT(v.id) votes FROM poll_options o"
+                " LEFT JOIN poll_votes v ON v.option_id = o.id"
+                " WHERE o.poll_id = ? GROUP BY o.id, o.text ORDER BY o.id",
+                (poll["id"],)).fetchall()
+            total_votes = sum(r["votes"] for r in poll_options)
+            if u:
+                row = db.execute(
+                    "SELECT option_id FROM poll_votes WHERE poll_id = ? AND user_id = ?",
+                    (poll["id"], u["id"])).fetchone()
+                my_vote = row["option_id"] if row else None
+        top_votes = max((r["votes"] for r in poll_options), default=0)
     game = db.execute("SELECT * FROM games WHERE message_id = ?",
                       (message_id,)).fetchone()
     game_picks, my_pick, game_winners = [], None, []
@@ -784,6 +799,7 @@ def message(message_id):
                            hof_threshold=int(get_setting("hof_threshold") or 5),
                            reply_subject=reply_subject, poll=poll,
                            poll_options=poll_options, my_vote=my_vote,
+                           my_picks=my_picks,
                            total_votes=total_votes, top_votes=top_votes,
                            game=game,
                            game_picks=game_picks, my_pick=my_pick,
@@ -1033,9 +1049,11 @@ def post(reply_to=None):
                 db.execute("UPDATE messages SET thread_id = ? WHERE id = ?",
                            (new_id, new_id))
                 if len(poll_lines) >= 2:
+                    # new polls are the old kind: the thread is the poll
                     pcur = db.execute(
-                        "INSERT INTO polls (message_id, created_at) VALUES (?, ?)",
-                        (new_id, now))
+                        "INSERT INTO polls (message_id, created_at, multi, tally)"
+                        " VALUES (?, ?, ?, 'thread')",
+                        (new_id, now, 1 if request.form.get("poll_multi") else 0))
                     for line in poll_lines:
                         db.execute(
                             "INSERT INTO poll_options (poll_id, text) VALUES (?, ?)",
@@ -1057,6 +1075,66 @@ def post(reply_to=None):
                            board=board)
 
 
+# ------------------------------------------------------------------- polls
+#
+# The old board's poll was a thread: the question in the subject, every
+# answer a reply with a name on it. The widget here is a scoreboard over
+# that thread, and a fast way to post the standard reply — it is not the
+# ballot box. A member's newest bare-subject reply that names an option is
+# their vote; a "Re:" subject is conversation and never counts.
+
+def _poll_norm(text):
+    s = (text or "").strip().lower()
+    s = re.sub(r"\s*(\(nm\)|\bnm|\bn/m|\*+)\s*$", "", s)
+    s = re.sub(r"[\s.!?\-–—:;,]+$", "", s)
+    return re.sub(r"\s+", " ", s)
+
+
+def poll_matches(subject, options, multi):
+    """Which option ids a reply's subject votes for; [] if it isn't a vote."""
+    raw = (subject or "").strip()
+    if not raw or re.match(r"re\s*:", raw, re.IGNORECASE):
+        return []
+    s = _poll_norm(raw)
+    if not s:
+        return []
+    ranked = sorted(options, key=lambda o: -len(o["text"]))   # longest first
+    hits = []
+    for o in ranked:
+        n = _poll_norm(o["text"])
+        if not n:
+            continue
+        if multi:
+            # named anywhere as a whole word: "maize and blue*" is two votes
+            pat = r"(?<![a-z0-9])" + re.escape(n) + r"(?![a-z0-9])"
+            if re.search(pat, s):
+                hits.append(o["id"])
+                s = re.sub(pat, " ", s, count=1)
+        elif s == n or (s.startswith(n) and not s[len(n)].isalnum()):
+            return [o["id"]]          # "yes, obviously" is a yes
+    return hits
+
+
+def poll_tally(db, poll, options, thread_id):
+    """-> ({option_id: [handles]}, {user_id: (handle, [option_ids])}).
+    Counted fresh from the thread every time; the thread is the data."""
+    rows = db.execute(
+        "SELECT id, user_id, author_name, subject FROM messages"
+        " WHERE thread_id = ? AND id != ? AND user_id IS NOT NULL"
+        " ORDER BY created_at, id", (thread_id, thread_id)).fetchall()
+    voters = {}
+    for r in rows:
+        hits = poll_matches(r["subject"], options, poll["multi"])
+        if hits:
+            voters.pop(r["user_id"], None)      # newest wins, and goes last
+            voters[r["user_id"]] = (r["author_name"], hits)
+    by_opt = {o["id"]: [] for o in options}
+    for handle, hits in voters.values():
+        for oid in hits:
+            by_opt[oid].append(handle)
+    return by_opt, voters
+
+
 @app.route("/poll/<int:poll_id>/vote", methods=["POST"])
 @login_required
 def poll_vote(poll_id):
@@ -1064,6 +1142,8 @@ def poll_vote(poll_id):
     poll = db.execute("SELECT * FROM polls WHERE id = ?", (poll_id,)).fetchone()
     if poll is None:
         abort(404)
+    if poll["tally"] == "thread":
+        return _poll_vote_as_reply(db, poll)
     option_id = request.form.get("option_id", type=int)
     valid = db.execute("SELECT 1 FROM poll_options WHERE id = ? AND poll_id = ?",
                        (option_id, poll_id)).fetchone()
@@ -1077,6 +1157,41 @@ def poll_vote(poll_id):
             (poll_id, option_id, current_user()["id"],
              now_utc_iso()))
         db.commit()
+    return redirect(url_for("message", message_id=poll["message_id"]))
+
+
+def _poll_vote_as_reply(db, poll):
+    """The vote button posts the reply a member would have typed: the
+    option as the subject, an asterisk, nothing inside."""
+    user = current_user()
+    ids = request.form.getlist("option_id", type=int)
+    options = db.execute("SELECT id, text FROM poll_options WHERE poll_id = ?"
+                         " ORDER BY id", (poll["id"],)).fetchall()
+    chosen = [o for o in options if o["id"] in ids]
+    if not poll["multi"]:
+        chosen = chosen[:1]
+    if not chosen:
+        flash("Pick an option to vote.")
+        return redirect(url_for("message", message_id=poll["message_id"]))
+    root = db.execute("SELECT * FROM messages WHERE id = ?",
+                      (poll["message_id"],)).fetchone()
+    subject = ", ".join(o["text"] for o in chosen) + "*"
+    # the same two-minute guard every post gets: a double tap is one vote
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=2)) \
+        .replace(tzinfo=None).isoformat(timespec="seconds")
+    dupe = db.execute(
+        "SELECT id FROM messages WHERE user_id = ? AND parent_id = ?"
+        " AND subject = ? AND created_at >= ?",
+        (user["id"], root["id"], subject, cutoff)).fetchone()
+    if dupe is None:
+        db.execute(
+            "INSERT INTO messages (thread_id, parent_id, subject, body, author_name,"
+            " user_id, created_at, ip_address, board)"
+            " VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)",
+            (root["thread_id"], root["id"], subject, user["handle"], user["id"],
+             now_utc_iso(), client_ip(), root["board"]))
+        db.commit()
+        flash("Posted! Go Blue!", "goblue")
     return redirect(url_for("message", message_id=poll["message_id"]))
 
 
