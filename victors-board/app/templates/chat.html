@@ -2,23 +2,29 @@
 {% block title %}Chat - {{ site_title }}{% endblock %}
 
 {% block content %}
-<div class="chat-wrap">
-  <p class="byline"><b>Chat</b> <span id="chat-online"></span>
+<div class="chat-wrap" id="chat-wrap">
+  <p class="byline"><b>Chat</b> <span id="chat-online" role="button" tabindex="0"></span>
     {%- if user and user['is_admin'] %} &middot;
     <a href="#" id="chat-clear" class="hint">clear the room</a>{% endif %}</p>
-  <div class="chat-flex">
-    <div id="chat-messages"></div>
+  <div class="chat-flex" id="chat-flex">
+    <div class="chat-main">
+      <div id="chat-messages"></div>
+      <button type="button" id="chat-new" hidden>&#8595; new messages</button>
+    </div>
     <div id="chat-roster"><b>In the room</b><div id="chat-roster-names"></div></div>
   </div>
   <form id="chat-form" autocomplete="off">
-    <input type="text" id="chat-text" maxlength="500" autofocus>
+    <input type="text" id="chat-text" maxlength="500" autofocus enterkeyhint="send">
     <button type="submit">Send</button>
   </form>
 </div>
 
 <script>
 (function () {
+  var wrap = document.getElementById("chat-wrap");
+  var flex = document.getElementById("chat-flex");
   var box = document.getElementById("chat-messages");
+  var newBtn = document.getElementById("chat-new");
   var form = document.getElementById("chat-form");
   var input = document.getElementById("chat-text");
   var onlineEl = document.getElementById("chat-online");
@@ -35,6 +41,43 @@
   function nearBottom() {
     return box.scrollTop + box.clientHeight >= box.scrollHeight - 80;
   }
+  function toBottom() {
+    box.scrollTop = box.scrollHeight;
+    newBtn.hidden = true;
+  }
+
+  // The room fills the screen: the message box takes whatever the viewport
+  // has left after the byline and the input, and the page opens scrolled to
+  // it (the header is one swipe up). On a phone, visualViewport shrinks when
+  // the keyboard comes up, so the box shrinks with it and the input stays
+  // in view. Measurements go through getBoundingClientRect because the
+  // Large/Huge text sizes zoom the body.
+  var vv = window.visualViewport;
+  function fit() {
+    var stick = nearBottom();
+    var vh = vv ? vv.height : window.innerHeight;
+    var rect = flex.getBoundingClientRect();
+    var zoom = flex.offsetHeight ? rect.height / flex.offsetHeight : 1;
+    var chrome = wrap.getBoundingClientRect().height - rect.height;
+    var h = Math.max(140, Math.floor(vh - chrome - 24));
+    flex.style.height = Math.round(h / zoom) + "px";
+    if (stick) toBottom();
+  }
+  function alignTop() {
+    window.scrollTo(0, wrap.getBoundingClientRect().top + window.pageYOffset - 6);
+  }
+
+  // who's in the room: a column beside the messages on a wide screen, folded
+  // into the count on a phone; tapping the count toggles it either way
+  wrap.classList.toggle("roster", window.matchMedia("(min-width: 701px)").matches);
+  function toggleRoster(e) {
+    if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    wrap.classList.toggle("roster");
+    fit();
+  }
+  onlineEl.addEventListener("click", toggleRoster);
+  onlineEl.addEventListener("keydown", toggleRoster);
 
   function renderText(target, text) {
     var parts = text.split(URL_RE);
@@ -66,6 +109,8 @@
       div.className += " chat-mention";
     }
     var handle = document.createElement("b");
+    handle.className = "chat-handle";
+    handle.setAttribute("data-handle", m.handle);
     handle.textContent = m.handle + ": ";
     var text = document.createElement("span");
     renderText(text, m.text);
@@ -79,6 +124,16 @@
     while (box.children.length > 250) box.removeChild(box.firstChild);
   }
 
+  // tap a name to answer them: "@Name " goes in front of whatever you've typed
+  box.addEventListener("click", function (e) {
+    var h = e.target.closest(".chat-handle");
+    if (!h) return;
+    var at = "@" + h.getAttribute("data-handle") + " ";
+    if (input.value.indexOf(at) === -1) input.value = at + input.value;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  });
+
   var polling = false;
   function poll() {
     if (polling) return;   // overlapping polls double-drew messages
@@ -89,19 +144,22 @@
         if (epoch !== null && d.epoch !== epoch) { box.textContent = ""; }
         epoch = d.epoch;
         var stick = nearBottom();
-        var drew = 0;
+        var drew = 0, others = 0;
         (d.messages || []).forEach(function (m) {
           if (m.id <= lastId) return;   // already drawn (belt to the flag's suspenders)
           addMessage(m);
           lastId = m.id;
           drew++;
+          if (!m.sys && m.handle !== myHandle) others++;
           if (document.hidden && !m.sys && m.handle !== myHandle) {
             unseen++;
             document.title = "(" + unseen + ") " + baseTitle;
           }
         });
         if (drew && stick) {
-          box.scrollTop = box.scrollHeight;
+          toBottom();
+        } else if (others && !stick) {
+          newBtn.hidden = false;   // you're reading back; don't yank the scroll
         }
         onlineEl.textContent = "🟢 " + d.online + " in the room";
         var rn = document.getElementById("chat-roster-names");
@@ -116,6 +174,9 @@
       .then(function () { polling = false; });
   }
 
+  newBtn.addEventListener("click", function () { toBottom(); input.focus(); });
+  box.addEventListener("scroll", function () { if (nearBottom()) newBtn.hidden = true; });
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     var text = input.value.trim();
@@ -125,7 +186,7 @@
     fetch("/chat/send", { method: "POST", body: body })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (d.ok) { input.value = ""; }
+        if (d.ok) { input.value = ""; toBottom(); }
         poll();
       });
   });
@@ -139,9 +200,12 @@
     });
   }
 
+  fit();
+  alignTop();
+  (vv || window).addEventListener("resize", fit);
+  window.addEventListener("orientationchange", function () { setTimeout(fit, 300); });
   poll();
   setInterval(poll, 2000);
-  box.scrollTop = box.scrollHeight;
 })();
 </script>
 {% endblock %}
