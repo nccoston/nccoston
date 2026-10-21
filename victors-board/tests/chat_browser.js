@@ -66,17 +66,23 @@ const BASE = process.env.BOARD || "http://127.0.0.1:5099";
   ok(await phone.evaluate(() => document.getElementById("chat-messages").scrollTop < 40), "the scroll was yanked while reading back");
   ok(await phone.isVisible("#chat-new"), "no pill for messages that arrived while reading back");
   await phone.screenshot({ path: "chat-3-phone-pill.png" });
-  await phone.click("#chat-new");
+  if (await phone.isVisible("#chat-new")) await phone.click("#chat-new");
   ok(await atBottom(phone), "the pill did not jump to the bottom");
   ok(await phone.isHidden("#chat-new"), "the pill stayed after the jump");
 
   // --- tap a name to answer them
   await phone.fill("#chat-text", "yes");
-  await phone.click('.chat-handle[data-handle="Rich"] >> nth=-1');
+  await phone.click('#chat-messages .chat-handle[data-handle="Rich"] >> nth=-1');
   ok((await phone.inputValue("#chat-text")) === "@Rich yes", "tapping a name did not address them: " + await phone.inputValue("#chat-text"));
-  await phone.click('.chat-handle[data-handle="Rich"] >> nth=-1');
+  await phone.click('#chat-messages .chat-handle[data-handle="Rich"] >> nth=-1');
   ok((await phone.inputValue("#chat-text")) === "@Rich yes", "a second tap doubled the name");
   ok(await phone.evaluate(() => document.activeElement.id === "chat-text"), "the input did not take focus");
+  // the names in the room work the same way
+  await phone.fill("#chat-text", "yes");
+  await phone.click("#chat-online");
+  await phone.click('#chat-roster-names .chat-handle[data-handle="Rich"]');
+  ok((await phone.inputValue("#chat-text")) === "@Rich yes", "tapping a name in the room did not address them: " + await phone.inputValue("#chat-text"));
+  await phone.click("#chat-online");
   await phone.press("#chat-text", "Enter"); await phone.waitForTimeout(2500);
   ok(await desk.isVisible(".chat-mention"), "desktop: Rich's mention was not highlighted");
   ok((await phone.inputValue("#chat-text")) === "", "the input did not clear after sending");

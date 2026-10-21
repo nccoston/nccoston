@@ -124,15 +124,18 @@
     while (box.children.length > 250) box.removeChild(box.firstChild);
   }
 
-  // tap a name to answer them: "@Name " goes in front of whatever you've typed
-  box.addEventListener("click", function (e) {
+  // tap a name — on a message or in the room — to answer them: "@Name " goes
+  // in front of whatever you've typed
+  function tapName(e) {
     var h = e.target.closest(".chat-handle");
     if (!h) return;
     var at = "@" + h.getAttribute("data-handle") + " ";
     if (input.value.indexOf(at) === -1) input.value = at + input.value;
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
-  });
+  }
+  box.addEventListener("click", tapName);
+  document.getElementById("chat-roster").addEventListener("click", tapName);
 
   var polling = false;
   function poll() {
@@ -166,6 +169,8 @@
         rn.textContent = "";
         (d.names || []).forEach(function (n) {
           var div = document.createElement("div");
+          div.className = "chat-handle";
+          div.setAttribute("data-handle", n);
           div.textContent = n;
           rn.appendChild(div);
         });

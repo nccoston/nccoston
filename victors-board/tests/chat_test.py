@@ -37,7 +37,9 @@ for want, why in (('id="chat-new"', "no new-messages pill"),
                   ('id="chat-online" role="button"', "the count is not a roster toggle"),
                   ('class="chat-main"', "no wrapper for the pill to sit in"),
                   ("visualViewport", "the box does not follow the keyboard"),
-                  ('"chat-handle"', "names are not tappable")):
+                  ('"chat-handle"', "names are not tappable"),
+                  ('getElementById("chat-roster").addEventListener("click", tapName)',
+                   "names in the room are not tappable")):
     if want not in page:
         fails.append(why)
 if "65vh" in page:
