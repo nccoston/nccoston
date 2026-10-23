@@ -2255,11 +2255,39 @@ def chat_messages():
             del CHAT_PRESENCE[uid]
         names = sorted((h for h, t in CHAT_PRESENCE.values() if now - t < 30),
                        key=str.lower)
-        msgs = [{k: v for k, v in m.items() if k != "at"}
+        msgs = [{k: v for k, v in m.items() if k not in ("at", "votes")}
                 for m in CHAT_MESSAGES if m["id"] > since]
+        # every live poll's votes ride along on every poll: a vote changes a
+        # message the client already drew, so "since" can't carry it
+        polls = {str(m["id"]): [[h, i] for h, i in m["votes"].items()]
+                 for m in CHAT_MESSAGES if "poll" in m}
         epoch = CHAT_EPOCH[0]
     return {"messages": msgs, "online": len(names), "names": names,
-            "epoch": epoch}
+            "epoch": epoch, "polls": polls}
+
+
+# A live poll in the room: "/poll Do we beat Iowa? Yes, No, Nobody wins".
+# The question runs to the first "?" or ":"; the options are comma-separated
+# after it. No question mark and no options → the whole line is the question
+# and it's a Yes/No. It is a chat message like any other: memory-only, gone
+# with the room's window or a restart.
+POLL_MAX_OPTIONS = 6
+
+
+def parse_chat_poll(rest):
+    rest = rest.strip()
+    if not rest:
+        return None
+    cut = min([i + 1 for i in (rest.find("?"), rest.find(":")) if i >= 0] or [len(rest)])
+    question, tail = rest[:cut].strip(), rest[cut:].strip()
+    options = []
+    for o in tail.split(","):
+        o = " ".join(o.split())[:40]
+        if o and o.lower() not in [x.lower() for x in options]:
+            options.append(o)
+    if len(options) < 2:
+        question, options = rest[:200], ["Yes", "No"]
+    return {"q": question.rstrip(":").strip()[:200], "options": options[:POLL_MAX_OPTIONS]}
 
 
 @app.route("/chat/send", methods=["POST"])
@@ -2274,15 +2302,39 @@ def chat_send():
         if now - CHAT_LAST_SEND.get(user["id"], -10) < 1.0:
             return {"ok": False, "error": "slow down"}
         CHAT_LAST_SEND[user["id"]] = now
-        CHAT_MESSAGES.append({
+        msg = {
             "id": CHAT_NEXT_ID[0],
             "handle": user["handle"],
             "text": text,
             "at": now,   # monotonic; feeds the "chat is rocking" banner
             "time": datetime.now(timezone.utc).astimezone(BOARD_TZ)
                     .strftime("%I:%M %p").lstrip("0"),
-        })
+        }
+        poll = parse_chat_poll(text[6:]) if text[:6].lower() == "/poll " else None
+        if poll:
+            msg["poll"], msg["text"] = poll, ""
+            msg["votes"] = {}   # handle -> option index, in voting order
+        CHAT_MESSAGES.append(msg)
         CHAT_NEXT_ID[0] += 1
+    return {"ok": True}
+
+
+@app.route("/chat/vote", methods=["POST"])
+@login_required
+def chat_vote():
+    mid = request.form.get("id", type=int)
+    choice = request.form.get("option", type=int)
+    user = current_user()
+    with CHAT_LOCK:
+        poll = next((m for m in CHAT_MESSAGES if m["id"] == mid and "poll" in m), None)
+        if poll is None or choice is None or not 0 <= choice < len(poll["poll"]["options"]):
+            return {"ok": False}
+        # tap your own choice again to take the vote back; a new choice replaces it
+        if poll["votes"].get(user["handle"]) == choice:
+            del poll["votes"][user["handle"]]
+        else:
+            poll["votes"].pop(user["handle"], None)
+            poll["votes"][user["handle"]] = choice
     return {"ok": True}
 
 

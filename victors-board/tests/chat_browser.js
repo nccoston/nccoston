@@ -62,7 +62,7 @@ const BASE = process.env.BOARD || "http://127.0.0.1:5099";
   // --- reading back: new messages do not yank the scroll, the pill offers them
   await phone.evaluate(() => { document.getElementById("chat-messages").scrollTop = 0; });
   await say(desk, "Ken are you still there");
-  await phone.waitForTimeout(2500);
+  await phone.waitForTimeout(3500);   // at least one poll tick after the send, with margin
   ok(await phone.evaluate(() => document.getElementById("chat-messages").scrollTop < 40), "the scroll was yanked while reading back");
   ok(await phone.isVisible("#chat-new"), "no pill for messages that arrived while reading back");
   await phone.screenshot({ path: "chat-3-phone-pill.png" });
@@ -94,6 +94,28 @@ const BASE = process.env.BOARD || "http://127.0.0.1:5099";
   ok(f.bottom <= 460 && f.bottom > 300, "phone: the input is off screen with the keyboard up (" + f.bottom + ")");
   ok(await atBottom(phone), "phone: lost the newest message when the keyboard came up");
   await phone.screenshot({ path: "chat-4-phone-keyboard.png" });
+
+  // --- a live poll in the room (the newest one: the room may hold old ones)
+  await phone.setViewportSize({ width: 390, height: 844 });
+  await say(phone, "/poll Do we beat Iowa? Yes, No, Nobody beats anybody in this game");
+  await desk.waitForTimeout(2500);
+  const dPoll = desk.locator(".chat-poll").last(), pPoll = phone.locator(".chat-poll").last();
+  ok((await desk.locator(".chat-poll").count()) >= 1, "desktop: the poll did not arrive");
+  ok((await dPoll.locator(".chat-poll-opt").count()) === 3, "desktop: wrong number of options");
+  ok(/Ken asks: Do we beat Iowa\?/.test(await dPoll.innerText()), "desktop: the poll head is off");
+  await dPoll.locator('.chat-poll-opt:has-text("Yes")').click();
+  await pPoll.locator('.chat-poll-opt:has-text("Nobody")').click();
+  await phone.waitForTimeout(3500);
+  let rows = await pPoll.locator(".chat-poll-row").allInnerTexts();
+  ok(/Yes\s+1\s+— Rich/.test(rows[0]) && /Nobody.*1\s+— Ken/.test(rows[2]) && !/\d/.test(rows[1]),
+     "phone: the tally is off: " + JSON.stringify(rows));
+  ok(await pPoll.locator(".chat-poll-opt").nth(2).evaluate((b) => b.classList.contains("chosen")), "phone: Ken's choice is not marked");
+  await phone.screenshot({ path: "chat-6-phone-poll.png" });
+  await dPoll.locator('.chat-poll-opt').nth(1).click();   // Rich changes his mind: No
+  await phone.waitForTimeout(3500);
+  rows = await pPoll.locator(".chat-poll-row").allInnerTexts();
+  ok(!/\d/.test(rows[0]) && /No\s+1\s+— Rich/.test(rows[1]), "phone: Rich's change did not show: " + JSON.stringify(rows));
+  ok(await dPoll.locator(".chat-poll-opt").nth(1).evaluate((b) => b.classList.contains("chosen")), "desktop: Rich's new choice is not marked");
 
   // --- desktop: roster column beside the box, both fitted to the window
   f = await rect(desk, "#chat-form");

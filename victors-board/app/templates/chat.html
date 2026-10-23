@@ -103,6 +103,7 @@
       box.appendChild(div);
       return;
     }
+    if (m.poll) { addPoll(m); return; }
     div.className = "chat-msg";
     if (m.handle !== myHandle &&
         m.text.toLowerCase().indexOf(myHandle.toLowerCase()) !== -1) {
@@ -122,6 +123,64 @@
     div.appendChild(time);
     box.appendChild(div);
     while (box.children.length > 250) box.removeChild(box.firstChild);
+  }
+
+  // a live poll: "/poll question? option, option". The question and the
+  // options draw once; the names under each option redraw from every poll
+  // of the server, since votes change a message that's already on screen.
+  var polls = {};   // message id -> {rows: [{names, count}], options}
+  function addPoll(m) {
+    var div = document.createElement("div");
+    div.className = "chat-msg chat-poll";
+    var head = document.createElement("div");
+    var handle = document.createElement("b");
+    handle.className = "chat-handle";
+    handle.setAttribute("data-handle", m.handle);
+    handle.textContent = m.handle + " asks: ";
+    var q = document.createElement("span");
+    q.className = "chat-poll-q";
+    q.textContent = m.poll.q;
+    var time = document.createElement("span");
+    time.className = "chat-time";
+    time.textContent = " " + m.time;
+    head.appendChild(handle); head.appendChild(q); head.appendChild(time);
+    div.appendChild(head);
+    var rows = [];
+    m.poll.options.forEach(function (opt, i) {
+      var row = document.createElement("div");
+      row.className = "chat-poll-row";
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chat-poll-opt";
+      btn.textContent = opt;
+      btn.addEventListener("click", function () {
+        var body = new FormData();
+        body.append("id", m.id); body.append("option", i);
+        fetch("/chat/vote", { method: "POST", body: body }).then(poll);
+      });
+      var count = document.createElement("b");
+      count.className = "chat-poll-count";
+      var names = document.createElement("span");
+      names.className = "chat-poll-names";
+      row.appendChild(btn); row.appendChild(count); row.appendChild(names);
+      div.appendChild(row);
+      rows.push({ btn: btn, count: count, names: names });
+    });
+    box.appendChild(div);
+    polls[m.id] = rows;
+  }
+  function drawVotes(all) {
+    Object.keys(all).forEach(function (id) {
+      var rows = polls[id];
+      if (!rows) return;
+      var by = rows.map(function () { return []; });
+      all[id].forEach(function (v) { if (by[v[1]]) by[v[1]].push(v[0]); });
+      rows.forEach(function (r, i) {
+        r.count.textContent = by[i].length ? " " + by[i].length : "";
+        r.names.textContent = by[i].length ? " — " + by[i].join(", ") : "";
+        r.btn.classList.toggle("chosen", by[i].indexOf(myHandle) !== -1);
+      });
+    });
   }
 
   // tap a name — on a message or in the room — to answer them: "@Name " goes
@@ -159,6 +218,7 @@
             document.title = "(" + unseen + ") " + baseTitle;
           }
         });
+        drawVotes(d.polls || {});
         if (drew && stick) {
           toBottom();
         } else if (others && !stick) {

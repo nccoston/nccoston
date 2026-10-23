@@ -68,5 +68,52 @@ if ken.post("/chat/send", data={"text": "too fast"}).get_json().get("error") != 
 if appmod.app.test_client().get("/chat").status_code == 200:
     fails.append("the room is open to readers without an account")
 
+# --- live polls: "/poll question? option, option"
+P = appmod.parse_chat_poll
+cases = {
+    "Do we beat Iowa? Yes, No, Nobody wins": ("Do we beat Iowa?", ["Yes", "No", "Nobody wins"]),
+    "Best QB: Harbaugh, Henne,  Brady": ("Best QB", ["Harbaugh", "Henne", "Brady"]),
+    "Do we beat Iowa?": ("Do we beat Iowa?", ["Yes", "No"]),
+    "beer run": ("beer run", ["Yes", "No"]),
+    "Pick one? a, A, b": ("Pick one?", ["a", "b"]),
+    "Too many? 1,2,3,4,5,6,7,8": ("Too many?", ["1", "2", "3", "4", "5", "6"]),
+    "   ": None,
+}
+for raw, want in cases.items():
+    got = P(raw)
+    got = (got["q"], got["options"]) if got else None
+    if got != want:
+        fails.append("parse %r -> %r, wanted %r" % (raw, got, want))
+
+import time as _t; _t.sleep(1.05)
+ken.post("/chat/send", data={"text": "/poll Do we beat Iowa? Yes, No, Nobody wins"})
+d = rich.get("/chat/messages?since=0").get_json()
+pm = d["messages"][-1]
+if pm.get("poll") != {"q": "Do we beat Iowa?", "options": ["Yes", "No", "Nobody wins"]} or pm["text"]:
+    fails.append("the poll message is off: %r" % pm)
+if "votes" in pm:
+    fails.append("votes leaked into the message itself")
+if d["polls"] != {str(pm["id"]): []}:
+    fails.append("fresh poll should ride along with no votes: %r" % d["polls"])
+pid = pm["id"]
+rich.post("/chat/vote", data={"id": pid, "option": 0})
+ken.post("/chat/vote", data={"id": pid, "option": 2})
+rich.post("/chat/vote", data={"id": pid, "option": 1})          # Rich changes his mind
+if ken.get("/chat/messages?since=999").get_json()["polls"] != {str(pid): [["Ken", 2], ["Rich", 1]]}:
+    fails.append("votes did not tally/change: %r" % ken.get("/chat/messages?since=999").get_json()["polls"])
+ken.post("/chat/vote", data={"id": pid, "option": 2})          # Ken taps his own choice: vote back
+if ken.get("/chat/messages?since=999").get_json()["polls"] != {str(pid): [["Rich", 1]]}:
+    fails.append("tapping your own choice did not take the vote back")
+for bad in ({"id": pid, "option": 7}, {"id": pid, "option": -1}, {"id": 999, "option": 0}, {"id": pid}):
+    if ken.post("/chat/vote", data=bad).get_json() != {"ok": False}:
+        fails.append("bad vote accepted: %r" % bad)
+_t.sleep(1.05)
+rich.post("/chat/send", data={"text": "/polls are fun"})
+if "poll" in rich.get("/chat/messages?since=%d" % pid).get_json()["messages"][-1]:
+    fails.append("'/polls are fun' became a poll")
+for want in ('"/chat/vote"', "drawVotes(d.polls", 'className = "chat-poll-opt"'):
+    if want not in page:
+        fails.append("the page lacks %s" % want)
+
 print("FAILURES:\n  " + "\n  ".join(fails) if fails else "ALL PASS")
 sys.exit(1 if fails else 0)
