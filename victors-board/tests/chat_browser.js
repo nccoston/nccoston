@@ -64,7 +64,9 @@ const BASE = process.env.BOARD || "http://127.0.0.1:5099";
   await say(desk, "Ken are you still there");
   await phone.waitForTimeout(3500);   // at least one poll tick after the send, with margin
   ok(await phone.evaluate(() => document.getElementById("chat-messages").scrollTop < 40), "the scroll was yanked while reading back");
-  ok(await phone.isVisible("#chat-new"), "no pill for messages that arrived while reading back");
+  ok(await phone.isVisible("#chat-new"), "no pill for messages that arrived while reading back: " + JSON.stringify(await phone.evaluate(() => {
+    const b = document.getElementById("chat-messages"); const last = b.lastChild && b.lastChild.textContent;
+    return { top: b.scrollTop, h: b.scrollHeight, ch: b.clientHeight, kids: b.children.length, last: last, hidden: document.hidden }; })));
   await phone.screenshot({ path: "chat-3-phone-pill.png" });
   if (await phone.isVisible("#chat-new")) await phone.click("#chat-new");
   ok(await atBottom(phone), "the pill did not jump to the bottom");

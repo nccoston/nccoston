@@ -498,6 +498,8 @@ body.seal-bg::before {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 #chat-online { cursor: pointer; }
+#voice-who { font-weight: bold; }
+#voice-sounds { display: none; }
 #chat-roster {
   display: none;
   width: 130px;

@@ -8,9 +8,42 @@ import os, sys, tempfile
 from pathlib import Path
 
 os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="live_"))
+if os.environ.get("VOICE_FAKE"):      # voice on, with a pretend relay (see below)
+    os.environ.setdefault("CF_REALTIME_APP_ID", "fake-app")
+    os.environ.setdefault("CF_REALTIME_TOKEN", "fake-token")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 import app as appmod
 from werkzeug.security import generate_password_hash
+
+if os.environ.get("VOICE_FAKE"):
+    # A stand-in for Cloudflare's relay: answers the way the real one does,
+    # with SDP that only a stand-in PeerConnection (the browser test's)
+    # would accept. Lets the whole voice flow run without the network.
+    import itertools
+    _n = itertools.count(1)
+    _mids = {}   # session -> remote mids handed out, "r1", "r2"... per session
+
+    def _fake_cf(path, body=None, method="POST"):
+        sid = path.split("/")[2] if path.startswith("/sessions/") else None
+        if path.endswith("/sessions/new"):
+            return {"sessionId": "fake-session-%d" % next(_n)}
+        if path.endswith("/tracks/new"):
+            tracks = body["tracks"]
+            if tracks[0]["location"] == "local":
+                return {"sessionDescription": {"type": "answer", "sdp": "v=0 fake answer"},
+                        "tracks": [{"mid": t["mid"], "trackName": t["trackName"]} for t in tracks]}
+            out = []
+            for t in tracks:
+                _mids[sid] = _mids.get(sid, 0) + 1
+                out.append({"mid": "r%d" % _mids[sid], "trackName": t["trackName"],
+                            "sessionId": t["sessionId"]})
+            # the stand-in PeerConnection reads the track count off the "SDP"
+            return {"sessionDescription": {"type": "offer", "sdp": "v=0 fake offer tracks=%d" % len(out)},
+                    "requiresImmediateRenegotiation": True, "tracks": out}
+        if path.endswith("/renegotiate"):
+            return {}
+        raise RuntimeError("unexpected relay call " + path)
+    appmod._cf = _fake_cf
 
 with appmod.app.app_context():
     appmod.init_db()
@@ -22,6 +55,7 @@ with appmod.app.app_context():
                 "INSERT INTO users (handle, password_hash, created_at)"
                 " VALUES (?, ?, ?)",
                 (h, generate_password_hash("pw"), appmod.now_utc_iso())).lastrowid
+        db.execute("UPDATE users SET is_admin = 1 WHERE handle = 'Nikos'")
 
         def post(subject, body, who, parent=None, board="main", hof=None, alias=None):
             mid = db.execute(

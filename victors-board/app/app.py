@@ -2240,7 +2240,7 @@ def chat_rocking():
 @app.route("/chat")
 @login_required
 def chat():
-    return render_template("chat.html")
+    return render_template("chat.html", voice=voice_enabled())
 
 
 @app.route("/chat/messages")
@@ -2262,8 +2262,169 @@ def chat_messages():
         polls = {str(m["id"]): [[h, i] for h, i in m["votes"].items()]
                  for m in CHAT_MESSAGES if "poll" in m}
         epoch = CHAT_EPOCH[0]
+        voice = voice_state(user["id"], now)
     return {"messages": msgs, "online": len(names), "names": names,
-            "epoch": epoch, "polls": polls}
+            "epoch": epoch, "polls": polls, "voice": voice}
+
+
+# ------------------------------------------------------------ live voice
+#
+# Opt-in voice on top of the text room. Audio goes browser -> Cloudflare's
+# relay (the Realtime SFU) -> browsers; this server only brokers sessions,
+# so the app secret never reaches a member. Nothing is recorded anywhere.
+# Without the two environment variables the voice link does not exist.
+#
+# Each member in voice holds one relay session. Listening pulls the talkers'
+# tracks into it; talking publishes a mic track from it. Who is in voice,
+# and who is talking, rides along on the chat poll like presence does.
+
+VOICE_APP_ID = os.environ.get("CF_REALTIME_APP_ID")
+VOICE_TOKEN = os.environ.get("CF_REALTIME_TOKEN")
+VOICE_API = "https://rtc.live.cloudflare.com/v1/apps/%s"
+VOICE_PEERS = {}       # user_id -> {handle, sid, track, talking, t}
+VOICE_EPOCH = [1]      # bumped when an admin clears the room; clients drop out
+VOICE_MAX = 40         # relay sessions one room may hold
+
+
+def voice_enabled():
+    return bool(VOICE_APP_ID and VOICE_TOKEN)
+
+
+def _cf(path, body=None, method="POST"):
+    """One call to the relay's connection API. Raises on anything but 200."""
+    import requests
+    r = requests.request(method, VOICE_API % VOICE_APP_ID + path, json=body,
+                         headers={"Authorization": "Bearer " + VOICE_TOKEN},
+                         timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+
+def voice_state(uid, now):
+    """The room's voice picture for one poll; also this member's heartbeat."""
+    if not voice_enabled():
+        return None
+    if uid in VOICE_PEERS:
+        VOICE_PEERS[uid]["t"] = now
+    for u in [u for u, p in VOICE_PEERS.items() if now - p["t"] > 30]:
+        del VOICE_PEERS[u]
+    return {
+        "epoch": VOICE_EPOCH[0],
+        "me": uid in VOICE_PEERS,
+        "count": len(VOICE_PEERS),
+        "talking": sorted((p["handle"] for p in VOICE_PEERS.values() if p["talking"]),
+                          key=str.lower),
+        "tracks": [{"sid": p["sid"], "track": p["track"], "handle": p["handle"]}
+                   for u, p in VOICE_PEERS.items() if p["track"] and u != uid],
+    }
+
+
+def _voice_me():
+    user = current_user()
+    return user, VOICE_PEERS.get(user["id"])
+
+
+@app.route("/chat/voice/join", methods=["POST"])
+@login_required
+def voice_join():
+    if not voice_enabled():
+        abort(404)
+    user, me = _voice_me()
+    if me:
+        return {"ok": True, "sid": me["sid"]}
+    with CHAT_LOCK:
+        if len(VOICE_PEERS) >= VOICE_MAX:
+            return {"ok": False, "error": "the voice room is full"}
+    try:
+        sid = _cf("/sessions/new")["sessionId"]
+    except Exception:
+        return {"ok": False, "error": "the voice relay is not answering"}
+    with CHAT_LOCK:
+        VOICE_PEERS[user["id"]] = {"handle": user["handle"], "sid": sid,
+                                   "track": None, "talking": False,
+                                   "t": time.monotonic()}
+    return {"ok": True, "sid": sid}
+
+
+@app.route("/chat/voice/publish", methods=["POST"])
+@login_required
+def voice_publish():
+    """The browser's offer with a mic transceiver -> the relay's answer."""
+    user, me = _voice_me()
+    sdp, mid = request.form.get("sdp"), request.form.get("mid")
+    if not (me and sdp and mid):
+        return {"ok": False}
+    name = "mic-%d-%s" % (user["id"], secrets.token_hex(3))
+    try:
+        d = _cf("/sessions/%s/tracks/new" % me["sid"], {
+            "sessionDescription": {"type": "offer", "sdp": sdp},
+            "tracks": [{"location": "local", "mid": mid, "trackName": name}]})
+    except Exception:
+        return {"ok": False, "error": "the voice relay is not answering"}
+    with CHAT_LOCK:
+        me["track"], me["talking"] = name, True
+    return {"ok": True, "sdp": d["sessionDescription"]["sdp"]}
+
+
+@app.route("/chat/voice/pull", methods=["POST"])
+@login_required
+def voice_pull():
+    """Subscribe to talkers' tracks -> the relay's offer, to be answered."""
+    user, me = _voice_me()
+    try:
+        wanted = json.loads(request.form.get("tracks") or "[]")
+    except ValueError:
+        wanted = []
+    live = {(p["sid"], p["track"]) for p in VOICE_PEERS.values() if p["track"]}
+    tracks = [{"location": "remote", "sessionId": t["sid"], "trackName": t["track"]}
+              for t in wanted if isinstance(t, dict)
+              and (t.get("sid"), t.get("track")) in live and t["sid"] != me["sid"]] if me else []
+    if not tracks:
+        return {"ok": False}
+    try:
+        d = _cf("/sessions/%s/tracks/new" % me["sid"], {"tracks": tracks})
+    except Exception:
+        return {"ok": False, "error": "the voice relay is not answering"}
+    sd = d.get("sessionDescription") or {}
+    return {"ok": True, "sdp": sd.get("sdp"), "type": sd.get("type"),
+            "renegotiate": bool(d.get("requiresImmediateRenegotiation")),
+            "tracks": [{"mid": t.get("mid"), "track": t.get("trackName"),
+                        "sid": t.get("sessionId")} for t in d.get("tracks", [])]}
+
+
+@app.route("/chat/voice/answer", methods=["POST"])
+@login_required
+def voice_answer():
+    user, me = _voice_me()
+    sdp = request.form.get("sdp")
+    if not (me and sdp):
+        return {"ok": False}
+    try:
+        _cf("/sessions/%s/renegotiate" % me["sid"],
+            {"sessionDescription": {"type": "answer", "sdp": sdp}}, method="PUT")
+    except Exception:
+        return {"ok": False, "error": "the voice relay is not answering"}
+    return {"ok": True}
+
+
+@app.route("/chat/voice/talking", methods=["POST"])
+@login_required
+def voice_talking():
+    user, me = _voice_me()
+    if not (me and me["track"]):
+        return {"ok": False}
+    with CHAT_LOCK:
+        me["talking"] = request.form.get("on") == "1"
+    return {"ok": True}
+
+
+@app.route("/chat/voice/leave", methods=["POST"])
+@login_required
+def voice_leave():
+    user = current_user()
+    with CHAT_LOCK:
+        VOICE_PEERS.pop(user["id"], None)
+    return {"ok": True}
 
 
 # A live poll in the room: "/poll Do we beat Iowa? Yes, No, Nobody wins".
@@ -2355,6 +2516,8 @@ def chat_clear():
         })
         CHAT_NEXT_ID[0] += 1
         CHAT_EPOCH[0] += 1
+        VOICE_PEERS.clear()    # the voice room empties with the text room
+        VOICE_EPOCH[0] += 1
     return {"ok": True}
 
 
