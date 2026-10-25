@@ -130,15 +130,25 @@
       mic = stream; micTrack = stream.getAudioTracks()[0];
       var c = connection();
       var tx = c.addTransceiver(micTrack, { direction: "sendonly" });
+      // run the whole exchange in the queue, and find out if it failed:
+      // the queue swallows errors so the room keeps working
+      var failed = null;
       return queue(function () {
         return c.createOffer()
           .then(function (o) { return c.setLocalDescription(o); })
           .then(function () { return post("/chat/voice/publish", { sdp: c.localDescription.sdp, mid: tx.mid }); })
           .then(function (d) {
-            if (!d.ok) { throw new Error(d.error || "no answer"); }
+            if (!d.ok) { throw new Error(d.error || "the relay did not take the mic"); }
             return c.setRemoteDescription({ type: "answer", sdp: d.sdp });
           })
-          .then(function () { state = "talking"; draw(); });
+          .then(function () { state = "talking"; draw(); })
+          .catch(function (e) { failed = e; });
+      }).then(function () {
+        if (!failed) return;
+        try { tx.stop(); } catch (e) {}
+        if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; micTrack = null; }
+        state = "in";
+        draw("couldn't go live: " + (failed.message || failed));
       });
     }).catch(function () {
       if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; micTrack = null; }

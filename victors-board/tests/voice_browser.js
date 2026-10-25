@@ -11,7 +11,9 @@ const FAKE_RTC = `
   class FakePC {
     constructor() { this.localDescription = null; this.ontrack = null; this._mid = 0; this._r = 0; }
     addTransceiver(track, opts) { return { mid: String(this._mid++), direction: opts && opts.direction }; }
-    createOffer() { window.__rtc.offers++; return Promise.resolve({ type: "offer", sdp: "v=0 fake local offer" }); }
+    createOffer() { window.__rtc.offers++;
+      if (window.__failOffer) { window.__failOffer = false; return Promise.reject(new Error("fake offer failure")); }
+      return Promise.resolve({ type: "offer", sdp: "v=0 fake local offer" }); }
     createAnswer() { window.__rtc.answers++; return Promise.resolve({ type: "answer", sdp: "v=0 fake local answer" }); }
     setLocalDescription(d) { this.localDescription = d; return Promise.resolve(); }
     setRemoteDescription(d) {
@@ -80,7 +82,16 @@ const FAKE_RTC = `
   ok(/🎙 Rich$/.test(await voiceText(nikos)), "Nikos (not in voice) does not see who's talking: " + await voiceText(nikos));
   await ken.screenshot({ path: "voice-3-rich-talking.png", clip: { x: 0, y: 0, width: 390, height: 120 } });
 
+  // Ken's first try to talk fails in the browser: he's told, the mic is let go, he's still listening
+  await ken.evaluate(() => { window.__failOffer = true; });
+  await ken.click("#voice-talk"); await tick(ken, 800);
+  ok(/^🔊 talk · leave 🎙 Rich couldn't go live: fake offer failure$/.test(await voiceText(ken)), "a failed talk was silent: " + await voiceText(ken));
+  ok((await ken.evaluate(() => window.__mic.stopped)) >= 1, "the mic was kept open after a failed talk");
+  await tick(ken, 4200);
+  ok(/^🔊 talk · leave 🎙 Rich$/.test(await voiceText(ken)), "the failure note did not clear: " + await voiceText(ken));
+
   // Ken talks too; Rich pulls him
+  await ken.evaluate(() => { window.__mic.stopped = 0; });
   await ken.click("#voice-talk"); await tick(ken);
   ok(/^🎙 mute · leave 🎙 Ken, Rich$/.test(await voiceText(ken)), "both talking: " + await voiceText(ken));
   await tick(rich);
