@@ -4,7 +4,7 @@
 {% block content %}
 <div class="chat-wrap" id="chat-wrap">
   <p class="byline"><b>Chat</b> <span id="chat-online" role="button" tabindex="0"></span>
-    {%- if voice %} &middot; <span id="voice" data-ice="stun:stun.cloudflare.com:3478"><a href="#" id="voice-join">voice</a></span>{% endif %}
+    {%- if voice %}<span id="voice" data-ice="stun:stun.cloudflare.com:3478"{% if user['is_admin'] %} data-admin="1"{% endif %}></span>{% endif %}
     {%- if user and user['is_admin'] %} &middot;
     <a href="#" id="chat-clear" class="hint">clear the room</a>{% endif %}</p>
   <div class="chat-flex" id="chat-flex">

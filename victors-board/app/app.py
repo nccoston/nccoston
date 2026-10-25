@@ -2283,7 +2283,7 @@ VOICE_TOKEN = os.environ.get("CF_REALTIME_TOKEN")
 VOICE_API = "https://rtc.live.cloudflare.com/v1/apps/%s"
 VOICE_PEERS = {}       # user_id -> {handle, sid, track, talking, t}
 VOICE_EPOCH = [1]      # bumped when an admin clears the room; clients drop out
-VOICE_MAX = 40         # relay sessions one room may hold
+VOICE_MAX = 100        # relay sessions one room may hold (listeners join on their own)
 
 
 def voice_enabled():
@@ -2310,6 +2310,9 @@ def voice_state(uid, now):
         del VOICE_PEERS[u]
     return {
         "epoch": VOICE_EPOCH[0],
+        # voice is open while an admin is in it; only then can members talk
+        # (or hear anything), and only then do they see the word at all
+        "open": voice_open(),
         "me": uid in VOICE_PEERS,
         "count": len(VOICE_PEERS),
         "talking": sorted((p["handle"] for p in VOICE_PEERS.values() if p["talking"]),
@@ -2317,6 +2320,10 @@ def voice_state(uid, now):
         "tracks": [{"sid": p["sid"], "track": p["track"], "handle": p["handle"]}
                    for u, p in VOICE_PEERS.items() if p["track"] and u != uid],
     }
+
+
+def voice_open():
+    return any(p["admin"] for p in VOICE_PEERS.values())
 
 
 def _voice_me():
@@ -2342,6 +2349,7 @@ def voice_join():
     with CHAT_LOCK:
         VOICE_PEERS[user["id"]] = {"handle": user["handle"], "sid": sid,
                                    "track": None, "talking": False,
+                                   "admin": bool(user["is_admin"]),
                                    "t": time.monotonic()}
     return {"ok": True, "sid": sid}
 
@@ -2354,6 +2362,8 @@ def voice_publish():
     sdp, mid = request.form.get("sdp"), request.form.get("mid")
     if not (me and sdp and mid):
         return {"ok": False}
+    if not (me["admin"] or voice_open()):
+        return {"ok": False, "error": "an admin opens voice"}
     name = "mic-%d-%s" % (user["id"], secrets.token_hex(3))
     try:
         d = _cf("/sessions/%s/tracks/new" % me["sid"], {

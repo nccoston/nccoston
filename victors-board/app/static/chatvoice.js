@@ -1,20 +1,28 @@
-// Live voice on top of the chat room, opt-in both ways.
+// Live voice on top of the chat room.
 //
-// Tap "voice" and you hear whoever is talking (browsers won't play sound
-// without a tap, so listening is the first tap). Tap "talk" and your mic is
-// live; "mute" keeps you in the room but silent; "leave" drops you out.
+// Voice is open while an admin is in it. Then whoever is talking reaches
+// everyone in chat on their own. A phone may refuse to play sound on a page
+// nobody has tapped yet; then the page says "tap anywhere to hear" and the
+// next tap, anywhere, starts it. Talking is opt-in:
+// "talk" asks for the mic; "mute" keeps you in but silent; "leave" drops
+// you out and keeps you out until you tap back in. When no admin is in
+// voice, members don't see the word at all.
+//
 // Audio goes through Cloudflare's relay; this page only ever talks to the
 // board, which brokers the relay sessions. Nothing is recorded anywhere.
-//
-// One relay session, one PeerConnection. Every negotiation runs through a
-// single queue because the relay insists on one exchange at a time.
+// One relay session, one PeerConnection, one negotiation at a time.
 (function () {
   var el = document.getElementById("voice");
   if (!el || !window.RTCPeerConnection) return;
   var ICE = el.getAttribute("data-ice");
+  var ADMIN = el.getAttribute("data-admin") === "1";
   var pc = null, mic = null, micTrack = null;
   var state = "off";          // off | in | talking | muted
   var joining = false;        // between the tap and the board's answer
+  var auto = false;           // we joined on our own, to listen
+  var optedOut = false;       // they tapped leave: stay out until they tap in
+  var note = null, noteUntil = 0;   // a few words beside the count, for a while
+  var quietSince = null;      // when the talking stopped, for auto-listeners
   var seen = {};              // "sid|track" -> true, tracks we've pulled
   var byMid = {};             // relay mid -> "sid|track"
   var audio = {};             // "sid|track" -> <audio>
@@ -23,6 +31,9 @@
   var sounds = document.createElement("div");
   sounds.id = "voice-sounds";
   document.body.appendChild(sounds);
+
+  document.addEventListener("pointerdown", replay, true);
+  document.addEventListener("keydown", replay, true);
 
   function post(path, fields) {
     var body = new FormData();
@@ -41,11 +52,21 @@
     a.addEventListener("click", function (e) { e.preventDefault(); fn(); });
     return a;
   }
-  function draw(note) {
+  function say(text, forHowLong) {
+    note = text; noteUntil = Date.now() + (forHowLong || 4000);
+    draw();
+    if (forHowLong !== Infinity) setTimeout(draw, (forHowLong || 4000) + 50);
+  }
+  function draw() {
     el.textContent = "";
-    var count = lastVoice ? lastVoice.count : 0;
+    var v = lastVoice || {};
+    var who = v.talking || [];
+    var show = state !== "off" || ADMIN || v.open;
+    if (!show) { el.hidden = true; return; }
+    el.hidden = false;
+    el.appendChild(document.createTextNode(" · "));
     if (state === "off") {
-      el.appendChild(link("voice-join", count ? "voice (" + count + ")" : "voice", join));
+      el.appendChild(link("voice-join", v.count ? "voice (" + v.count + ")" : "voice", join));
     } else {
       el.appendChild(document.createTextNode(
         state === "talking" ? "🎙 " : state === "muted" ? "🔇 " : "🔊 "));
@@ -55,18 +76,16 @@
       el.appendChild(document.createTextNode(" · "));
       el.appendChild(link("voice-leave", "leave", leave));
     }
-    var who = lastVoice ? lastVoice.talking : [];
     if (who.length) {
       var w = document.createElement("span");
       w.id = "voice-who";
       w.textContent = " 🎙 " + who.join(", ");
       el.appendChild(w);
     }
-    if (note) {
+    if (note && Date.now() < noteUntil) {
       var n = document.createElement("span");
       n.className = "hint"; n.textContent = " " + note;
       el.appendChild(n);
-      setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, 4000);
     }
   }
 
@@ -81,9 +100,20 @@
       a.srcObject = (e.streams && e.streams[0]) || new MediaStream([e.track]);
       sounds.appendChild(a);
       if (key) audio[key] = a;
-      var p = a.play(); if (p && p.catch) p.catch(function () {});
+      play(a);
     };
     return pc;
+  }
+  // a phone may refuse to play until the page is touched; the next touch retries
+  function play(a) {
+    var p = a.play();
+    if (p && p.catch) p.catch(function () { a.setAttribute("data-blocked", "1"); say("tap anywhere to hear", Infinity); });
+  }
+  function replay() {
+    var blocked = sounds.querySelectorAll("audio[data-blocked]");
+    if (!blocked.length) return;
+    for (var i = 0; i < blocked.length; i++) { blocked[i].removeAttribute("data-blocked"); play(blocked[i]); }
+    if (noteUntil === Infinity) { note = null; noteUntil = 0; draw(); }
   }
 
   // --- listening: pull whoever is talking into our session
@@ -110,22 +140,22 @@
   }
 
   // --- the taps
-  function join() {
+  function join(byItself) {
     if (state !== "off") return;
-    state = "in"; joining = true; draw();
+    state = "in"; joining = true; auto = !!byItself; optedOut = false; draw();
     connection();
     queue(function () {
       return post("/chat/voice/join").then(function (d) {
         joining = false;
-        if (!d.ok) { hangup(); draw(d.error || "voice is not available"); return; }
+        if (!d.ok) { hangup(); say(d.error || "voice is not available"); return; }
         if (lastVoice) pull(lastVoice.tracks || []);
-      }, function () { joining = false; hangup(); draw("voice is not available"); });
+      }, function () { joining = false; hangup(); say("voice is not available"); });
     });
   }
   function talk() {
     if (state !== "in") return;
     var md = navigator.mediaDevices;
-    if (!md || !md.getUserMedia) { draw("no mic"); return; }
+    if (!md || !md.getUserMedia) { say("no mic"); return; }
     md.getUserMedia({ audio: true }).then(function (stream) {
       mic = stream; micTrack = stream.getAudioTracks()[0];
       var c = connection();
@@ -141,18 +171,18 @@
             if (!d.ok) { throw new Error(d.error || "the relay did not take the mic"); }
             return c.setRemoteDescription({ type: "answer", sdp: d.sdp });
           })
-          .then(function () { state = "talking"; draw(); })
+          .then(function () { state = "talking"; auto = false; draw(); })
           .catch(function (e) { failed = e; });
       }).then(function () {
         if (!failed) return;
         try { tx.stop(); } catch (e) {}
         if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; micTrack = null; }
         state = "in";
-        draw("couldn't go live: " + (failed.message || failed));
+        say("couldn't go live: " + (failed.message || failed));
       });
     }).catch(function () {
       if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; micTrack = null; }
-      draw("mic blocked");
+      say("mic blocked");
     });
   }
   function mute() {
@@ -171,11 +201,14 @@
     if (pc) { try { pc.close(); } catch (e) {} }
     pc = null; seen = {}; byMid = {}; audio = {};
     sounds.textContent = "";
-    state = "off";
+    state = "off"; auto = false; quietSince = null;
+    if (noteUntil === Infinity) { note = null; noteUntil = 0; }
   }
-  function leave() {
+  function leave(byItself) {
     if (state === "off") return;
-    hangup(); draw();
+    hangup();
+    if (!byItself) optedOut = true;
+    draw();
     post("/chat/voice/leave");
   }
   window.addEventListener("pagehide", function () {
@@ -189,11 +222,21 @@
     if (lastEpoch !== null && v.epoch !== lastEpoch && state !== "off") hangup();   // admin cleared the room
     lastEpoch = v.epoch;
     if (state !== "off" && !v.me && !joining) hangup();   // the board no longer has us (timed out)
+    var talking = (v.talking || []).length > 0;
     if (state !== "off") {
       var live = {};
       (v.tracks || []).forEach(function (t) { live[t.sid + "|" + t.track] = true; });
       Object.keys(seen).forEach(function (k) { if (!live[k]) drop(k); });
       pull(v.tracks || []);
+      // a listener who came in on their own goes out the same way, a minute after the talking stops
+      if (auto && state === "in") {
+        if (talking) quietSince = null;
+        else if (quietSince === null) quietSince = Date.now();
+        else if (Date.now() - quietSince > (parseInt(el.getAttribute("data-quiet"), 10) || 60000)) { leave(true); return; }
+      }
+    } else if (v.open && talking && !optedOut) {
+      join(true);   // someone is talking: listen, nothing to find or tap
+      return;
     }
     draw();
   };

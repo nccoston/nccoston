@@ -1,6 +1,10 @@
 [
  {
   "day": "2026-10-25",
+  "what": "Voice: the talker reaches the whole room; an admin opens it"
+ },
+ {
+  "day": "2026-10-25",
   "what": "Voice: a failed \"talk\" says so and lets the mic go"
  },
  {

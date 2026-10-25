@@ -64,11 +64,15 @@ ken, rich, nikos = client("Ken"), client("Rich"), client("Nikos")
 
 # the link is on the page, and the relay's secret is not
 page = ken.get("/chat").get_data(as_text=True)
-if 'id="voice-join"' not in page or "chatvoice.js" not in page:
-    fails.append("no voice link on the chat page")
+if 'id="voice"' not in page or "chatvoice.js" not in page:
+    fails.append("no voice mount on the chat page")
+if 'data-admin' in page:
+    fails.append("Ken's page says admin")
+if 'data-admin="1"' not in nikos.get("/chat").get_data(as_text=True):
+    fails.append("Nikos's page does not say admin")
 if "token-test" in page:
     fails.append("the relay secret reached the page")
-if voice(ken) != {"epoch": 1, "me": False, "count": 0, "talking": [], "tracks": []}:
+if voice(ken) != {"epoch": 1, "open": False, "me": False, "count": 0, "talking": [], "tracks": []}:
     fails.append("empty voice state is off: %r" % voice(ken))
 
 # Ken listens: a relay session, nothing to pull yet
@@ -83,8 +87,18 @@ if not (v["me"] and v["count"] == 1 and v["tracks"] == [] and v["talking"] == []
 if ken.post("/chat/voice/pull", data={"tracks": "[]"}).get_json() != {"ok": False}:
     fails.append("an empty pull should be refused")
 
-# Rich joins and talks: his offer goes to the relay, the answer comes back
+# Rich joins and tries to talk: no admin is in voice, so no
 rich.post("/chat/voice/join")
+before = len(calls)
+d = rich.post("/chat/voice/publish", data={"sdp": "RICH OFFER", "mid": "0"}).get_json()
+if d != {"ok": False, "error": "an admin opens voice"} or len(calls) != before:
+    fails.append("a member could talk with no admin in voice: %r" % d)
+if voice(ken)["open"]:
+    fails.append("voice reads open with no admin in it")
+# Nikos comes in: voice is open; now Rich's offer goes to the relay, the answer comes back
+nikos.post("/chat/voice/join")
+if not voice(ken)["open"]:
+    fails.append("voice did not open when the admin joined")
 d = rich.post("/chat/voice/publish", data={"sdp": "RICH OFFER", "mid": "0"}).get_json()
 if d != {"ok": True, "sdp": "ANSWER"}:
     fails.append("publish: %r" % d)
@@ -131,17 +145,21 @@ if ken.post("/chat/voice/talking", data={"on": "1"}).get_json() != {"ok": False}
     fails.append("a listener with no mic could be marked talking")
 ken.post("/chat/voice/leave")
 v = voice(rich)
-if v["count"] != 1 or voice(ken)["me"]:
+if v["count"] != 2 or voice(ken)["me"]:
     fails.append("leave did not take: %r" % v)
 
 # a member whose page went away drops out after 30 seconds without a poll
 t = appmod.VOICE_PEERS[next(u for u, p in appmod.VOICE_PEERS.items() if p["handle"] == "Rich")]
 t["t"] -= 31
-if voice(nikos)["count"] != 0:
+if voice(nikos)["count"] != 1:
     fails.append("a silent member did not time out")
+# the admin leaving closes voice
+nikos.post("/chat/voice/leave")
+if voice(ken)["open"] or voice(ken)["count"] != 0:
+    fails.append("voice did not close when the admin left: %r" % voice(ken))
 
 # the admin clear empties the voice room and bumps its epoch
-ken.post("/chat/voice/join"); rich.post("/chat/voice/join")
+ken.post("/chat/voice/join"); rich.post("/chat/voice/join"); nikos.post("/chat/voice/join")
 nikos.post("/chat/clear")
 v = voice(ken)
 if v["count"] != 0 or v["epoch"] != 2 or v["me"]:
@@ -156,7 +174,7 @@ if ken.post("/chat/voice/join").get_json() != {"ok": False, "error": "the voice 
 appmod._cf = fake_cf
 
 # a full room
-appmod.VOICE_PEERS.update({9000 + i: {"handle": "x%d" % i, "sid": "x", "track": None,
+appmod.VOICE_PEERS.update({9000 + i: {"handle": "x%d" % i, "sid": "x", "track": None, "admin": False,
                                        "talking": False, "t": time.monotonic()} for i in range(appmod.VOICE_MAX)})
 if ken.post("/chat/voice/join").get_json() != {"ok": False, "error": "the voice room is full"}:
     fails.append("the room cap is not enforced")
