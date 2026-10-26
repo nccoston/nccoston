@@ -416,7 +416,7 @@ def board_countdown():
 @app.context_processor
 def inject_globals():
     pinned = get_db().execute(
-        "SELECT id, subject FROM messages WHERE pinned = 1 AND parent_id IS NULL"
+        "SELECT id, subject FROM messages WHERE pinned = 1"
         " ORDER BY created_at DESC").fetchall()
     return {
         "user": current_user(),
@@ -4041,13 +4041,13 @@ def hof_toggle(message_id):
 def pin_message(message_id):
     db = get_db()
     msg = db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
-    if msg is None or msg["parent_id"] is not None:
+    if msg is None:
         abort(404)
+    # any post pins, a reply too: the header links to it, not its thread
     db.execute("UPDATE messages SET pinned = ? WHERE id = ?",
                (0 if msg["pinned"] else 1, message_id))
     db.commit()
-    flash("Thread unpinned." if msg["pinned"] else
-          "Thread pinned to the top of the board.")
+    flash("Unpinned." if msg["pinned"] else "Pinned to the top of the board.")
     return redirect(url_for("message", message_id=message_id))
 
 
