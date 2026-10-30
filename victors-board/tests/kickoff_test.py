@@ -81,6 +81,15 @@ with appmod.app.app_context():
     if "Sat 12:30 PM EDT on BTN" not in c.get("/stats").get_data(as_text=True):
         fails.append("the kickoff is missing from other pages")
 
+    # the weekday line on the homepage says the same, and falls back to the weekday
+    t = appmod.pickem_ticker(db, gm, mid)
+    if t["when"] != "Sat 12:30 PM EDT on BTN" or t["day"] != "Saturday":
+        fails.append("ticker: %r" % t)
+    db.execute("UPDATE games SET kickoff_at = NULL WHERE message_id = ?", (mid,)); db.commit()
+    if appmod.pickem_ticker(db, gm, mid)["when"] != "Saturday":
+        fails.append("ticker without a kickoff should say the weekday")
+    db.execute("UPDATE games SET kickoff_at = '2026-10-31T16:30:00' WHERE message_id = ?", (mid,)); db.commit()
+
     # a network that shows up later does not overwrite one on record
     other = dict(gm, network="FOX")
     appmod.seed_gameday_pickem(db, other)

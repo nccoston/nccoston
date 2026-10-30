@@ -1789,6 +1789,8 @@ def pickem_ticker(db, gm, mid):
             gm["date"].replace("Z", "+00:00")).astimezone(BOARD_TZ).strftime("%A")
     except (KeyError, ValueError):
         day = ""
+    # "Sat 12:00 PM EDT on BTN" once ESPN has set the time; the weekday until then
+    when = kickoff_label(game["kickoff_at"], game["network"]) or day
     picks = db.execute(
         "SELECT p.pick_a, p.pick_b, u.handle h FROM game_picks p"
         " JOIN users u ON u.id = p.user_id WHERE p.game_id = ?",
@@ -1799,7 +1801,7 @@ def pickem_ticker(db, gm, mid):
                     + abs(p["pick_b"] - game["final_b"]))
         best = min(miss(p) for p in picks)
         winners = [p["h"] for p in picks if miss(p) == best]
-        return {"kind": "post", "mid": mid, "matchup": matchup, "day": day,
+        return {"kind": "post", "mid": mid, "matchup": matchup, "day": day, "when": when,
                 "text": f"🏆 Pick 'em: {', '.join(winners)} "
                         f"take{'s' if len(winners) == 1 else ''} the week "
                         f"(final {game['final_a']}–{game['final_b']})"}
@@ -1819,9 +1821,9 @@ def pickem_ticker(db, gm, mid):
             w = ranked[-1]
             text += f" — way off: {w['h']} ({w['pick_a']}–{w['pick_b']})"
         return {"kind": "in", "mid": mid, "matchup": matchup,
-                "day": day, "text": text}
+                "day": day, "when": when, "text": text}
     n = len(picks)
-    return {"kind": "pre", "mid": mid, "matchup": matchup, "day": day,
+    return {"kind": "pre", "mid": mid, "matchup": matchup, "day": day, "when": when,
             "text": f"🎯 Pick 'em is open — {n} pick{'' if n == 1 else 's'} in"}
 
 
