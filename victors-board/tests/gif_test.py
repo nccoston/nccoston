@@ -64,6 +64,39 @@ if len(calls) != n:
 if "<img" not in R("https://tenor.com/bXJ1T.gif"):
     fails.append("a tenor short .gif link does not embed")
 
+# --- Google share links: followed to the image viewer, whose address carries the picture
+trails = {
+    "https://share.google/f3FTdws9AVuBbngik": [
+        "https://share.google/f3FTdws9AVuBbngik",
+        "https://www.google.com/imgres?imgurl=https%3A%2F%2Fmedia.tenor.com%2Fxyz%2Fharbaugh.gif&imgrefurl=https%3A%2F%2Ftenor.com%2Fview%2Fh-gif-1&tbnid=abc"],
+    "https://images.app.goo.gl/AbC123": [
+        "https://images.app.goo.gl/AbC123", "https://tenor.com/view/wolverine-gif-77"],
+    "https://share.google/togiphy": [
+        "https://share.google/togiphy", "https://giphy.com/gifs/go-blue-l0HlNaQ6gWfllcjDO"],
+    "https://share.google/nothing": [
+        "https://share.google/nothing", "https://www.google.com/search?q=michigan"],
+    "https://share.google/down": None,
+}
+def fake_follow(url):
+    t = trails.get(url)
+    if t is None:
+        raise RuntimeError("down")
+    return t
+postmarkup._follow = fake_follow
+cases = {
+    "see https://share.google/f3FTdws9AVuBbngik ok": "see https://media.tenor.com/xyz/harbaugh.gif ok",
+    "https://images.app.goo.gl/AbC123": "https://media1.tenor.com/m/abcDEF/go-blue.gif",
+    "https://share.google/togiphy": "https://giphy.com/gifs/go-blue-l0HlNaQ6gWfllcjDO",
+    "https://share.google/nothing": "https://share.google/nothing",
+    "https://share.google/down": "https://share.google/down",
+}
+for raw, want in cases.items():
+    got = postmarkup.resolve_gif_pages(raw)
+    if got != want:
+        fails.append("google share: %r -> %r, wanted %r" % (raw, got, want))
+if "<img" not in R(postmarkup.resolve_gif_pages("https://share.google/f3FTdws9AVuBbngik")):
+    fails.append("the resolved google share link does not render as a picture")
+
 # --- through the board: a post with a Tenor page link lands with the picture
 appmod.app.config["TESTING"] = True
 with appmod.app.app_context():

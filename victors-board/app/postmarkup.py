@@ -37,6 +37,11 @@ GIPHY_PAGE_RE = re.compile(
     r"https?://(?:www\.)?giphy\.com/gifs/(?:[A-Za-z0-9-]*-)?([A-Za-z0-9]+)(?:[/?#]\S*)?")
 TENOR_PAGE_RE = re.compile(
     r"https?://(?:www\.)?tenor\.com/(?:[a-z]{2}(?:-[A-Z]{2})?/)?view/[^\s<>\"]*-gif-\d+\S*")
+# Google's share links (the Google app's Share on an image result): a short
+# redirect that lands on Google's image viewer, whose address carries the
+# real picture as imgurl=. Followed once at post time, like Tenor.
+GOOGLE_SHARE_RE = re.compile(
+    r"https?://(?:share\.google|images\.app\.goo\.gl)/[A-Za-z0-9_-]+")
 OG_IMAGE_RE = re.compile(
     r'<meta[^>]+(?:property|name)="og:image"[^>]+content="(https://[^"]+)"'
     r'|<meta[^>]+content="(https://[^"]+)"[^>]+(?:property|name)="og:image"')
@@ -174,25 +179,63 @@ def _fetch_page(url):
         return r.raw.read(65536, decode_content=True).decode("utf-8", "replace")
 
 
+def _follow(url):
+    """Where a short link leads: every address on the way and the last one.
+    Replaced in tests."""
+    import requests
+    with requests.get(url, timeout=4, stream=True, allow_redirects=True,
+                      headers={"User-Agent": "Mozilla/5.0"}) as r:
+        return [h.url for h in r.history] + [r.url]
+
+
+def _picture_in(urls):
+    """A picture address carried inside any of these (Google's imgurl=)."""
+    from urllib.parse import parse_qs, urlsplit
+    for u in urls:
+        for key in ("imgurl",):
+            for cand in parse_qs(urlsplit(u).query).get(key, []):
+                if IMAGE_RE.match(cand):
+                    return cand
+    return None
+
+
+def _tenor_picture(page_url):
+    og = OG_IMAGE_RE.search(_fetch_page(page_url))
+    pic = og and (og.group(1) or og.group(2))
+    return pic if pic and IMAGE_RE.match(pic) else None
+
+
 def resolve_gif_pages(text):
-    """Swap Tenor page links for the GIF they show, once, at post time. The
-    page says where its picture is (og:image); the picture link ends in .gif,
-    so the post then renders it like any other. Best effort: on any failure
-    the page link stays as typed."""
-    if not text or "tenor.com" not in text:
+    """Swap links that stand for a picture for the picture itself, once, at
+    post time: a Tenor page (its og:image), a Google share link (followed to
+    Google's image viewer, whose address carries imgurl=; or on to a Tenor
+    or Giphy page). The picture link then renders like any other. Best
+    effort: on any failure the link stays as typed."""
+    if not text or not any(h in text for h in ("tenor.com", "share.google", "images.app.goo.gl")):
         return text
 
-    def swap(m):
+    def tenor(m):
         try:
-            og = OG_IMAGE_RE.search(_fetch_page(m.group(0)))
-            pic = og and (og.group(1) or og.group(2))
-            if pic and IMAGE_RE.match(pic):
+            return _tenor_picture(m.group(0)) or m.group(0)
+        except Exception:
+            return m.group(0)
+
+    def google(m):
+        try:
+            trail = _follow(m.group(0))
+            pic = _picture_in(trail)
+            if pic:
                 return pic
+            last = trail[-1] if trail else ""
+            if TENOR_PAGE_RE.match(last):
+                return _tenor_picture(last) or last
+            if GIPHY_PAGE_RE.match(last) or IMAGE_RE.match(last):
+                return last
         except Exception:
             pass
         return m.group(0)
 
-    return TENOR_PAGE_RE.sub(swap, text)
+    return TENOR_PAGE_RE.sub(tenor, GOOGLE_SHARE_RE.sub(google, text))
 
 
 def render_post(text):
