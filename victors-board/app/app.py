@@ -250,7 +250,7 @@ def admin_required(f):
 
 # ---------------------------------------------------------- template helpers
 
-from postmarkup import render_post
+from postmarkup import render_post, resolve_gif_pages
 from stadiums import load as load_stadiums
 
 
@@ -987,7 +987,7 @@ def post(reply_to=None):
         board = parent["board"]
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
-        body = resolve_reddit_links(request.form.get("body", "").strip())
+        body = resolve_gif_pages(resolve_reddit_links(request.form.get("body", "").strip()))
         image_url = request.form.get("image_url", "").strip()
         poll_lines = [ln.strip() for ln in
                       request.form.get("poll_options", "").splitlines() if ln.strip()][:10]
@@ -3381,7 +3381,7 @@ def edit(message_id):
         abort(403)
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
-        body = resolve_reddit_links(request.form.get("body", "").strip())
+        body = resolve_gif_pages(resolve_reddit_links(request.form.get("body", "").strip()))
         image_url = request.form.get("image_url", "").strip()
         if not subject:
             flash("A subject is required.")

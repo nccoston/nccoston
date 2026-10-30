@@ -30,6 +30,16 @@ IMAGE_RE = re.compile(
     r"https?://\S+\.(?:gif|jpe?g|png|webp)(?:\?\S*)?$", re.IGNORECASE)
 REDDIT_RE = re.compile(
     r"https?://(?:www\.|old\.)?reddit\.com/r/[^/\s]+/comments/\S+")
+# GIF sites hand out page links, not pictures. Giphy's page carries the id,
+# so the picture address can be built from it. Tenor's can't: those get
+# swapped for the picture once, at post time (resolve_gif_pages below).
+GIPHY_PAGE_RE = re.compile(
+    r"https?://(?:www\.)?giphy\.com/gifs/(?:[A-Za-z0-9-]*-)?([A-Za-z0-9]+)(?:[/?#]\S*)?")
+TENOR_PAGE_RE = re.compile(
+    r"https?://(?:www\.)?tenor\.com/(?:[a-z]{2}(?:-[A-Z]{2})?/)?view/[^\s<>\"]*-gif-\d+\S*")
+OG_IMAGE_RE = re.compile(
+    r'<meta[^>]+(?:property|name)="og:image"[^>]+content="(https://[^"]+)"'
+    r'|<meta[^>]+content="(https://[^"]+)"[^>]+(?:property|name)="og:image"')
 TIKTOK_RE = re.compile(
     r"https?://(?:www\.)?tiktok\.com/@[^/\s]+/video/(\d+)")
 # [fart] in a post becomes a button. Injected after escaping, so nobody can
@@ -67,6 +77,13 @@ def _linkify(url):
         # a bare picture/GIF link shows the picture itself
         return (f'<a href="{esc}" rel="nofollow noopener" target="_blank">'
                 f'<img src="{esc}" alt="" loading="lazy" '
+                f'referrerpolicy="no-referrer"></a>')
+    m = GIPHY_PAGE_RE.match(url)
+    if m:
+        # a Giphy page link shows its GIF; the link still goes to the page
+        pic = f"https://media.giphy.com/media/{m.group(1)}/giphy.gif"
+        return (f'<a href="{esc}" rel="nofollow noopener" target="_blank">'
+                f'<img src="{pic}" alt="" loading="lazy" '
                 f'referrerpolicy="no-referrer"></a>')
     if REDDIT_RE.match(url):
         return (f'<blockquote class="reddit-embed-bq" data-embed-height="500">'
@@ -146,6 +163,36 @@ class _Renderer(HTMLParser):
         while self.open_stack:
             self.out.append(f"</{self.open_stack.pop()}>")
         return "".join(self.out)
+
+
+def _fetch_page(url):
+    """The first 64KB of a page, as text. Replaced in tests."""
+    import requests
+    with requests.get(url, timeout=4, stream=True,
+                      headers={"User-Agent": "Mozilla/5.0"}) as r:
+        r.raise_for_status()
+        return r.raw.read(65536, decode_content=True).decode("utf-8", "replace")
+
+
+def resolve_gif_pages(text):
+    """Swap Tenor page links for the GIF they show, once, at post time. The
+    page says where its picture is (og:image); the picture link ends in .gif,
+    so the post then renders it like any other. Best effort: on any failure
+    the page link stays as typed."""
+    if not text or "tenor.com" not in text:
+        return text
+
+    def swap(m):
+        try:
+            og = OG_IMAGE_RE.search(_fetch_page(m.group(0)))
+            pic = og and (og.group(1) or og.group(2))
+            if pic and IMAGE_RE.match(pic):
+                return pic
+        except Exception:
+            pass
+        return m.group(0)
+
+    return TENOR_PAGE_RE.sub(swap, text)
 
 
 def render_post(text):
