@@ -34,7 +34,7 @@
 {% if pinned_threads %}
 <p class="pinned-row">
   {% for p in pinned_threads %}
-  &#128204; <a href="{{ url_for('message', message_id=p['id']) }}">{{ p['subject'] }}</a>{% if not loop.last %}<br>{% endif %}
+  &#128204; <a href="{{ url_for('message', message_id=p['id']) }}">{{ p['subject'] }}</a>{% if p['when'] %} &middot; {{ p['when'] }}{% endif %}{% if not loop.last %}<br>{% endif %}
   {% endfor %}
 </p>
 {% endif %}

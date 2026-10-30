@@ -172,6 +172,7 @@ def init_db():
                       "ALTER TABLE messages ADD COLUMN hof_at TEXT",
                       "ALTER TABLE messages ADD COLUMN image_size TEXT",
                       "ALTER TABLE games ADD COLUMN kickoff_at TEXT",
+                      "ALTER TABLE games ADD COLUMN network TEXT",
                       "ALTER TABLE bowl_scores ADD COLUMN opens INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE bowl_scores ADD COLUMN first_at TEXT",
                       "ALTER TABLE bowl_scores ADD COLUMN last_at TEXT",
@@ -413,11 +414,29 @@ def board_countdown():
             "when": when.strftime("%B %-d, %Y").replace(" 0", " ")}
 
 
+def kickoff_label(iso, network=None):
+    """'Sat 12:30 PM EDT on BTN' from a stored kickoff, or '' without one."""
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso)
+    except ValueError:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt = dt.astimezone(BOARD_TZ)
+    label = dt.strftime("%a %I:%M %p %Z").replace(" 0", " ")
+    return f"{label} on {network}" if network else label
+
+
 @app.context_processor
 def inject_globals():
-    pinned = get_db().execute(
-        "SELECT id, subject FROM messages WHERE pinned = 1"
-        " ORDER BY created_at DESC").fetchall()
+    # a pinned pick 'em carries its kickoff and network, once ESPN has them
+    pinned = [dict(r, when=kickoff_label(r["kickoff_at"], r["network"]))
+              for r in get_db().execute(
+                  "SELECT m.id, m.subject, g.kickoff_at, g.network"
+                  " FROM messages m LEFT JOIN games g ON g.message_id = m.id"
+                  " WHERE m.pinned = 1 ORDER BY m.created_at DESC").fetchall()]
     return {
         "user": current_user(),
         "site_title": get_setting("site_title"),
@@ -1324,8 +1343,24 @@ def _parse_event(sport, ev):
     away = next(c for c in comp["competitors"]
                 if c.get("homeAway") == "away")
     st = ev.get("status", {}).get("type", {})
+    # who's carrying it, when ESPN says: "BTN", "FOX", "CBS"...
+    network = ""
+    for b in comp.get("broadcasts") or []:
+        names = b.get("names") or []
+        if names:
+            network = names[0]
+            break
+    if not network:
+        for b in comp.get("geoBroadcasts") or []:
+            network = (b.get("media") or {}).get("shortName") or ""
+            if network:
+                break
     return {
         "sport": sport,
+        "network": network,
+        # early in the week ESPN lists a game with a placeholder time and
+        # timeValid false; that is "TBA", not a kickoff
+        "time_valid": ev.get("timeValid", True) is not False,
         "away": away["team"].get("abbreviation", "?"),
         "home": home["team"].get("abbreviation", "?"),
         "away_name": away["team"].get("shortDisplayName")
@@ -1666,7 +1701,10 @@ def _pickem_key(gm):
 
 
 def _kickoff_naive_iso(gm):
-    """The game's kickoff as stored-format (naive UTC) ISO, or None."""
+    """The game's kickoff as stored-format (naive UTC) ISO, or None (also
+    None while ESPN's time is a TBA placeholder: picks must not lock on it)."""
+    if gm.get("time_valid") is False:
+        return None
     try:
         return (datetime.fromisoformat(gm["date"].replace("Z", "+00:00"))
                 .astimezone(timezone.utc).replace(tzinfo=None)
@@ -1702,16 +1740,21 @@ def seed_gameday_pickem(db, gm):
                        (mid, mid))
             db.execute(
                 "INSERT INTO games (message_id, team_a, team_b, created_at,"
-                " kickoff_at) VALUES (?, 'Michigan', ?, ?, ?)",
-                (mid, opp, now_utc_iso(), _kickoff_naive_iso(gm)))
+                " kickoff_at, network) VALUES (?, 'Michigan', ?, ?, ?, ?)",
+                (mid, opp, now_utc_iso(), _kickoff_naive_iso(gm),
+                 gm.get("network") or None))
             db.commit()
             set_setting(_pickem_key(gm), str(mid))
         mid = int(mid)
         ko = _kickoff_naive_iso(gm)
         if ko:
-            # backfill: a thread seeded before kickoff enforcement existed
+            # backfill: a thread seeded before kickoff enforcement existed,
+            # or while ESPN still had the time as TBA
             db.execute("UPDATE games SET kickoff_at = ? WHERE message_id = ?"
                        " AND kickoff_at IS NULL", (ko, mid))
+        if gm.get("network"):
+            db.execute("UPDATE games SET network = ? WHERE message_id = ?"
+                       " AND (network IS NULL OR network = '')", (gm["network"], mid))
         if gm["state"] == "post":
             game = db.execute("SELECT * FROM games WHERE message_id = ?",
                               (mid,)).fetchone()
