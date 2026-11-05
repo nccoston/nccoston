@@ -60,16 +60,18 @@ export function makeClient() {
 export async function generateEpisode({ show, facts, model = DEFAULT_MODEL, effort = 'high', client = makeClient() }) {
   const system = systemPrompt();
   const user = userMessage(show, facts);
-  const response = await client.beta.messages.parse({
+  // Streamed: an episode is long, and the SDK refuses a non-streaming request that could run
+  // past 10 minutes. finalMessage() waits for the end and returns the parsed episode.
+  const response = await client.beta.messages.stream({
     model,
-    max_tokens: 32000,
+    max_tokens: 64000,
     output_config: { effort, format: betaZodOutputFormat(EpisodeSchema) },
     // On a safety decline the API retries the same request on a fallback model it picks.
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     system,
     messages: [{ role: 'user', content: user }],
-  });
+  }).finalMessage();
   if (response.stop_reason === 'refusal') {
     const e = new Error(`refused: ${response.stop_details?.category ?? 'unknown'}`);
     e.failure_class = 'refusal';
