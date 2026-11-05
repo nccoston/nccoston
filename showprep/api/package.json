@@ -1,0 +1,10 @@
+{
+  "name": "showprep-api",
+  "private": true,
+  "type": "module",
+  "description": "Generates a Show Prep episode file from a fact pack with the Claude API, and evaluates the generator.",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
+    "zod": "^4.6.7"
+  }
+}

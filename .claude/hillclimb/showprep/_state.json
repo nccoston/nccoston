@@ -1,0 +1,16 @@
+{
+  "flow": "showprep",
+  "description": "Show Prep generator: fact pack in, episode file out. Headline: no invented numbers.",
+  "harness_paths": ["showprep/api/evals/run-eval.mjs", "showprep/api/checks.mjs", "showprep/api/generate.mjs", "showprep/api/episode-schema.mjs", "showprep/PIPELINE.md"],
+  "metrics": [
+    {"id": "no_invented_numbers", "kind": "binary", "label": "No invented #"},
+    {"id": "guardrails", "kind": "binary", "label": "Guardrails"},
+    {"id": "structure", "kind": "binary", "label": "Structure"},
+    {"id": "number_support", "kind": "float", "label": "Number support"},
+    {"id": "confirm_coverage", "kind": "float", "label": "Confirm cover"}
+  ],
+  "perf_fields": [
+    {"id": "cost_usd", "label": "Cost", "unit": "$"},
+    {"id": "latency_s", "label": "Latency", "unit": "s"}
+  ]
+}
