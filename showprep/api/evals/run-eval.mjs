@@ -146,7 +146,9 @@ async function loadCases() {
   const { readdirSync } = await import('node:fs');
   const dir = join(EVAL_DIR, 'cases');
   return readdirSync(dir).filter(f => f.endsWith('.json')).sort()
-    .map(f => JSON.parse(readFileSync(join(dir, f), 'utf8')));
+    .map(f => JSON.parse(readFileSync(join(dir, f), 'utf8')))
+    // EVAL_ONLY=id1,id2 runs just those cases (pilots, debugging).
+    .filter(c => !process.env.EVAL_ONLY || process.env.EVAL_ONLY.split(',').includes(c.id));
 }
 
 /** Run the generator on one case. */
