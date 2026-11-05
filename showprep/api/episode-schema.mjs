@@ -1,26 +1,28 @@
 // The episode file as a Zod schema, for structured outputs. The model fills this shape;
 // toRenderer() turns it into the format render/render.mjs reads (see ../SCHEMA.md).
-// Structured outputs needs every field present, so optional things are nullable.
+// Structured outputs needs every field present. Optional things are an empty string or an empty list,
+// not nullable: twelve nullable fields made the compiled grammar too large for the API to accept.
+// toRenderer() drops the empty ones, so the renderer's format is unchanged.
 import { z } from 'zod';
 
 const Block = z.object({
   kind: z.enum(['lead', 'cohost', 'say', 'p', 'bullets', 'handoff', 'table']),
-  text: z.string().nullable().describe('For lead, cohost, say, p, handoff. Null for bullets and table.'),
-  items: z.array(z.string()).nullable().describe('For bullets only.'),
-  table_head: z.array(z.string()).nullable().describe('For table only.'),
-  table_rows: z.array(z.array(z.string())).nullable().describe('For table only.'),
+  text: z.string().describe('For lead, cohost, say, p, handoff. Empty for bullets and table.'),
+  items: z.array(z.string()).describe('For bullets only; else empty.'),
+  table_head: z.array(z.string()).describe('For table only; else empty.'),
+  table_rows: z.array(z.array(z.string())).describe('For table only; else empty.'),
 });
 
 const Card = z.object({
   n: z.number().int(),
   title: z.string(),
   minutes: z.number(),
-  grade: z.string().nullable().describe('A to F for a unit card, else null.'),
-  heart: z.string().nullable().describe('Label for the one card that is the heart of the episode, else null.'),
+  grade: z.string().describe('A to F for a unit card, else empty.'),
+  heart: z.string().describe('Label for the one card that is the heart of the episode, else empty.'),
   deck: z.object({
-    title: z.string().nullable(),
-    stat: z.string().nullable().describe('One big number for the graphic, or null.'),
-    stat_label: z.string().nullable(),
+    title: z.string().describe('Empty if none.'),
+    stat: z.string().describe('One big number for the graphic, or empty.'),
+    stat_label: z.string().describe('Empty if no stat.'),
     points: z.array(z.string()).describe('Two to four short lines for the graphic.'),
   }),
   blocks: z.array(Block),
@@ -33,7 +35,7 @@ export const EpisodeSchema = z.object({
     intro: z.string(),
     spine: z.string(),
     cohost_job: z.string(),
-    before_you_record: z.string().nullable(),
+    before_you_record: z.string().describe('Empty if none.'),
   }),
   parts: z.array(z.object({
     title: z.string(),
@@ -53,15 +55,15 @@ export const EpisodeSchema = z.object({
 
 function block(b) {
   switch (b.kind) {
-    case 'bullets': return { bullets: b.items ?? [] };
-    case 'table': return { table: { head: b.table_head ?? [], rows: b.table_rows ?? [] } };
-    default: return { [b.kind]: b.text ?? '' };
+    case 'bullets': return { bullets: b.items };
+    case 'table': return { table: { head: b.table_head, rows: b.table_rows } };
+    default: return { [b.kind]: b.text };
   }
 }
 
 /** Generated episode + show config -> the file render.mjs reads. */
 export function toRenderer(gen, showConfig) {
-  const clean = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined));
+  const clean = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined && v !== ''));
   return {
     show: showConfig.show,
     episode: clean(gen.episode),
