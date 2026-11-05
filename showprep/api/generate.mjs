@@ -45,7 +45,17 @@ ${JSON.stringify(facts, null, 2)}
  * Returns { episode (renderer format), response } so callers (the eval) can record
  * model, usage and stop_reason from the same call.
  */
-export async function generateEpisode({ show, facts, model = DEFAULT_MODEL, effort = 'high', client = new Anthropic() }) {
+// Always talk to Anthropic's public API. A cloud session sets ANTHROPIC_BASE_URL for its own use;
+// this code must never follow it. When the key is a network secret, the proxy adds the x-api-key
+// header on the way out, so the placeholder below never leaves this machine as a real credential.
+export function makeClient() {
+  return new Anthropic({
+    baseURL: 'https://api.anthropic.com',
+    apiKey: process.env.ANTHROPIC_API_KEY || 'set-by-network-secret',
+  });
+}
+
+export async function generateEpisode({ show, facts, model = DEFAULT_MODEL, effort = 'high', client = makeClient() }) {
   const system = systemPrompt();
   const user = userMessage(show, facts);
   const response = await client.beta.messages.parse({
