@@ -104,7 +104,8 @@
 
   {% if poll and poll['tally'] == 'thread' %}
   {# results wait until you've voted, so the tally can't lean on you;
-     a reader with no account can't vote and sees everything #}
+     a reader with no account can't vote and sees the counts — the names
+     stay among members #}
   {% set show_results = (not user) or my_picks %}
   <div class="bigpoll">
     <div class="bigpoll-head">&#128202; BOARD POLL{% if poll['multi'] %} &middot; pick all that apply{% endif %}
@@ -121,7 +122,7 @@
         </div>
         <div class="bigpoll-track"><div class="bigpoll-bar"
           style="width: {{ (100 * o['votes'] / total_votes) if total_votes else 0 }}%"></div></div>
-        {% if o['names'] %}<div class="bigpoll-names">{{ o['names'] | join(', ') }}</div>{% endif %}
+        {% if o['names'] and user %}<div class="bigpoll-names">{{ o['names'] | join(', ') }}</div>{% endif %}
       </div>
       {% endfor %}
       {% endif %}

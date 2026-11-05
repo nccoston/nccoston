@@ -81,7 +81,11 @@ jj.post("/post/%d" % root, data={"subject": "Maybe*", "body": ""}, follow_redire
 rich.post("/post/%d" % root, data={"subject": "Re: Yes*", "body": "you're wrong Ken"},
           follow_redirects=True)
 page = anon.get("/message/%d" % root).get_data(as_text=True)
-box = widget(page)
+# a reader with no account sees the counts, not who voted (Rags found the
+# log-out-and-peek loophole); the names are for members, who vote first
+if "bigpoll-track" not in widget(page) or "bigpoll-names" in widget(page):
+    fails.append("a reader with no account sees names, or no counts")
+box = widget(ken.get("/message/%d" % root).get_data(as_text=True))   # Ken has voted: names and all
 
 
 def names_under(option):
@@ -159,7 +163,9 @@ if q("SELECT COUNT(*) c FROM messages WHERE parent_id = ?", root2)[0]["c"] != 0:
 rich.post("/post/%d" % root2, data={"subject": "maize and blue*", "body": ""}, follow_redirects=True)
 danny.post("/post/%d" % root2, data={"subject": "White. Fight me.*", "body": ""}, follow_redirects=True)
 page = anon.get("/message/%d" % root2).get_data(as_text=True)
-box = widget(page)
+if "bigpoll-names" in widget(page):
+    fails.append("a reader with no account sees names on the multi poll")
+box = widget(ken.get("/message/%d" % root2).get_data(as_text=True))
 if sorted(names_under("Maize")) != ["Ken", "Rich"] or sorted(names_under("Blue")) != ["Ken", "Rich"]:
     fails.append("multi tally wrong: Maize=%s Blue=%s" % (names_under("Maize"), names_under("Blue")))
 if names_under("White") != ["danny"]:
