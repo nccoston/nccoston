@@ -1,0 +1,768 @@
+{
+  "show": {
+    "name": "Michigan Weekly",
+    "team": "Michigan",
+    "hosts": [
+      {
+        "name": "Nick",
+        "role": "lead"
+      },
+      {
+        "name": "Trev",
+        "role": "cohost"
+      }
+    ],
+    "colors": {
+      "ink": "#00274C",
+      "accent": "#FFCB05"
+    }
+  },
+  "episode": {
+    "title": "Michigan Weekly: Indiana 13, Michigan 6 (OT), then at Rutgers",
+    "meta": "Michigan Weekly. Hosts Nick (lead) and Trev (co-host). Last game: Indiana 13, Michigan 6, OT, Michigan Stadium, Sat. Oct. 24. Next: Michigan at Rutgers, Sat. Oct. 31, Piscataway. Records Tuesday night or Wednesday morning. Target 48-55 minutes.",
+    "intro": "Prep for the Indiana loss and the Rutgers trip. 13 cards plus one optional talk segment. Grades on cards 3, 4 and 6 are proposals: change them on air if you see it differently. Card 5 is the heart of the episode. The Whittingham talk segment has no graphic; air it or skip it. Every argument carries a statistical case and an emotional case. Numbers that can move or that sources disagree on are on the confirm list, and the script does not settle them.",
+    "spine": "Michigan's defense held the defending national champions without a touchdown for four quarters, and Michigan still lost, because the offense has not found the end zone in more than 60 minutes of football.",
+    "cohost_job": "Trev is the emotional case to Nick's statistical one: defend the defense, push on the offense, take the other side in the Whittingham segment, and grade Nick's Indiana-week personnel call on air.",
+    "before_you_record": "Check what can change: the Rutgers line and total, kickoff time and TV, Dylan Lonergan's status, and which Indiana closing line the tracker uses. Settle the overtime fourth-down distance before anyone says it. Nick pulls his own Indiana-week picks from the tracker to read back on card 8."
+  },
+  "parts": [
+    {
+      "title": "Part 1. Postgame: Indiana 13, Michigan 6 (OT)",
+      "cards": [
+        {
+          "n": 1,
+          "title": "Thirteen to six",
+          "minutes": 3,
+          "deck": {
+            "title": "Indiana 13, Michigan 6 (OT)",
+            "stat": "13-6",
+            "stat_label": "Indiana in overtime",
+            "points": [
+              "No touchdowns in regulation",
+              "Tying field goal with two seconds left",
+              "Indiana scored on the second snap of OT",
+              "Michigan 4-3, 1-3 Big Ten"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Final from Michigan Stadium: **Indiana 13, Michigan 6, in overtime**. Michigan is **4-3**, **1-3 in the Big Ten**. Nobody scored a touchdown in regulation. Michigan forced overtime with a field goal that went through with **two seconds left**. Then Indiana needed **two plays**: Hoover to Schott for **21**, and Hoover ran it in from the **4** on the second snap. Michigan has now gone **more than 60 minutes of game time** without a touchdown."
+            },
+            {
+              "say": "Four quarters, no touchdowns for either team, and Indiana found one in two snaps."
+            },
+            {
+              "cohost": "Trev, the emotional read first: this is a game the defense deserved to win. Then hand Nick the number: more than 60 minutes without a touchdown."
+            },
+            {
+              "handoff": "So how does a team that never reached the end zone in regulation get to 13? Every Indiana point has a story."
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "title": "Where Indiana's 13 came from",
+          "minutes": 3,
+          "deck": {
+            "title": "Every Indiana point",
+            "stat": "13",
+            "stat_label": "Indiana points, none on a drive from its own territory",
+            "points": [
+              "3: fumbled pitch, ball at the Michigan 28",
+              "3: tipped interception, then a 34-yard kick",
+              "7: two plays in overtime"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Indiana never scored on a drive that started in its own territory. Here is all of it."
+            },
+            {
+              "bullets": [
+                "**3**: Carr's late pitch on a speed option is fumbled. Indiana ball at the Michigan **28**. **Seven plays, 24 yards**, a **22-yard** field goal.",
+                "**3**: Carr throws for Buchanan in triple coverage. Tipped, intercepted. A **34-yard** field goal follows.",
+                "**7**: overtime, from the **25**. Hoover to Schott for **21**, Hoover runs it in from the **4**. **Two plays**."
+              ]
+            },
+            {
+              "say": "Indiana's offense in regulation was two Michigan turnovers and two field goals."
+            },
+            {
+              "cohost": "Trev, counterpoint: it was Carr's first start, against the defending national champions. Nick answers with the statistical case: both regulation scores came off his turnovers."
+            },
+            {
+              "handoff": "Which means the defense gave up almost nothing Indiana had to earn. Grade that unit first."
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "title": "Defense",
+          "minutes": 4,
+          "grade": "A",
+          "deck": {
+            "title": "Defense: proposed A",
+            "stat": "212",
+            "stat_label": "total yards allowed to the defending national champions",
+            "points": [
+              "127 rushing yards, no TD in regulation",
+              "Hoover 8-of-18 for 81 in regulation",
+              "Zeke Berry INT, 37-yard return",
+              "Chris Bracy 13 tackles"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Against the defending national champions, Michigan allowed **212 total yards**, **127 rushing yards** through four quarters, and **no touchdown in regulation**. Hoover was **8-of-18 for 81 yards** in regulation and threw his **first interception of the season**. Zeke Berry returned it **37 yards** to the Indiana **13**. Chris Bracy had **13 tackles**. Smith Snowden opened the fourth quarter with a sack."
+            },
+            {
+              "p": "Callback: last week's Card 12 said Hoover had **zero** interceptions and **six** different Michigan players had one. Hoover's zero is gone."
+            },
+            {
+              "say": "Last week we told you Hoover had zero picks. Zeke Berry corrected our stat sheet."
+            },
+            {
+              "cohost": "Trev lands it: 'Hoover's zero is gone.' Then the emotional case: this defense held the champs to 212 yards and walked off a loser."
+            },
+            {
+              "handoff": "Now the other side of the ball, where 212 yards allowed still wasn't enough."
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "title": "Offense",
+          "minutes": 4,
+          "grade": "F",
+          "deck": {
+            "title": "Offense: proposed F",
+            "stat": "1.4",
+            "stat_label": "yards a carry on 42 carries",
+            "points": [
+              "224 total yards",
+              "42 carries, 57 yards",
+              "Carr: 20-of-32, 167, an INT, a lost fumble",
+              "We said 4.5 a carry between the tackles"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Michigan's offense: **224 total yards**. **42 carries for 57 yards**, which is **1.4 a carry**. Carr, in his **first start**: **20-of-32 for 167 yards**, an interception and a lost fumble. Indiana week, this show said **4.5 yards a carry** between the tackles."
+            },
+            {
+              "p": "The strange part: Michigan outgained Indiana, **224 to 212**, and never got in the end zone."
+            },
+            {
+              "say": "We said 4.5 a carry. Michigan got 1.4, on 42 tries."
+            },
+            {
+              "cohost": "Trev pushes: 'Put it on the first-start quarterback.' Nick answers with 42 carries for 57 yards. That number isn't Carr's."
+            },
+            {
+              "handoff": "The worst part of 224 yards is where Michigan stood when it ran out of them. Third-and-goal at the 1."
+            }
+          ]
+        },
+        {
+          "n": 5,
+          "title": "Third-and-goal at the 1",
+          "minutes": 5,
+          "heart": "Heart of the episode",
+          "deck": {
+            "title": "Third-and-goal at the 1",
+            "stat": "-13",
+            "stat_label": "yards on the play-action sack",
+            "points": [
+              "61 yards, eight minutes, to the 1",
+              "Play-action, sacked, short kick missed",
+              "Ball at the Indiana 13: four plays, two yards",
+              "Whittingham: \"That was not a good football call.\""
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "The second half opens with the drive Michigan has wanted all year: **61 yards**, **eight minutes**, to **third-and-goal at the 1**. Offensive coordinator Jason Beck calls play-action, a fake handoff and a throw. Osunsanmi sacks Carr for **minus-13**. The short field goal misses. Zero points."
+            },
+            {
+              "p": "Then the defense hands it back. Berry's interception puts Michigan at the Indiana **13**. **Four plays, two yards**, field goal. In overtime, the fourth-down throw to Moa falls incomplete. The distance on that fourth down is on the confirm list; the writeups disagree, so don't say it until it's checked."
+            },
+            {
+              "p": "Whittingham on the goal-line call: \"That was not a good football call.\""
+            },
+            {
+              "bullets": [
+                "Statistical case: Michigan had the ball at the Indiana **1** and the Indiana **13** and got **3** points out of both trips. Indiana scored **13** all day.",
+                "Emotional case: **eight minutes** of the team Michigan says it is, gone on one call."
+              ]
+            },
+            {
+              "say": "Third-and-goal at the 1, and the play lost 13 yards. The head coach called it what it was."
+            },
+            {
+              "cohost": "Trev reads the Whittingham quote straight, no commentary, and lets it sit for a beat before Nick picks it up."
+            },
+            {
+              "handoff": "That missed short kick after the sack is its own problem. Special teams, again."
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "title": "Special teams",
+          "minutes": 3,
+          "grade": "D",
+          "deck": {
+            "title": "Special teams: proposed D",
+            "stat": "2",
+            "stat_label": "misses Saturday, after one all season",
+            "points": [
+              "Missed a 53-yarder and the short one",
+              "Made 29 and 26, including the tying kick",
+              "Two muffed punts this season",
+              "Iowa: kickoff coverage in a one-point loss"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Butkowski missed a **53-yarder** before halftime and the short kick after the goal-line sack. He made field goals of **29** and **26**, including the tying kick with **two seconds** left. Before Saturday he had missed **once** all year. The season around it: **two muffed punts**, the opener and Minnesota. At Minnesota, mishandled punts and coverage turned into **three points** for the other side. Against Iowa, in a **one-point** loss, kickoff coverage broke down."
+            },
+            {
+              "p": "Read-back: in Episode 2 we said the models were grading a special-teams unit Michigan replaced. The replacement has a muff in the opener, a muff at Minnesota, a coverage breakdown against Iowa and two misses Saturday."
+            },
+            {
+              "say": "Butkowski missed once all year before Saturday. Saturday he missed twice, and one of them was the short one."
+            },
+            {
+              "cohost": "Trev makes the emotional case for the kicker before the grade lands: he made the tying kick with two seconds left."
+            },
+            {
+              "handoff": "Field goals are what Michigan settles for. The season numbers say it settles a lot."
+            }
+          ]
+        },
+        {
+          "n": 7,
+          "title": "Under 20",
+          "minutes": 4,
+          "deck": {
+            "title": "The season on offense",
+            "stat": "15.4",
+            "stat_label": "points a game against Power Four teams",
+            "points": [
+              "Under 20 points in 5 of 7 games",
+              "More than 21 once: UTEP",
+              "Whittingham: \"There's no way around it.\""
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Michigan has scored **under 20 points in 5 of 7** games. Against Power Four teams it averages **15.4** a game. It has scored more than **21** only **once** all year, against UTEP."
+            },
+            {
+              "p": "Whittingham on Beck: \"I'm not going to say he's struggling.\" Whittingham on Sunday: \"We've got to be better than that on offense. There's no way around it.\""
+            },
+            {
+              "say": "Five of seven under 20. The exception list is one game long, and the game is UTEP."
+            },
+            {
+              "cohost": "Trev, counterpoint: the head coach won't say Beck is struggling. Ask Nick what he'd call 15.4."
+            },
+            {
+              "handoff": "We grade our own numbers on this show too, and this season ours need a red pen."
+            }
+          ]
+        },
+        {
+          "n": 8,
+          "title": "We grade ourselves",
+          "minutes": 3,
+          "deck": {
+            "title": "The show's own record",
+            "stat": "3",
+            "stat_label": "losses, none of them in our August budget",
+            "points": [
+              "Budgeted two: at Oregon, at Ohio State",
+              "'Better team, worse record'",
+              "Leipold floor: 174 second-half rush yards vs. Penn State",
+              "Indiana week: Michigan +7.5"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "In August we budgeted **two** losses: at Oregon and at Ohio State. Michigan has **three** losses, and **none** of them were in the budget. Episode 2: 'better team, worse record.' Week 2 we coined 'the Leipold floor: run it, raise the floor,' and Michigan ran for **174 yards** in the second half against Penn State. Indiana week we said **4.5 a carry** between the tackles and took **Michigan +7.5**."
+            },
+            {
+              "p": "Most books closed at Indiana **-7.5**, so the +7.5 cashed by a **half point**. If your book had **-7**, it was a push. That one is on the confirm list."
+            },
+            {
+              "p": "Nick reads back his own Indiana-week picks from the tracker, including the first-drive personnel call: 11 personnel or Rhino, from his rewatch. Read it as it was written."
+            },
+            {
+              "say": "The Leipold floor held against Penn State, 174 yards in one half. Against Indiana the floor was 1.4."
+            },
+            {
+              "cohost": "Trev grades Nick's personnel call on air. Pass or fail, no partial credit."
+            },
+            {
+              "handoff": "Which brings up the question the fan base is asking this week, whether or not we want to."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Talk segment (no graphic, optional): Is it Whittingham?",
+      "blocks": [
+        {
+          "p": "Opinion segment. Nothing on screen. The hosts decide whether to air it; the preview and picks work without it."
+        },
+        {
+          "lead": "Whittingham after the game: \"Everything falls on my shoulders. So whatever happens in the course of a game is on me.\" And: \"If that's the number 6 team in the country, then we're a pretty good football team, even though we're sitting here at 4-3.\""
+        },
+        {
+          "bullets": [
+            "Statistical case, the money: firing him would cost about **$23-25 million** by this show's estimate, **75%** of the remaining base on a **$41 million** deal. On the confirm list.",
+            "If he leaves before **Feb. 1, 2027**, he owes Michigan **$5 million**, and he keeps his signing bonus only if he stays past **Jan. 31**.",
+            "Statistical case, the football: the defense, under his hire Jay Hill, ranks **fourth** in the country. The offense has scored more than **21** once.",
+            "Recruiting: the 2027 class was ranked **12th** nationally last week, and Michigan flipped a 2027 receiver from Toledo."
+          ]
+        },
+        {
+          "p": "Emotional case: December signing day, the early-January transfer portal window and NIL money all land in the same winter. Whatever Michigan decides about the offense, it decides on that calendar, with a 4-3 record hanging over it."
+        },
+        {
+          "say": "The defense is fourth in the country. The offense has scored more than 21 once. Both of them are his."
+        },
+        {
+          "cohost": "Trev takes whichever side Nick doesn't. If Nick argues patience, Trev argues 15.4 points a game. If Nick argues change, Trev argues the defense ranks fourth and the class was 12th."
+        },
+        {
+          "handoff": "Whatever you think about Michigan's buyout, the coach on the other sideline Saturday has one too."
+        }
+      ],
+      "cards": []
+    },
+    {
+      "title": "Part 3. Preview: Michigan at Rutgers",
+      "cards": [
+        {
+          "n": 9,
+          "title": "Rutgers, game by game",
+          "minutes": 3,
+          "deck": {
+            "title": "Rutgers: 2-5, 1-3 Big Ten",
+            "stat": "2-5",
+            "stat_label": "1-5 against FBS teams",
+            "points": [
+              "Lost 37-21 at home to UMass",
+              "Schiano 32-44 since 2020",
+              "Buyout about $18.5 million",
+              "More than $40 million in buyouts on one field"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Rutgers is **2-5**, **1-3** in the Big Ten, **1-5** against FBS teams. Greg Schiano is **32-44** since he came back in **2020**, went **5-7** last year, and opened this season losing **37-21** at home to UMass as a **29.5-point favorite**. Firing him after this season would cost about **$18.5 million**."
+            },
+            {
+              "table": {
+                "head": [
+                  "Opponent",
+                  "Result"
+                ],
+                "rows": [
+                  [
+                    "UMass (home)",
+                    "L 21-37"
+                  ],
+                  [
+                    "at Boston College",
+                    "L 21-28"
+                  ],
+                  [
+                    "USC",
+                    "L 35-42"
+                  ],
+                  [
+                    "Howard",
+                    "W 58-7"
+                  ],
+                  [
+                    "Indiana",
+                    "L 15-47"
+                  ],
+                  [
+                    "at Maryland",
+                    "W 37-30"
+                  ],
+                  [
+                    "at No. 24 Northwestern",
+                    "L 14-42"
+                  ]
+                ]
+              }
+            },
+            {
+              "say": "Rutgers lost at home to UMass as a 29.5-point favorite. That is where this season started for them."
+            },
+            {
+              "cohost": "Trev lands it: between Schiano and Whittingham, more than $40 million in buyouts will be on the same field Saturday."
+            },
+            {
+              "handoff": "Good news for an offense at 1.4 a carry: look at what Rutgers lets people do."
+            }
+          ]
+        },
+        {
+          "n": 10,
+          "title": "The Rutgers defense",
+          "minutes": 3,
+          "deck": {
+            "title": "What Rutgers allows",
+            "stat": "37.6",
+            "stat_label": "points a game allowed against FBS teams",
+            "points": [
+              "At least 28 in every FBS game",
+              "Northwestern: 285 rushing yards",
+              "Northwestern: 9-of-13 on third down",
+              "Indiana: 593 yards"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Rutgers allows **37.6 points a game** against FBS teams and at least **28** in every FBS game. Northwestern ran for **285 yards** and went **9-of-13 on third down**. Indiana put up **593 yards**."
+            },
+            {
+              "bullets": [
+                "Statistical case: Michigan averages **15.4** against Power Four teams. Rutgers hasn't held an FBS team under **28**. One of those numbers breaks Saturday.",
+                "Emotional case: if the run game doesn't show up against this defense, Michigan has to ask whether it's coming back this year."
+              ]
+            },
+            {
+              "say": "Indiana got 212 yards against Michigan. It got 593 against Rutgers."
+            },
+            {
+              "cohost": "Trev says the 593 slowly. Then asks Nick which number breaks, 15.4 or 28."
+            },
+            {
+              "handoff": "On the other side of the ball, Rutgers may not know who its quarterback is."
+            }
+          ]
+        },
+        {
+          "n": 11,
+          "title": "Rutgers with the ball",
+          "minutes": 3,
+          "deck": {
+            "title": "Rutgers on offense",
+            "stat": "9-of-27",
+            "stat_label": "backup QBs at Northwestern",
+            "points": [
+              "Lonergan hurt on the third play",
+              "Backups: 100 yards, two INTs",
+              "Raymond: 150 yards on 18 carries",
+              "Duff: 196 yards, three TDs in the opener"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Starting quarterback Dylan Lonergan got hurt on the **third play** at Northwestern. The two backups went **9-of-27 for 100 yards** with **two interceptions**. No injury detail yet. Running back Antwan Raymond had **150 yards on 18 carries** at Northwestern. Receiver KJ Duff had **196 yards and three touchdowns** in the opener."
+            },
+            {
+              "say": "Hoover went 8-of-18 against this Michigan defense. Rutgers' backups went 9-of-27 against Northwestern."
+            },
+            {
+              "cohost": "Trev names the two players who can hurt Michigan: Raymond and Duff. If Lonergan's status is known by recording, Trev reads it here."
+            },
+            {
+              "handoff": "Michigan is 9-1 against Rutgers. The one was in Piscataway."
+            }
+          ]
+        },
+        {
+          "n": 12,
+          "title": "The one, and the five",
+          "minutes": 3,
+          "deck": {
+            "title": "Series and what's left",
+            "stat": "9-1",
+            "stat_label": "Michigan all-time vs. Rutgers",
+            "points": [
+              "Only loss: 26-24 in Piscataway, 2014",
+              "Last meeting: 31-7 in Ann Arbor, 2023",
+              "Bowl eligible: two of the last five",
+              "Eight wins: four of five"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Michigan is **9-1** all-time against Rutgers. The only loss was the first meeting, **26-24** in Piscataway in **2014**. The last meeting was **31-7** in Ann Arbor in **2023**. No meetings in **2024** or **2025**. What's left: at Rutgers, Michigan State, at Oregon, UCLA, at Ohio State. Bowl eligibility needs **two** wins in the last **five**. Eight wins needs **four of five**. Michigan hasn't missed eight wins in a full season since **2014**."
+            },
+            {
+              "say": "The last time Michigan lost to Rutgers was 2014. The last time Michigan missed eight wins was 2014."
+            },
+            {
+              "cohost": "Trev, the emotional case: four of five, with Oregon and Ohio State on the road. Say out loud whether you believe it."
+            },
+            {
+              "handoff": "Now the number."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Part 4. Picks",
+      "cards": [
+        {
+          "n": 13,
+          "title": "Picks: Michigan at Rutgers",
+          "minutes": 5,
+          "deck": {
+            "title": "The number",
+            "stat": "-14.5",
+            "stat_label": "Michigan, total 47.5 (Fox Sports, Oct. 25)",
+            "points": [
+              "Implied score 31-17",
+              "Michigan over 21 once this year",
+              "Rutgers allowed 28+ to every FBS team",
+              "One number: 200 rushing yards"
+            ]
+          },
+          "blocks": [
+            {
+              "lead": "Fox Sports, Oct. 25: **Michigan -14.5**, total **47.5**, implied score **31-17**. Michigan has scored more than **21** once this year. Rutgers has allowed at least **28** to every FBS team. Kickoff time and TV are still to confirm."
+            },
+            {
+              "table": {
+                "head": [
+                  "Game",
+                  "Michigan vs. the number (show tracker)"
+                ],
+                "rows": [
+                  [
+                    "WMU",
+                    "-26.5"
+                  ],
+                  [
+                    "OU",
+                    "+11.5"
+                  ],
+                  [
+                    "UTEP",
+                    "0"
+                  ],
+                  [
+                    "Iowa",
+                    "-5.5"
+                  ],
+                  [
+                    "Minnesota",
+                    "-11.5"
+                  ],
+                  [
+                    "PSU",
+                    "-3.5"
+                  ],
+                  [
+                    "Indiana",
+                    "+0.5"
+                  ],
+                  [
+                    "Total",
+                    "-35.0, 2-4-1"
+                  ]
+                ]
+              }
+            },
+            {
+              "p": "Picks for the tracker, read back next week: a side against **-14.5**, the total against **47.5**, and one number each. Suggested one-numbers: **200 rushing yards** (Northwestern ran for **285** on this defense), or a Michigan touchdown before halftime."
+            },
+            {
+              "say": "The implied score gives Michigan 31. Michigan has topped 21 once all year."
+            },
+            {
+              "cohost": "Trev's one number: 200 rushing yards. Nick takes the touchdown before halftime, or argues why not."
+            },
+            {
+              "handoff": "Nick reads all four picks back once so they're on tape for next week's grade. Next week, we find out whether the touchdown drought ended in Piscataway."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "cohost_brief": {
+    "job": "Be the emotional case to Nick's statistical one: defend the defense, push on the offense, take the other side in the Whittingham segment, and grade Nick's Indiana-week personnel call on air.",
+    "numbers": [
+      "Indiana 13, Michigan 6, OT. Michigan 4-3, 1-3 Big Ten.",
+      "More than 60 minutes of game time without a Michigan touchdown.",
+      "212 total yards allowed to Indiana; Hoover 8-of-18 for 81 in regulation.",
+      "42 carries for 57 yards: 1.4 a carry.",
+      "Third-and-goal at the 1: play-action, sack for minus-13, missed short kick.",
+      "15.4 points a game against Power Four teams; over 21 once (UTEP).",
+      "Rutgers allows 37.6 a game against FBS teams; Northwestern ran for 285.",
+      "Michigan 9-1 all-time vs. Rutgers; the loss was 26-24 in Piscataway, 2014."
+    ],
+    "pushback": [
+      [
+        "The defense did its job. This loss is all on Beck.",
+        "Whittingham said the goal-line call was \"not a good football call,\" but he also said \"Everything falls on my shoulders.\" And 42 carries for 57 yards isn't one call."
+      ],
+      [
+        "It was Carr's first start. Give him a pass.",
+        "The emotional case is fair, but both Indiana field goals in regulation came off his turnovers: a fumbled pitch and a tipped interception."
+      ],
+      [
+        "Losing to the number 6 team in overtime is fine.",
+        "Whittingham made that case himself. The counter: Michigan had the ball at the Indiana 1 and the Indiana 13 and got 3 points, and it is 4-3 with three losses nobody budgeted."
+      ],
+      [
+        "Fire Whittingham.",
+        "The show's own estimate is about $23-25 million, and his defense ranks fourth with the 2027 class ranked 12th last week. Check the buyout figure before arguing it."
+      ],
+      [
+        "Rutgers is a get-right game. Michigan covers 14.5 easily.",
+        "Rutgers allows at least 28 to every FBS team, but Michigan has scored more than 21 once all year. The implied 31 asks for something this offense hasn't done against a Power Four team."
+      ]
+    ],
+    "one_number": "200 rushing yards for Michigan at Rutgers. Northwestern ran for 285 on this defense."
+  },
+  "timing": "Part 1, postgame cards 1-8: about 29 min. Talk segment: about 7 min, optional. Part 3, preview cards 9-12: about 12 min. Part 4, picks card 13: about 5 min. Total about 53 min with the talk segment and about 46 without, against a 48-55 target. If you skip the talk segment, let card 5 and the picks card run long to get back over 48. If it runs long, cut in this order: card 2 (fold the two turnover lines into card 5), then trim card 8 to the Indiana read-back, then drop the series history from card 12 and keep what's left on the schedule.",
+  "confirm": [
+    {
+      "item": "Rutgers line and total",
+      "detail": "Michigan -14.5, total 47.5, implied 31-17, from Fox Sports on Oct. 25. Lines move; re-read the morning you record and update card 13 and the co-host brief."
+    },
+    {
+      "item": "Kickoff time and TV for Michigan at Rutgers",
+      "detail": "Not confirmed when the facts were gathered. Card 13 says 'still to confirm'; fill it in if it's out."
+    },
+    {
+      "item": "Dylan Lonergan's status",
+      "detail": "Hurt on the third play at Northwestern, no injury detail yet. Card 11 depends on who starts at quarterback for Rutgers."
+    },
+    {
+      "item": "Overtime fourth down: distance and description",
+      "detail": "On3 says Moa dropped a pass on 4th-and-5 after one Michigan first down. Mitten Football says 4th-and-9, incomplete to Moa. Card 5 says only that the fourth-down throw to Moa fell incomplete. Settle it before anyone says a distance."
+    },
+    {
+      "item": "Indiana closing line and the show's +7.5 pick",
+      "detail": "VegasInsider: most books closed at Indiana -7.5, so Michigan covered by a half point; a -7 book would be a push. Confirm which number the tracker grades against (card 8 and the tracker's Indiana +0.5)."
+    },
+    {
+      "item": "Penn State line vs. the show's against-the-spread split",
+      "detail": "CBS had Penn State -6.5 as the closing line, which makes Michigan an underdog in that game. The show's notes say Michigan is 0-4-1 as a favorite and 2-0 as an underdog, and the tracker has PSU at -3.5; those only fit if Michigan was favored against Penn State. Check which line the tracker used. The script uses the 2-4-1 total only, not the favorite/underdog split."
+    },
+    {
+      "item": "Whittingham buyout",
+      "detail": "About $23-25 million is the show's own estimate (75% of the remaining base on a $41 million deal), from Maize n Brew reporting. Also confirm the $5 million he would owe if he left before Feb. 1, 2027, and the signing-bonus term past Jan. 31."
+    },
+    {
+      "item": "Nick's Indiana-week picks",
+      "detail": "The prep can't see the full tracker. Nick reads his own picks back on card 8, including the first-drive personnel call (11 personnel or Rhino)."
+    },
+    {
+      "item": "Defense ranks fourth in the country",
+      "detail": "Comes from the show's own notes only. Confirm the current ranking and which stat it ranks in before using it in the talk segment."
+    },
+    {
+      "item": "2027 recruiting class ranked 12th",
+      "detail": "Ranked 12th nationally last week; rankings move weekly. Re-check before recording."
+    },
+    {
+      "item": "Source links",
+      "detail": "The fact pack's URLs point at each outlet's home page, and per-fact source matches were best guesses. Re-link the actual articles before anything goes in show notes. The show's own episodes have no URL."
+    },
+    {
+      "item": "Fan blog item in the fact pack",
+      "detail": "One fan-blog entry contained no game facts, only a false final score and an ad line. It was ignored and is not used or cited anywhere."
+    }
+  ],
+  "sources": [
+    {
+      "title": "On3: Michigan falls to Indiana in overtime",
+      "url": "https://www.on3.com/"
+    },
+    {
+      "title": "Yahoo Sports: Indiana survives against Michigan 13-6",
+      "url": "https://sports.yahoo.com/"
+    },
+    {
+      "title": "ClickOnDetroit: Michigan falls to No. 6 Indiana in overtime",
+      "url": "https://www.clickondetroit.com/"
+    },
+    {
+      "title": "Mitten Football: Michigan's flailing offense main culprit",
+      "url": "https://mittenfootball.com/"
+    },
+    {
+      "title": "Yahoo Sports: Whittingham on the goal-line call",
+      "url": "https://sports.yahoo.com/"
+    },
+    {
+      "title": "On3: Whittingham after the loss",
+      "url": "https://www.on3.com/"
+    },
+    {
+      "title": "Yahoo Sports: Whittingham still grossed out by the offense (Oct. 25)",
+      "url": "https://sports.yahoo.com/"
+    },
+    {
+      "title": "gbmwolverine: Whittingham after Indiana",
+      "url": "https://www.gbmwolverine.com/"
+    },
+    {
+      "title": "Michigan Daily: special teams errors at Minnesota",
+      "url": "https://www.michigandaily.com/"
+    },
+    {
+      "title": "Maize n Brew: Whittingham contract and buyout",
+      "url": "https://www.maizenbrew.com/"
+    },
+    {
+      "title": "Yahoo Sports: Michigan flips 2027 WR from Toledo",
+      "url": "https://sports.yahoo.com/"
+    },
+    {
+      "title": "Covers: Rutgers 2026 results",
+      "url": "https://www.covers.com/"
+    },
+    {
+      "title": "Yahoo Sports: Northwestern crushes Rutgers",
+      "url": "https://sports.yahoo.com/"
+    },
+    {
+      "title": "CBS Sports: Rutgers at Northwestern box score",
+      "url": "https://www.cbssports.com/"
+    },
+    {
+      "title": "CBS Sports: Penn State vs. Michigan odds",
+      "url": "https://www.cbssports.com/"
+    },
+    {
+      "title": "TSN: Indiana 47, Rutgers 15",
+      "url": "https://www.tsn.ca/"
+    },
+    {
+      "title": "Fox Sports: Schiano contract and buyout",
+      "url": "https://www.foxsports.com/"
+    },
+    {
+      "title": "Fox Sports: Michigan at Rutgers odds",
+      "url": "https://www.foxsports.com/"
+    },
+    {
+      "title": "VegasInsider: Indiana vs. Michigan odds",
+      "url": "https://www.vegasinsider.com/"
+    },
+    {
+      "title": "Rutgers: opponent history vs. Michigan",
+      "url": "https://scarletknights.com/"
+    },
+    {
+      "title": "Michigan Weekly: the show's own earlier episodes and notes",
+      "url": ""
+    }
+  ]
+}
