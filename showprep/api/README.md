@@ -41,7 +41,9 @@ Known limits, stated plainly:
 
 ## Running it
 
-It needs an Anthropic API key in `ANTHROPIC_API_KEY`. Nothing here runs without one.
+It needs an Anthropic API key in `SHOWPREP_API_KEY` (`ANTHROPIC_API_KEY` also works locally). In a cloud
+environment use `SHOWPREP_API_KEY`: the environment reserves `ANTHROPIC_API_KEY` for Claude Code's own login.
+Nothing here runs without one.
 
 ```bash
 cd showprep/api && npm install

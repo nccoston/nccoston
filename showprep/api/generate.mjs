@@ -1,6 +1,6 @@
 // Build one episode file from a show config and a fact pack, with the Claude API.
 //
-//   ANTHROPIC_API_KEY=... node generate.mjs <show.json> <facts.json> <out-episode.json>
+//   SHOWPREP_API_KEY=... node generate.mjs <show.json> <facts.json> <out-episode.json>
 //
 // The system prompt IS ../PIPELINE.md, read at run time, so the instructions live in one place.
 // The fact pack is the only source of truth: the prompt forbids numbers that are not in it,
@@ -48,10 +48,12 @@ ${JSON.stringify(facts, null, 2)}
 // Always talk to Anthropic's public API. A cloud session sets ANTHROPIC_BASE_URL for its own use;
 // this code must never follow it. When the key is a network secret, the proxy adds the x-api-key
 // header on the way out, so the placeholder below never leaves this machine as a real credential.
+// The key is read from SHOWPREP_API_KEY first: a cloud environment reserves ANTHROPIC_API_KEY for
+// Claude Code's own login, so a key saved under that name may never reach this code.
 export function makeClient() {
   return new Anthropic({
     baseURL: 'https://api.anthropic.com',
-    apiKey: process.env.ANTHROPIC_API_KEY || 'set-by-network-secret',
+    apiKey: process.env.SHOWPREP_API_KEY || process.env.ANTHROPIC_API_KEY || 'set-by-network-secret',
   });
 }
 
@@ -93,7 +95,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     writeFileSync(outPath, JSON.stringify(episode, null, 2));
     console.log(`Wrote ${outPath} (${response.model}, ${response.usage.input_tokens} in / ${response.usage.output_tokens} out)`);
   } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) console.error('No valid API key. Set ANTHROPIC_API_KEY.');
+    if (e instanceof Anthropic.AuthenticationError) console.error('No valid API key. Set SHOWPREP_API_KEY.');
     else if (e instanceof Anthropic.RateLimitError) console.error('Rate limited; try again shortly.');
     else if (e instanceof Anthropic.APIError) console.error(`API error ${e.status}: ${e.message}`);
     else console.error(e?.message || e);
