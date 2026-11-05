@@ -1,0 +1,13 @@
+{
+  "slug": "penn-state-prospect",
+  "team": "Penn State",
+  "show": {
+    "name": "TBD: chosen at run time",
+    "hosts": [{ "name": "Host A", "role": "lead" }, { "name": "Host B", "role": "cohost" }],
+    "colors": { "ink": "#041E42", "accent": "#FFFFFF" }
+  },
+  "target_minutes": "45-55",
+  "records": "unknown",
+  "avoid_sources": [],
+  "notes": "Prospect sample. The run picks one independent Penn State football podcast, takes its show name and host names from its own feed or site, and builds that week's prep in its format. Not committed: prospect prep stays out of this public repository."
+}

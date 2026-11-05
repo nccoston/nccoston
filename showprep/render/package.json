@@ -1,0 +1,11 @@
+{
+  "name": "showprep-render",
+  "private": true,
+  "type": "module",
+  "description": "Renders a show-prep episode JSON into a talk-track PDF, a no-JS deck and 1920x1080 card JPGs.",
+  "scripts": { "render": "node render.mjs" },
+  "dependencies": {
+    "@fontsource/anton": "5.3.0",
+    "@fontsource/barlow-semi-condensed": "5.3.0"
+  }
+}
