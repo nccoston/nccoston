@@ -154,7 +154,7 @@ const FAKE_RTC = `
   await nikos.click("#chat-clear"); await tick(ken);
   await is(ken, "(hidden)", "Ken was not dropped by the clear");
   await is(nikos, "· voice", "Nikos after the clear");
-  ok((await rtc(ken)).closed === closedBefore + 2, "Ken's connection was not closed by the clear");
+  ok((await rtc(ken)).closed >= closedBefore + 2, "Ken's connections were not closed by the clear");
 
   await b.close();
   console.log(problems.length ? "PROBLEMS:\n  " + problems.join("\n  ") : "ALL PASS");

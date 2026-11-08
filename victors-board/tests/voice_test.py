@@ -103,24 +103,27 @@ d = rich.post("/chat/voice/publish", data={"sdp": "RICH OFFER", "mid": "0"}).get
 if d != {"ok": True, "sdp": "ANSWER"}:
     fails.append("publish: %r" % d)
 m, p, body = calls[-1]
-if not (p == "/sessions/s2/tracks/new" and body["sessionDescription"] == {"type": "offer", "sdp": "RICH OFFER"}
+# the mic got a session of its own (s4), apart from the one Rich listens on (s2)
+if calls[-2][1] != "/sessions/new":
+    fails.append("publishing did not open the mic's own session")
+if not (p == "/sessions/s4/tracks/new" and body["sessionDescription"] == {"type": "offer", "sdp": "RICH OFFER"}
         and body["tracks"][0]["location"] == "local" and body["tracks"][0]["mid"] == "0"
         and body["tracks"][0]["trackName"].startswith("mic-")):
     fails.append("the publish call to the relay is off: %r" % ((p, body),))
 track = body["tracks"][0]["trackName"]
 v = voice(ken)
-if v["talking"] != ["Rich"] or v["tracks"] != [{"sid": "s2", "track": track, "handle": "Rich"}]:
+if v["talking"] != ["Rich"] or v["tracks"] != [{"sid": "s4", "track": track, "handle": "Rich"}]:
     fails.append("Ken does not see Rich talking: %r" % v)
 if voice(rich)["tracks"] != []:
     fails.append("Rich was offered his own track")
 
 # Ken pulls Rich: the relay's offer comes back, Ken answers, it's renegotiated
-d = ken.post("/chat/voice/pull", data={"tracks": json.dumps([{"sid": "s2", "track": track}])}).get_json()
+d = ken.post("/chat/voice/pull", data={"tracks": json.dumps([{"sid": "s4", "track": track}])}).get_json()
 if not (d["ok"] and d["sdp"] == "OFFER" and d["type"] == "offer" and d["renegotiate"]
-        and d["tracks"] == [{"mid": "0", "track": track, "sid": "s2"}]):
+        and d["tracks"] == [{"mid": "0", "track": track, "sid": "s4"}]):
     fails.append("pull: %r" % d)
 if calls[-1][1] != "/sessions/s1/tracks/new" or calls[-1][2] != {"tracks": [
-        {"location": "remote", "sessionId": "s2", "trackName": track}]}:
+        {"location": "remote", "sessionId": "s4", "trackName": track}]}:
     fails.append("the pull call to the relay is off: %r" % (calls[-1],))
 if ken.post("/chat/voice/answer", data={"sdp": "KEN ANSWER"}).get_json() != {"ok": True}:
     fails.append("answer refused")
@@ -131,6 +134,9 @@ before = len(calls)
 for bad in ([{"sid": "s9", "track": "mic-x"}], [{"sid": "s1", "track": track}], "not json"):
     if ken.post("/chat/voice/pull", data={"tracks": json.dumps(bad) if not isinstance(bad, str) else bad}).get_json() != {"ok": False}:
         fails.append("bad pull accepted: %r" % (bad,))
+# Rich never pulls his own mic
+if rich.post("/chat/voice/pull", data={"tracks": json.dumps([{"sid": "s4", "track": track}])}).get_json() != {"ok": False}:
+    fails.append("Rich could pull his own mic")
 if len(calls) != before:
     fails.append("a bad pull reached the relay")
 
@@ -174,7 +180,7 @@ if ken.post("/chat/voice/join").get_json() != {"ok": False, "error": "the voice 
 appmod._cf = fake_cf
 
 # a full room
-appmod.VOICE_PEERS.update({9000 + i: {"handle": "x%d" % i, "sid": "x", "track": None, "admin": False,
+appmod.VOICE_PEERS.update({9000 + i: {"handle": "x%d" % i, "sid": "x", "pub": None, "track": None, "admin": False,
                                        "talking": False, "t": time.monotonic()} for i in range(appmod.VOICE_MAX)})
 if ken.post("/chat/voice/join").get_json() != {"ok": False, "error": "the voice room is full"}:
     fails.append("the room cap is not enforced")

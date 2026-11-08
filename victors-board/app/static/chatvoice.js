@@ -10,13 +10,17 @@
 //
 // Audio goes through Cloudflare's relay; this page only ever talks to the
 // board, which brokers the relay sessions. Nothing is recorded anywhere.
-// One relay session, one PeerConnection, one negotiation at a time.
+// One connection to listen on, one negotiation at a time; the mic, when
+// you talk, gets a connection of its own that only ever sends (an iPhone
+// that pulled talkers first could add a mic to that connection and send
+// nothing).
 (function () {
   var el = document.getElementById("voice");
   if (!el || !window.RTCPeerConnection) return;
   var ICE = el.getAttribute("data-ice");
   var ADMIN = el.getAttribute("data-admin") === "1";
   var pc = null, mic = null, micTrack = null;
+  var pub = null;             // the mic's own connection to the relay
   var state = "off";          // off | in | talking | muted
   var joining = false;        // between the tap and the board's answer
   var auto = false;           // we joined on our own, to listen
@@ -158,7 +162,8 @@
     if (!md || !md.getUserMedia) { say("no mic"); return; }
     md.getUserMedia({ audio: true }).then(function (stream) {
       mic = stream; micTrack = stream.getAudioTracks()[0];
-      var c = connection();
+      if (pub) { try { pub.close(); } catch (e) {} }
+      var c = pub = new RTCPeerConnection({ iceServers: ICE ? [{ urls: ICE }] : [] });
       var tx = c.addTransceiver(micTrack, { direction: "sendonly" });
       // run the whole exchange in the queue, and find out if it failed:
       // the queue swallows errors so the room keeps working
@@ -175,7 +180,8 @@
           .catch(function (e) { failed = e; });
       }).then(function () {
         if (!failed) return;
-        try { tx.stop(); } catch (e) {}
+        try { c.close(); } catch (e) {}
+        if (pub === c) pub = null;
         if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; micTrack = null; }
         state = "in";
         say("couldn't go live: " + (failed.message || failed));
@@ -199,7 +205,8 @@
     if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); }
     mic = null; micTrack = null;
     if (pc) { try { pc.close(); } catch (e) {} }
-    pc = null; seen = {}; byMid = {}; audio = {};
+    if (pub) { try { pub.close(); } catch (e) {} }
+    pc = null; pub = null; seen = {}; byMid = {}; audio = {};
     sounds.textContent = "";
     state = "off"; auto = false; quietSince = null;
     if (noteUntil === Infinity) { note = null; noteUntil = 0; }

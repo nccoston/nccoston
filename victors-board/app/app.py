@@ -2362,7 +2362,7 @@ def voice_state(uid, now):
         "count": len(VOICE_PEERS),
         "talking": sorted((p["handle"] for p in VOICE_PEERS.values() if p["talking"]),
                           key=str.lower),
-        "tracks": [{"sid": p["sid"], "track": p["track"], "handle": p["handle"]}
+        "tracks": [{"sid": p["pub"], "track": p["track"], "handle": p["handle"]}
                    for u, p in VOICE_PEERS.items() if p["track"] and u != uid],
     }
 
@@ -2393,6 +2393,7 @@ def voice_join():
         return {"ok": False, "error": "the voice relay is not answering"}
     with CHAT_LOCK:
         VOICE_PEERS[user["id"]] = {"handle": user["handle"], "sid": sid,
+                                   "pub": None,   # the mic's own relay session
                                    "track": None, "talking": False,
                                    "admin": bool(user["is_admin"]),
                                    "t": time.monotonic()}
@@ -2402,7 +2403,13 @@ def voice_join():
 @app.route("/chat/voice/publish", methods=["POST"])
 @login_required
 def voice_publish():
-    """The browser's offer with a mic transceiver -> the relay's answer."""
+    """The browser's offer with a mic transceiver -> the relay's answer.
+
+    The mic gets a relay session of its own, apart from the one the member
+    listens on. An iPhone that came in as a listener (which is everyone,
+    now that listening is automatic) could negotiate the mic onto the
+    listening connection and send nothing; a fresh connection that only
+    ever sends is the shape that worked on the first night."""
     user, me = _voice_me()
     sdp, mid = request.form.get("sdp"), request.form.get("mid")
     if not (me and sdp and mid):
@@ -2411,13 +2418,14 @@ def voice_publish():
         return {"ok": False, "error": "an admin opens voice"}
     name = "mic-%d-%s" % (user["id"], secrets.token_hex(3))
     try:
-        d = _cf("/sessions/%s/tracks/new" % me["sid"], {
+        pub = _cf("/sessions/new")["sessionId"]
+        d = _cf("/sessions/%s/tracks/new" % pub, {
             "sessionDescription": {"type": "offer", "sdp": sdp},
             "tracks": [{"location": "local", "mid": mid, "trackName": name}]})
     except Exception:
         return {"ok": False, "error": "the voice relay is not answering"}
     with CHAT_LOCK:
-        me["track"], me["talking"] = name, True
+        me["pub"], me["track"], me["talking"] = pub, name, True
     return {"ok": True, "sdp": d["sessionDescription"]["sdp"]}
 
 
@@ -2430,10 +2438,11 @@ def voice_pull():
         wanted = json.loads(request.form.get("tracks") or "[]")
     except ValueError:
         wanted = []
-    live = {(p["sid"], p["track"]) for p in VOICE_PEERS.values() if p["track"]}
+    live = {(p["pub"], p["track"]) for p in VOICE_PEERS.values() if p["track"]}
     tracks = [{"location": "remote", "sessionId": t["sid"], "trackName": t["track"]}
               for t in wanted if isinstance(t, dict)
-              and (t.get("sid"), t.get("track")) in live and t["sid"] != me["sid"]] if me else []
+              and (t.get("sid"), t.get("track")) in live
+              and t["sid"] not in (me["sid"], me["pub"])] if me else []
     if not tracks:
         return {"ok": False}
     try:
