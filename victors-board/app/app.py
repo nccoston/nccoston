@@ -2512,6 +2512,57 @@ def voice_talking():
     return {"ok": True}
 
 
+@app.route("/chat/voice/status", methods=["POST"])
+@login_required
+def voice_status():
+    """What the member's page sees of its own voice connections, kept on
+    the peer for /admin/voice-check — the only way to debug a phone from
+    here."""
+    user, me = _voice_me()
+    if not me:
+        return {"ok": False}
+    try:
+        st = json.loads(request.form.get("s") or "{}")
+    except ValueError:
+        return {"ok": False}
+    if isinstance(st, dict):
+        with CHAT_LOCK:
+            me["status"] = {k: (v if isinstance(v, (int, float, bool)) or v is None else str(v)[:120])
+                            for k, v in list(st.items())[:20]}
+            me["status_at"] = time.monotonic()
+    return {"ok": True}
+
+
+@app.route("/admin/voice-check")
+@admin_required
+def voice_check():
+    """Who is in voice and what each of their pages reports: the state of
+    the listening and mic connections, how many talkers they've pulled,
+    how many sound elements they hold, what the last pull said."""
+    now = time.monotonic()
+    peers = []
+    for uid, p in VOICE_PEERS.items():
+        peers.append({
+            "handle": p["handle"], "admin": p["admin"],
+            "talking": p["talking"], "has_mic_track": bool(p["track"]),
+            "listen_session": p["sid"], "mic_session": p["pub"],
+            "last_poll_s_ago": round(now - p["t"]),
+            "page": p.get("status"),
+            "page_report_s_ago": round(now - p["status_at"]) if p.get("status_at") else None,
+        })
+    return {
+        "open": VOICE_OPEN["on"],
+        "empty_for_s": round(now - VOICE_OPEN["empty_since"]) if VOICE_OPEN["empty_since"] else 0,
+        "epoch": VOICE_EPOCH[0],
+        "peers": sorted(peers, key=lambda x: x["handle"].lower()),
+        "note": ("page.pc / page.pub are the browser's listening and mic connection "
+                 "states (connected is good). page.pulled is how many talkers the page "
+                 "has asked for; page.sounds how many it is holding; page.blocked how many "
+                 "the phone refuses to play until a tap. page.last is the last pull: "
+                 "whether the relay sent an offer. page.err is the last error, if any."),
+    }
+
+
 @app.route("/chat/voice/leave", methods=["POST"])
 @login_required
 def voice_leave():

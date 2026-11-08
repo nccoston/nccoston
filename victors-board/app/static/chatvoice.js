@@ -36,6 +36,8 @@
   var audio = {};             // "sid|track" -> <audio>
   var lastEpoch = null, lastVoice = null;
   var chain = Promise.resolve();
+  var leaving = Promise.resolve();   // the last leave's request, so a rejoin lands after it
+  var lastPull = null, lastErr = null;   // for the admin's voice check
   var sounds = document.createElement("div");
   sounds.id = "voice-sounds";
   document.body.appendChild(sounds);
@@ -80,8 +82,11 @@
         el.appendChild(link("voice-close", "close voice", closeVoice));
       }
     } else {
-      el.appendChild(document.createTextNode(
-        state === "talking" ? "🎙 " : state === "muted" ? "🔇 " : "🔊 "));
+      var ic = document.createElement("span");
+      ic.id = "voice-icon";
+      ic.textContent = state === "talking" ? "🎙" : state === "muted" ? "🔇" : "🔊";
+      el.appendChild(ic);
+      el.appendChild(document.createTextNode(" "));
       if (state === "in") el.appendChild(link("voice-talk", "talk", talk));
       if (state === "talking") el.appendChild(link("voice-mute", "mute", mute));
       if (state === "muted") el.appendChild(link("voice-talk", "unmute", unmute));
@@ -139,15 +144,18 @@
       var want = tracks.filter(function (t) { return !seen[t.sid + "|" + t.track]; });
       if (!want.length || state === "off") return;
       want.forEach(function (t) { seen[t.sid + "|" + t.track] = true; });
+      var c = connection();
       return post("/chat/voice/pull", { tracks: JSON.stringify(want) }).then(function (d) {
+        lastPull = { ok: !!d.ok, offer: !!(d.sdp && d.type === "offer"), tracks: (d.tracks || []).length, error: d.error || null };
+        if (c !== pc) return;   // we left (and maybe came back) while this was in flight: not ours any more
         if (!d.ok) { want.forEach(function (t) { delete seen[t.sid + "|" + t.track]; }); return; }
         (d.tracks || []).forEach(function (t) { if (t.mid != null) byMid[t.mid] = t.sid + "|" + t.track; });
-        if (!d.sdp || d.type !== "offer") return;
-        var c = connection();
+        if (!d.sdp || d.type !== "offer") { lastErr = "pull came back without an offer"; return; }
         return c.setRemoteDescription({ type: "offer", sdp: d.sdp })
           .then(function () { return c.createAnswer(); })
           .then(function (a) { return c.setLocalDescription(a); })
-          .then(function () { return post("/chat/voice/answer", { sdp: c.localDescription.sdp }); });
+          .then(function () { if (c === pc) return post("/chat/voice/answer", { sdp: c.localDescription.sdp }); })
+          .catch(function (e) { lastErr = "pull: " + (e && e.message || e); });
       });
     });
   }
@@ -163,7 +171,7 @@
     connection();
     keepAwake();
     queue(function () {
-      return post("/chat/voice/join").then(function (d) {
+      return leaving.then(function () { return post("/chat/voice/join"); }).then(function (d) {
         joining = false;
         if (!d.ok) { hangup(); say(d.error || "voice is not available"); return; }
         if (lastVoice) pull(lastVoice.tracks || []);
@@ -231,7 +239,8 @@
         if (packets !== null && packets !== lastPackets) { lastPackets = packets; stillSince = now; }
         if (level !== null && level > 0.02 && state === "talking") lastSpoke = now;
         if (state !== "talking") lastSpoke = now;   // muted: silence is the point
-        el.classList.toggle("speaking", state === "talking" && now - lastSpoke < 700);
+        var ic = document.getElementById("voice-icon");
+        if (ic) ic.classList.toggle("speaking", state === "talking" && now - lastSpoke < 700);
         var was = warn;
         warn = (packets !== null && now - stillSince > 6000) ? "not getting through"
              : (level !== null && now - lastSpoke > silentMs()) ? "your mic is silent"
@@ -248,7 +257,8 @@
   function stopWatching() {
     if (watcher) clearInterval(watcher);
     watcher = null; warn = null;
-    el.classList.remove("speaking");
+    var ic = document.getElementById("voice-icon");
+    if (ic) ic.classList.remove("speaking");
   }
   function micGone() {
     if (state !== "talking" && state !== "muted") return;
@@ -294,6 +304,7 @@
     pc = null; pub = null; seen = {}; byMid = {}; audio = {};
     sounds.textContent = "";
     stopWatching(); letSleep();
+    lastPull = null; lastErr = null;
     state = "off"; auto = false; quietSince = null;
     if (noteUntil === Infinity) { note = null; noteUntil = 0; }
   }
@@ -307,8 +318,22 @@
     hangup();
     if (!byItself) optedOut = true;
     draw();
-    post("/chat/voice/leave");
+    leaving = post("/chat/voice/leave").catch(function () {});
   }
+
+  // --- the page tells the board what it sees, for the admin's voice check
+  setInterval(function () {
+    if (state === "off") return;
+    post("/chat/voice/status", { s: JSON.stringify({
+      state: state, auto: auto,
+      pc: pc ? pc.connectionState + "/" + pc.iceConnectionState : null,
+      pub: pub ? pub.connectionState + "/" + pub.iceConnectionState : null,
+      pulled: Object.keys(seen).length, sounds: sounds.children.length,
+      blocked: sounds.querySelectorAll("audio[data-blocked]").length,
+      warn: warn, last: lastPull ? JSON.stringify(lastPull) : null, err: lastErr,
+      hidden: document.hidden, ua: navigator.userAgent.slice(0, 100)
+    }) }).catch(function () {});
+  }, 5000);
   window.addEventListener("pagehide", function () {
     if (state !== "off" && navigator.sendBeacon) navigator.sendBeacon("/chat/voice/leave");
   });

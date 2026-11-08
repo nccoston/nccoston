@@ -198,6 +198,19 @@ v = voice(ken)
 if v["count"] != 0 or v["epoch"] != e + 1 or v["me"] or v["open"]:
     fails.append("clear did not empty the voice room: %r" % v)
 
+# the page's own report lands on the peer and shows on the admin's voice check
+ken.post("/chat/voice/join")
+ken.post("/chat/voice/status", data={"s": json.dumps({"state": "in", "pc": "connected/connected", "pulled": 1, "sounds": 1})})
+vc = nikos.get("/admin/voice-check").get_json()
+row = next((p for p in vc["peers"] if p["handle"] == "Ken"), None)
+if not (row and row["page"]["pc"] == "connected/connected" and row["page"]["pulled"] == 1 and row["listen_session"]):
+    fails.append("the voice check does not carry Ken's report: %r" % vc)
+if ken.get("/admin/voice-check").status_code != 403:
+    fails.append("a member can read the voice check")
+if ken.post("/chat/voice/status", data={"s": "not json"}).get_json() != {"ok": False}:
+    fails.append("a bad status report was accepted")
+ken.post("/chat/voice/leave")
+
 # the relay failing is an answer, not a crash
 def broken(path, body=None, method="POST"):
     raise RuntimeError("down")

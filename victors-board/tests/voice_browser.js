@@ -143,10 +143,10 @@ const FAKE_RTC = `
   // knowing your mic works: it lights while you talk; a silent mic, or a dead connection, is called out
   const packetsUp = setInterval(() => ken.evaluate(() => { if (window.__stats) window.__stats.packets++; }).catch(() => {}), 400);
   await tick(ken, 1600);
-  ok(await ken.evaluate(() => document.getElementById("voice").classList.contains("speaking")), "the mic does not light while talking");
+  ok(await ken.evaluate(() => document.getElementById("voice-icon").classList.contains("speaking")), "the mic does not light while talking");
   await ken.evaluate(() => { window.__stats.level = 0; });
   await tick(ken, 4500);
-  ok(!(await ken.evaluate(() => document.getElementById("voice").classList.contains("speaking"))), "the mic stays lit in silence");
+  ok(!(await ken.evaluate(() => document.getElementById("voice-icon").classList.contains("speaking"))), "the mic stays lit in silence");
   await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich ⚠ your mic is silent", "a silent mic was not called out");
   await ken.evaluate(() => { window.__stats.level = 0.5; });
   await tick(ken, 1600);
@@ -167,6 +167,24 @@ const FAKE_RTC = `
   ok(!(await ken.evaluate(() => window.__mic.enabled)), "mute did not disable the mic track");
   await ken.click("#voice-talk"); await tick(ken);
   await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich", "unmute");
+
+  // the page reports what it sees, for the admin's voice check
+  await tick(ken, 5500);
+  const check = await nikos.evaluate(() => fetch("/admin/voice-check").then((r) => r.json()));
+  const kenRow = check.peers.find((p) => p.handle === "Ken");
+  ok(kenRow && kenRow.page && kenRow.page.state === "talking" && kenRow.page.pulled === 1 && kenRow.page.sounds === 1,
+     "the voice check does not show Ken's page: " + JSON.stringify(kenRow));
+  ok(check.open === true && check.peers.length === 3, "the voice check's room picture is off: " + JSON.stringify(check));
+
+  // leave and come straight back while someone talks: you hear them again (suede's "when I left it died")
+  await ken.click("#voice-leave"); await ken.click("#voice-join"); await tick(ken, 3500);
+  await is(ken, "· 🔊 talk · leave 🎙 Rich", "Ken after leaving and rejoining at once");
+  ok((await sounds(ken)) === 1, "Ken does not hear Rich after rejoining");
+  ok((await ken.evaluate(() => window.__rtc.remote.filter((t) => t === "offer").length)) >= 2, "Ken's rejoin did not negotiate a fresh pull");
+  await ken.evaluate(() => { window.__stats = { packets: 100, level: 0.4 }; });
+  await ken.click("#voice-talk"); await tick(ken);
+  await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich", "Ken could not talk after rejoining");
+  const packetsUp3 = setInterval(() => ken.evaluate(() => { if (window.__stats) window.__stats.packets++; }).catch(() => {}), 400);
 
   // the phone takes the mic away: Ken drops to listening and the room stops seeing him talk
   await ken.evaluate(() => { window.__mic.onended && window.__mic.onended(); });
@@ -205,7 +223,7 @@ const FAKE_RTC = `
   await is(nikos, "· voice", "Nikos after the clear");
   ok((await rtc(ken)).closed >= closedBefore + 2, "Ken's connections were not closed by the clear");
   ok((await ken.evaluate(() => window.__wake.releases)) >= 1, "the screen lock was not let go on the way out");
-  clearInterval(packetsUp2);
+  clearInterval(packetsUp2); clearInterval(packetsUp3);
 
   await b.close();
   console.log(problems.length ? "PROBLEMS:\n  " + problems.join("\n  ") : "ALL PASS");
