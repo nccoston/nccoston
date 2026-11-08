@@ -339,9 +339,30 @@
   });
 
   // --- every chat poll brings the room's voice picture
+  // One-touch launch: /chat?voice=talk opens the page already in voice
+  // and talking (an admin opens voice by arriving; a member needs it open).
+  // Saved to a phone's home screen, that's the whole lift: tap the icon,
+  // talk. The mic prompt shows once unless the phone remembers the answer.
+  // /chat?voice=listen just joins. Either way the screen stays on.
+  var launch = (new URLSearchParams(location.search).get("voice") || "").toLowerCase();
+  var launched = false;
+  function autoLaunch(v) {
+    if (launched || !launch || state !== "off") return;
+    if (launch === "talk" ? !(ADMIN || v.open) : !v.open) return;
+    launched = true;
+    join();
+    if (launch === "talk") {
+      var tries = 0, t = setInterval(function () {
+        if (state === "in" && !joining) { clearInterval(t); talk(); }
+        else if (state === "off" || ++tries > 50) clearInterval(t);
+      }, 200);
+    }
+  }
+
   window.chatVoice = function (v) {
     if (!v) return;
     lastVoice = v;
+    autoLaunch(v);
     if (lastEpoch !== null && v.epoch !== lastEpoch && state !== "off") hangup();   // admin cleared the room
     lastEpoch = v.epoch;
     if (state !== "off" && !v.me && !joining) hangup();   // the board no longer has us (timed out)

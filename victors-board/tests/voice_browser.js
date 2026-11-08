@@ -225,6 +225,20 @@ const FAKE_RTC = `
   ok((await ken.evaluate(() => window.__wake.releases)) >= 1, "the screen lock was not let go on the way out");
   clearInterval(packetsUp2); clearInterval(packetsUp3);
 
+  // one-touch launch: the admin opens /chat?voice=talk and is talking with no tap; a member's ?voice=listen joins
+  const nikos2 = await page(390, 844);
+  await login(nikos2, "Nikos");
+  await nikos2.evaluate(() => { window.__stats = { packets: 100, level: 0.4 }; });
+  await nikos2.goto(BASE + "/chat?voice=talk"); await tick(nikos2, 4000);
+  await is(nikos2, "· 🎙 mute · leave 🎙 Nikos", "the admin's one-touch launch did not land talking");
+  ok((await nikos2.evaluate(() => window.__wake.requests)) >= 1, "the launch did not keep the screen on");
+  const ken2 = await page(390, 844);
+  await login(ken2, "Ken");
+  await ken2.goto(BASE + "/chat?voice=listen"); await tick(ken2, 4000);
+  ok(/^· 🔊 talk · leave 🎙 Nikos/.test(await words(ken2)), "a member's listen launch did not join: " + await words(ken2));
+  ok((await sounds(ken2)) === 1, "the listen launch does not hear the talker");
+  await nikos2.click("#voice-leave"); await nikos2.evaluate(() => fetch("/chat/voice/close", { method: "POST" })); await tick(ken2);
+
   await b.close();
   console.log(problems.length ? "PROBLEMS:\n  " + problems.join("\n  ") : "ALL PASS");
   process.exit(problems.length ? 1 : 0);
