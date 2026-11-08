@@ -1,6 +1,7 @@
 // Live voice on top of the chat room.
 //
-// Voice is open while an admin is in it. Then whoever is talking reaches
+// An admin opens voice by coming in, and it stays open until an admin
+// closes it (or the room is cleared). Then whoever is talking reaches
 // everyone in chat on their own. A phone may refuse to play sound on a page
 // nobody has tapped yet; then the page says "tap anywhere to hear" and the
 // next tap, anywhere, starts it. Talking is opt-in:
@@ -74,6 +75,10 @@
     el.appendChild(document.createTextNode(" · "));
     if (state === "off") {
       el.appendChild(link("voice-join", v.count ? "voice (" + v.count + ")" : "voice", join));
+      if (ADMIN && v.open) {
+        el.appendChild(document.createTextNode(" \u00B7 "));
+        el.appendChild(link("voice-close", "close voice", closeVoice));
+      }
     } else {
       el.appendChild(document.createTextNode(
         state === "talking" ? "🎙 " : state === "muted" ? "🔇 " : "🔊 "));
@@ -291,6 +296,11 @@
     stopWatching(); letSleep();
     state = "off"; auto = false; quietSince = null;
     if (noteUntil === Infinity) { note = null; noteUntil = 0; }
+  }
+  function closeVoice() {
+    if (!ADMIN || !confirm("Close voice for everyone?")) return;
+    hangup(); draw();
+    post("/chat/voice/close");
   }
   function leave(byItself) {
     if (state === "off") return;

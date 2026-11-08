@@ -2326,8 +2326,15 @@ def chat_messages():
 VOICE_APP_ID = os.environ.get("CF_REALTIME_APP_ID")
 VOICE_TOKEN = os.environ.get("CF_REALTIME_TOKEN")
 VOICE_API = "https://rtc.live.cloudflare.com/v1/apps/%s"
-VOICE_PEERS = {}       # user_id -> {handle, sid, track, talking, t}
+VOICE_PEERS = {}       # user_id -> {handle, sid, pub, track, talking, admin, t}
 VOICE_EPOCH = [1]      # bumped when an admin clears the room; clients drop out
+# Voice is open once an admin has opened it (by coming in), and stays open
+# until an admin closes it, or the room is cleared, or it has stood empty
+# for two hours. Not "while an admin is in it": an admin's phone switching
+# apps for a minute must not close voice on thirty people.
+VOICE_OPEN = {"on": False, "empty_since": None}
+VOICE_IDLE_CLOSE = 2 * 3600
+VOICE_AWAY = 90        # seconds without a poll before a member is dropped
 VOICE_MAX = 100        # relay sessions one room may hold (listeners join on their own)
 
 
@@ -2351,12 +2358,19 @@ def voice_state(uid, now):
         return None
     if uid in VOICE_PEERS:
         VOICE_PEERS[uid]["t"] = now
-    for u in [u for u, p in VOICE_PEERS.items() if now - p["t"] > 30]:
+    for u in [u for u, p in VOICE_PEERS.items() if now - p["t"] > VOICE_AWAY]:
         del VOICE_PEERS[u]
+    if VOICE_PEERS:
+        VOICE_OPEN["empty_since"] = None
+    elif VOICE_OPEN["on"]:
+        if VOICE_OPEN["empty_since"] is None:
+            VOICE_OPEN["empty_since"] = now
+        elif now - VOICE_OPEN["empty_since"] > VOICE_IDLE_CLOSE:
+            VOICE_OPEN["on"] = False
     return {
         "epoch": VOICE_EPOCH[0],
-        # voice is open while an admin is in it; only then can members talk
-        # (or hear anything), and only then do they see the word at all
+        # only while voice is open can members talk (or hear anything),
+        # and only then do they see the word at all
         "open": voice_open(),
         "me": uid in VOICE_PEERS,
         "count": len(VOICE_PEERS),
@@ -2368,7 +2382,7 @@ def voice_state(uid, now):
 
 
 def voice_open():
-    return any(p["admin"] for p in VOICE_PEERS.values())
+    return VOICE_OPEN["on"]
 
 
 def _voice_me():
@@ -2397,7 +2411,23 @@ def voice_join():
                                    "track": None, "talking": False,
                                    "admin": bool(user["is_admin"]),
                                    "t": time.monotonic()}
+        if user["is_admin"]:
+            VOICE_OPEN["on"], VOICE_OPEN["empty_since"] = True, None
     return {"ok": True, "sid": sid}
+
+
+@app.route("/chat/voice/close", methods=["POST"])
+@login_required
+def voice_close():
+    """An admin closes voice: everyone drops out, the word goes away."""
+    user = current_user()
+    if not user["is_admin"]:
+        abort(403)
+    with CHAT_LOCK:
+        VOICE_PEERS.clear()
+        VOICE_OPEN["on"] = False
+        VOICE_EPOCH[0] += 1
+    return {"ok": True}
 
 
 @app.route("/chat/voice/publish", methods=["POST"])
@@ -2581,6 +2611,7 @@ def chat_clear():
         CHAT_NEXT_ID[0] += 1
         CHAT_EPOCH[0] += 1
         VOICE_PEERS.clear()    # the voice room empties with the text room
+        VOICE_OPEN["on"] = False
         VOICE_EPOCH[0] += 1
     return {"ok": True}
 

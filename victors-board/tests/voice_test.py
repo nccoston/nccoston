@@ -156,19 +156,46 @@ if v["count"] != 2 or voice(ken)["me"]:
 
 # a member whose page went away drops out after 30 seconds without a poll
 t = appmod.VOICE_PEERS[next(u for u, p in appmod.VOICE_PEERS.items() if p["handle"] == "Rich")]
-t["t"] -= 31
+t["t"] -= appmod.VOICE_AWAY + 1
 if voice(nikos)["count"] != 1:
     fails.append("a silent member did not time out")
-# the admin leaving closes voice
+# the admin leaving does NOT close voice: his phone switching apps must not close it on everyone
 nikos.post("/chat/voice/leave")
-if voice(ken)["open"] or voice(ken)["count"] != 0:
-    fails.append("voice did not close when the admin left: %r" % voice(ken))
+if not voice(ken)["open"] or voice(ken)["count"] != 0:
+    fails.append("voice closed when the admin left: %r" % voice(ken))
+# a member can still talk; a member cannot close it; an admin can
+rich.post("/chat/voice/join")
+if rich.post("/chat/voice/publish", data={"sdp": "O", "mid": "0"}).get_json().get("ok") is not True:
+    fails.append("a member could not talk with voice open and the admin gone")
+if rich.post("/chat/voice/close").status_code != 403:
+    fails.append("a member could close voice")
+e = voice(ken)["epoch"]
+nikos.post("/chat/voice/close")
+v = voice(ken)
+if v["open"] or v["count"] != 0 or v["epoch"] != e + 1:
+    fails.append("the admin's close did not take: %r" % v)
+if rich.post("/chat/voice/publish", data={"sdp": "O", "mid": "0"}).get_json().get("ok") is not False:
+    fails.append("a member could talk after voice was closed")
+# two hours empty and it closes itself
+nikos.post("/chat/voice/join"); nikos.post("/chat/voice/leave")
+appmod.VOICE_OPEN["empty_since"] = time.monotonic() - appmod.VOICE_IDLE_CLOSE - 1
+if voice(ken)["open"]:
+    fails.append("voice did not close after standing empty")
+# a phone that stops polling for a minute is still in; two minutes and it's out
+ken.post("/chat/voice/join")
+appmod.VOICE_PEERS[[u for u, p in appmod.VOICE_PEERS.items() if p["handle"] == "Ken"][0]]["t"] -= 60
+if voice(rich)["count"] != 1:
+    fails.append("a minute away dropped a member")
+appmod.VOICE_PEERS[[u for u, p in appmod.VOICE_PEERS.items() if p["handle"] == "Ken"][0]]["t"] -= 60
+if voice(rich)["count"] != 0:
+    fails.append("two minutes away did not drop a member")
 
 # the admin clear empties the voice room and bumps its epoch
 ken.post("/chat/voice/join"); rich.post("/chat/voice/join"); nikos.post("/chat/voice/join")
+e = voice(ken)["epoch"]
 nikos.post("/chat/clear")
 v = voice(ken)
-if v["count"] != 0 or v["epoch"] != 2 or v["me"]:
+if v["count"] != 0 or v["epoch"] != e + 1 or v["me"] or v["open"]:
     fails.append("clear did not empty the voice room: %r" % v)
 
 # the relay failing is an answer, not a crash

@@ -183,17 +183,25 @@ const FAKE_RTC = `
   await is(rich, "· voice (2) 🎙 Ken", "Rich after leaving");
   ok((await sounds(ken)) === 0 && (await sounds(nikos)) === 1, "Rich's sound element lingered");
 
-  // the admin leaves: voice closes. Rich, out and not an admin, loses the word; Ken, still in, keeps his
+  // the admin leaves: voice stays open. Rich, out, still sees the word; Nikos sees the way to close it
   await nikos.click("#voice-leave"); await tick(rich);
-  await is(rich, "(hidden)", "Rich still sees voice after the admin left");
+  await is(rich, "· voice (1) 🎙 Ken", "Rich lost the word when the admin left");
   await is(ken, "· 🎙 mute · leave 🎙 Ken", "Ken, still in, lost his words");
-  await is(nikos, "· voice (1) 🎙 Ken", "Nikos after leaving");
+  await is(nikos, "· voice (1) · close voice 🎙 Ken", "Nikos after leaving");
 
-  // the admin comes back and clears the room: everyone is dropped
+  // the admin closes voice: everyone is out, members lose the word
+  nikos.once("dialog", (d) => d.accept());
+  await nikos.click("#voice-close"); await tick(ken);
+  await is(ken, "(hidden)", "Ken was not dropped by the close");
+  await is(rich, "(hidden)", "Rich still sees voice after the close");
+  await is(nikos, "· voice", "Nikos after the close");
+
+  // and the clear does the same
   await nikos.click("#voice-join"); await tick(nikos);
+  await is(ken, "· voice (1)", "voice did not reopen");
   nikos.once("dialog", (d) => d.accept());
   await nikos.click("#chat-clear"); await tick(ken);
-  await is(ken, "(hidden)", "Ken was not dropped by the clear");
+  await is(ken, "(hidden)", "Ken still sees voice after the clear");
   await is(nikos, "· voice", "Nikos after the clear");
   ok((await rtc(ken)).closed >= closedBefore + 2, "Ken's connections were not closed by the clear");
   ok((await ken.evaluate(() => window.__wake.releases)) >= 1, "the screen lock was not let go on the way out");

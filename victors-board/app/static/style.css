@@ -502,7 +502,7 @@ body.seal-bg::before {
 #voice.speaking { background: #FFCB05; color: #00274C; border-radius: 4px; padding: 0 3px; }
 #voice-warn { color: #c00; font-weight: bold; }
 :root[data-theme="goblue"] #voice-warn { color: #ff9d9d; }
-#voice-sounds { display: none; }
+#voice-sounds { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; }
 #chat-roster {
   display: none;
   width: 130px;
