@@ -26,6 +26,9 @@
   var auto = false;           // we joined on our own, to listen
   var optedOut = false;       // they tapped leave: stay out until they tap in
   var note = null, noteUntil = 0;   // a few words beside the count, for a while
+  var warn = null;            // a standing warning about your own mic
+  var watcher = null;         // the timer that reads the mic connection's stats
+  var lock = null;            // the screen wake lock while in voice
   var quietSince = null;      // when the talking stopped, for auto-listeners
   var seen = {};              // "sid|track" -> true, tracks we've pulled
   var byMid = {};             // relay mid -> "sid|track"
@@ -85,6 +88,11 @@
       w.id = "voice-who";
       w.textContent = " 🎙 " + who.join(", ");
       el.appendChild(w);
+    }
+    if (warn && (state === "talking" || state === "muted")) {
+      var wn = document.createElement("span");
+      wn.id = "voice-warn"; wn.textContent = " \u26A0 " + warn;
+      el.appendChild(wn);
     }
     if (note && Date.now() < noteUntil) {
       var n = document.createElement("span");
@@ -148,6 +156,7 @@
     if (state !== "off") return;
     state = "in"; joining = true; auto = !!byItself; optedOut = false; draw();
     connection();
+    keepAwake();
     queue(function () {
       return post("/chat/voice/join").then(function (d) {
         joining = false;
@@ -176,7 +185,7 @@
             if (!d.ok) { throw new Error(d.error || "the relay did not take the mic"); }
             return c.setRemoteDescription({ type: "answer", sdp: d.sdp });
           })
-          .then(function () { state = "talking"; auto = false; draw(); })
+          .then(function () { state = "talking"; auto = false; watchMic(c); draw(); })
           .catch(function (e) { failed = e; });
       }).then(function () {
         if (!failed) return;
@@ -191,6 +200,77 @@
       say("mic blocked");
     });
   }
+  // --- knowing your mic works
+  //
+  // The relay connection's own stats say two things: whether packets are
+  // leaving (the connection is alive) and how loud the mic is (the car's
+  // hands-free mic, handed to the page but never switched on, reads as
+  // silence). The 🎙 lights while you're audibly talking; a standing warning
+  // appears if nothing leaves for six seconds, or the mic has been silent
+  // for half a minute while unmuted. And if the phone takes the mic away
+  // (a call, the lock screen, the car) the board stops listing you as
+  // talking instead of lying to the room.
+  function silentMs() { return parseInt(el.getAttribute("data-silent"), 10) || 30000; }
+  function watchMic(c) {
+    stopWatching();
+    var lastPackets = -1, stillSince = Date.now(), lastSpoke = Date.now();
+    watcher = setInterval(function () {
+      if (pub !== c || !c.getStats) return;
+      c.getStats().then(function (report) {
+        var packets = null, level = null;
+        report.forEach(function (st) {
+          if (st.type === "outbound-rtp" && st.kind === "audio" && typeof st.packetsSent === "number") packets = st.packetsSent;
+          if (st.type === "media-source" && st.kind === "audio" && typeof st.audioLevel === "number") level = st.audioLevel;
+        });
+        var now = Date.now();
+        if (packets !== null && packets !== lastPackets) { lastPackets = packets; stillSince = now; }
+        if (level !== null && level > 0.02 && state === "talking") lastSpoke = now;
+        if (state !== "talking") lastSpoke = now;   // muted: silence is the point
+        el.classList.toggle("speaking", state === "talking" && now - lastSpoke < 700);
+        var was = warn;
+        warn = (packets !== null && now - stillSince > 6000) ? "not getting through"
+             : (level !== null && now - lastSpoke > silentMs()) ? "your mic is silent"
+             : null;
+        if (warn !== was) draw();
+      }).catch(function () {});
+    }, 1000);
+    if (micTrack) {
+      micTrack.onended = micGone;
+      micTrack.onmute = function () { if (state === "talking") { warn = "mic paused by the phone"; draw(); } };
+      micTrack.onunmute = function () { if (warn === "mic paused by the phone") { warn = null; draw(); } };
+    }
+  }
+  function stopWatching() {
+    if (watcher) clearInterval(watcher);
+    watcher = null; warn = null;
+    el.classList.remove("speaking");
+  }
+  function micGone() {
+    if (state !== "talking" && state !== "muted") return;
+    stopWatching();
+    if (pub) { try { pub.close(); } catch (e) {} }
+    pub = null; mic = null; micTrack = null;
+    state = "in";
+    post("/chat/voice/talking", { on: "0" });
+    say("mic stopped \u2014 tap talk");
+  }
+
+  // --- the screen stays on while you're in voice (a locked phone has no mic
+  // and, on an iPhone, no sound either); the lock goes when you leave
+  function keepAwake() {
+    if (!navigator.wakeLock || lock || document.hidden) return;
+    navigator.wakeLock.request("screen").then(function (l) {
+      lock = l;
+      l.addEventListener("release", function () { lock = null; });
+    }).catch(function () {});
+  }
+  function letSleep() {
+    if (lock) { var l = lock; lock = null; try { l.release(); } catch (e) {} }
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && state !== "off") keepAwake();
+  });
+
   function mute() {
     if (state !== "talking" || !micTrack) return;
     micTrack.enabled = false; state = "muted"; draw();
@@ -208,6 +288,7 @@
     if (pub) { try { pub.close(); } catch (e) {} }
     pc = null; pub = null; seen = {}; byMid = {}; audio = {};
     sounds.textContent = "";
+    stopWatching(); letSleep();
     state = "off"; auto = false; quietSince = null;
     if (noteUntil === Infinity) { note = null; noteUntil = 0; }
   }

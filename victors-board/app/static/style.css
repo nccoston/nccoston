@@ -499,6 +499,9 @@ body.seal-bg::before {
 }
 #chat-online { cursor: pointer; }
 #voice-who { font-weight: bold; }
+#voice.speaking { background: #FFCB05; color: #00274C; border-radius: 4px; padding: 0 3px; }
+#voice-warn { color: #c00; font-weight: bold; }
+:root[data-theme="goblue"] #voice-warn { color: #ff9d9d; }
 #voice-sounds { display: none; }
 #chat-roster {
   display: none;

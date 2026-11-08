@@ -28,7 +28,17 @@ const FAKE_RTC = `
       return Promise.resolve();
     }
     close() { window.__rtc.closed++; }
+    getStats() {
+      const st = window.__stats || { packets: 0, level: 0 };
+      const rows = [{ type: "outbound-rtp", kind: "audio", packetsSent: st.packets },
+                    { type: "media-source", kind: "audio", audioLevel: st.level }];
+      return Promise.resolve({ forEach: (f) => rows.forEach(f) });
+    }
   }
+  window.__wake = { requests: 0, releases: 0 };
+  Object.defineProperty(navigator, "wakeLock", { configurable: true, value: { request: () => { window.__wake.requests++;
+    const l = { release() { window.__wake.releases++; return Promise.resolve(); }, addEventListener() {} };
+    return Promise.resolve(l); } } });
   window.RTCPeerConnection = FakePC;
   // like a phone: no sound until the page has been touched
   window.__touched = false;
@@ -124,8 +134,29 @@ const FAKE_RTC = `
   await is(ken, "· 🔊 talk · leave 🎙 Rich", "the failure note did not clear");
 
   // Ken talks; Rich and Nikos pull him
+  await ken.evaluate(() => { document.getElementById("voice").setAttribute("data-silent", "2500");
+    window.__stats = { packets: 10, level: 0.4 }; });
   await ken.click("#voice-talk"); await tick(ken);
   await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich", "both talking");
+  ok((await ken.evaluate(() => window.__wake.requests)) >= 1, "the screen was not kept awake in voice");
+
+  // knowing your mic works: it lights while you talk; a silent mic, or a dead connection, is called out
+  const packetsUp = setInterval(() => ken.evaluate(() => { if (window.__stats) window.__stats.packets++; }).catch(() => {}), 400);
+  await tick(ken, 1600);
+  ok(await ken.evaluate(() => document.getElementById("voice").classList.contains("speaking")), "the mic does not light while talking");
+  await ken.evaluate(() => { window.__stats.level = 0; });
+  await tick(ken, 4500);
+  ok(!(await ken.evaluate(() => document.getElementById("voice").classList.contains("speaking"))), "the mic stays lit in silence");
+  await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich ⚠ your mic is silent", "a silent mic was not called out");
+  await ken.evaluate(() => { window.__stats.level = 0.5; });
+  await tick(ken, 1600);
+  await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich", "the silence warning did not clear");
+  clearInterval(packetsUp);
+  await tick(ken, 8000);
+  await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich ⚠ not getting through", "a dead connection was not called out");
+  const packetsUp2 = setInterval(() => ken.evaluate(() => { if (window.__stats) window.__stats.packets++; }).catch(() => {}), 400);
+  await tick(ken, 1600);
+  await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich", "the connection warning did not clear");
   await tick(rich);
   ok((await sounds(rich)) === 1 && (await sounds(nikos)) === 2, "Ken was not pulled by the others");
   await shot(ken, "voice-5-talking.png");
@@ -136,6 +167,16 @@ const FAKE_RTC = `
   ok(!(await ken.evaluate(() => window.__mic.enabled)), "mute did not disable the mic track");
   await ken.click("#voice-talk"); await tick(ken);
   await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich", "unmute");
+
+  // the phone takes the mic away: Ken drops to listening and the room stops seeing him talk
+  await ken.evaluate(() => { window.__mic.onended && window.__mic.onended(); });
+  await tick(ken, 300);
+  ok(/^· 🔊 talk · leave 🎙 (Ken, )?Rich mic stopped — tap talk$/.test(await words(ken)), "a lost mic was not reported: " + await words(ken));
+  await tick(ken, 4500);
+  await is(ken, "· 🔊 talk · leave 🎙 Rich", "the room still lists Ken as talking after his mic went");
+  await ken.evaluate(() => { window.__stats = { packets: 100, level: 0.4 }; });
+  await ken.click("#voice-talk"); await tick(ken);
+  await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich", "Ken could not talk again after the mic came back");
 
   // Rich leaves: his sound element goes from the others, his name goes
   await rich.click("#voice-leave"); await tick(ken);
@@ -155,6 +196,8 @@ const FAKE_RTC = `
   await is(ken, "(hidden)", "Ken was not dropped by the clear");
   await is(nikos, "· voice", "Nikos after the clear");
   ok((await rtc(ken)).closed >= closedBefore + 2, "Ken's connections were not closed by the clear");
+  ok((await ken.evaluate(() => window.__wake.releases)) >= 1, "the screen lock was not let go on the way out");
+  clearInterval(packetsUp2);
 
   await b.close();
   console.log(problems.length ? "PROBLEMS:\n  " + problems.join("\n  ") : "ALL PASS");
