@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Replies to you - {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+  <h2>Replies to you</h2>
+  {% if replies %}
+  <ul class="replies-list">
+    {% for r in replies %}
+    <li><a href="{{ url_for('message', message_id=r['id']) }}">{{ r['subject'] }}</a>
+      <p class="byline">By {{ r | poster }} <i>{{ r['created_at'] | boardtime }}</i>
+        &middot; to <a href="{{ url_for('message', message_id=r['parent_id']) }}">{{ r['parent_subject'] }}</a></p></li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="{{ url_for('replies_seen') }}" class="inline-form">
+    <button type="submit">Seen them all</button>
+  </form>
+  {% else %}
+  <p class="hint">Nothing new.</p>
+  {% endif %}
+  <p class="hint"><a href="{{ url_for('index', board_name='main') }}">&laquo; Back to the board</a></p>
+</div>
+{% endblock %}

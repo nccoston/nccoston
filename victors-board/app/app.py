@@ -414,6 +414,61 @@ def board_countdown():
             "when": when.strftime("%B %-d, %Y").replace(" 0", " ")}
 
 
+# Replies to you that you haven't opened, from the last week. The board
+# already knows what each member has read (message_reads, cross-device), so
+# "unread reply to my post" is a query, not a notification system. A week,
+# because read marks for old posts age out and a regular's history would
+# otherwise read as hundreds unread on day one.
+REPLIES_WINDOW_DAYS = 7
+
+
+def _replies_since():
+    return (datetime.now(timezone.utc) - timedelta(days=REPLIES_WINDOW_DAYS)) \
+        .replace(tzinfo=None).isoformat(timespec="seconds")
+
+
+_UNREAD_REPLIES_SQL = """
+    FROM messages r JOIN messages p ON p.id = r.parent_id
+    WHERE p.user_id = ? AND (r.user_id IS NULL OR r.user_id != ?)
+      AND r.created_at >= ?
+      AND NOT EXISTS (SELECT 1 FROM message_reads m
+                      WHERE m.user_id = ? AND m.message_id = r.id)"""
+
+
+def unread_reply_count(db, u):
+    if not u:
+        return 0
+    return db.execute("SELECT COUNT(*) c" + _UNREAD_REPLIES_SQL,
+                      (u["id"], u["id"], _replies_since(), u["id"])).fetchone()["c"]
+
+
+def unread_replies(db, u):
+    return db.execute(
+        "SELECT r.id, r.subject, r.author_name, r.alias, r.created_at,"
+        " p.id AS parent_id, p.subject AS parent_subject" + _UNREAD_REPLIES_SQL +
+        " ORDER BY r.created_at DESC, r.id DESC LIMIT 200",
+        (u["id"], u["id"], _replies_since(), u["id"])).fetchall()
+
+
+@app.route("/replies")
+@login_required
+def replies():
+    db = get_db()
+    return render_template("replies.html", replies=unread_replies(db, current_user()))
+
+
+@app.route("/replies/seen", methods=["POST"])
+@login_required
+def replies_seen():
+    """Mark every listed reply read without opening each one."""
+    db = get_db()
+    u = current_user()
+    db.executemany("INSERT OR IGNORE INTO message_reads (user_id, message_id) VALUES (?, ?)",
+                   [(u["id"], r["id"]) for r in unread_replies(db, u)])
+    db.commit()
+    return redirect(url_for("replies"))
+
+
 def kickoff_label(iso, network=None):
     """'Sat 12:30 PM EDT on BTN' from a stored kickoff, or '' without one."""
     if not iso:
@@ -437,8 +492,10 @@ def inject_globals():
                   "SELECT m.id, m.subject, g.kickoff_at, g.network"
                   " FROM messages m LEFT JOIN games g ON g.message_id = m.id"
                   " WHERE m.pinned = 1 ORDER BY m.created_at DESC").fetchall()]
+    u = current_user()
     return {
-        "user": current_user(),
+        "user": u,
+        "unread_replies": unread_reply_count(get_db(), u),
         "site_title": get_setting("site_title"),
         "header_html": get_setting("header_html"),
         "links_html": get_setting("links_html"),

@@ -18,6 +18,9 @@
   if (ts === "large" || ts === "huge") {
     document.documentElement.dataset.textsize = ts;
   }
+  if (localStorage.getItem("replies") === "on") {
+    document.documentElement.dataset.replies = "on";
+  }
 })();
 </script>
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
@@ -58,7 +61,7 @@
   <a href="{{ url_for('index', board_name='main') }}">Home</a>
   <span class="nb">| <a href="{{ url_for('search') }}">Search</a></span>
   {% if user %}
-    <span class="nb">| [ {{ user['handle'] }} ]</span>
+    <span class="nb">| [ {{ user['handle'] }}{% if unread_replies %}<span class="replies-count"> &middot; <a href="{{ url_for('replies') }}">{{ unread_replies }}</a></span>{% endif %} ]</span>
     {% if user['is_admin'] %}<span class="nb">| <a href="{{ url_for('admin') }}">Admin</a></span>{% endif %}
   {% else %}
     <span class="nb">| <a href="{{ url_for('login') }}">Login</a></span>

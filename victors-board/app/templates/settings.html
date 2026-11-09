@@ -24,6 +24,14 @@
 
   {% if user %}
   <div class="setting-group">
+    <h3>Replies to you</h3>
+    <div class="setting-choices" id="set-replies">
+      <button type="button" data-replies-choice="on">On</button>
+      <button type="button" data-replies-choice="off">Off</button>
+    </div>
+  </div>
+
+  <div class="setting-group">
     <h3>Feedback</h3>
     {# plain email: opens the member's own mail app, addressed and subject-lined #}
     <p class="fb-row"><button type="button"
@@ -94,6 +102,27 @@
       btns[i].classList.toggle("chosen", on);
     }
   }
+  // --- replies to you: the count beside your handle (per device) ---
+  var repWrap = document.getElementById("set-replies");
+  if (repWrap) {
+    var markRep = function () {
+      var cur = load("replies") === "on" ? "on" : "off";
+      var btns = repWrap.querySelectorAll("button");
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.toggle("chosen", btns[i].getAttribute("data-replies-choice") === cur);
+      }
+    };
+    repWrap.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (!b) return;
+      var choice = b.getAttribute("data-replies-choice");
+      store("replies", choice);
+      if (choice === "on") { root.dataset.replies = "on"; } else { delete root.dataset.replies; }
+      markRep();
+    });
+    markRep();
+  }
+
   // --- Victard Bowl: sim their drives, or take the field for them ---
   var defWrap = document.getElementById("set-defense");
   function markDef() {
