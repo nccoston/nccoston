@@ -2335,7 +2335,6 @@ VOICE_EPOCH = [1]      # bumped when an admin clears the room; clients drop out
 VOICE_OPEN = {"on": False, "empty_since": None}
 VOICE_IDLE_CLOSE = 2 * 3600
 VOICE_AWAY = 90        # seconds without a poll before a member is dropped
-VOICE_MAX = 100        # relay sessions one room may hold (listeners join on their own)
 
 
 def voice_enabled():
@@ -2398,9 +2397,8 @@ def voice_join():
     user, me = _voice_me()
     if me:
         return {"ok": True, "sid": me["sid"]}
-    with CHAT_LOCK:
-        if len(VOICE_PEERS) >= VOICE_MAX:
-            return {"ok": False, "error": "the voice room is full"}
+    # no cap on the room: the relay doesn't need one at this size, and the
+    # night everyone shows up is the night it would matter
     try:
         sid = _cf("/sessions/new")["sessionId"]
     except Exception:

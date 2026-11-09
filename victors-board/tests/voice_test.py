@@ -219,11 +219,11 @@ if ken.post("/chat/voice/join").get_json() != {"ok": False, "error": "the voice 
     fails.append("a dead relay did not come back as a plain error")
 appmod._cf = fake_cf
 
-# a full room
+# no cap on the room
 appmod.VOICE_PEERS.update({9000 + i: {"handle": "x%d" % i, "sid": "x", "pub": None, "track": None, "admin": False,
-                                       "talking": False, "t": time.monotonic()} for i in range(appmod.VOICE_MAX)})
-if ken.post("/chat/voice/join").get_json() != {"ok": False, "error": "the voice room is full"}:
-    fails.append("the room cap is not enforced")
+                                       "talking": False, "t": time.monotonic()} for i in range(150)})
+if ken.post("/chat/voice/join").get_json().get("ok") is not True:
+    fails.append("a big room turned someone away")
 appmod.VOICE_PEERS.clear()
 
 # without the keys: no link, no script, no voice in the poll, no endpoints
