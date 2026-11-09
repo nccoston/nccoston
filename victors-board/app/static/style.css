@@ -381,8 +381,6 @@ table.admin-table td, table.admin-table th {
 tr.bowl-looker td { opacity: 0.72; }
 
 /* the settings page */
-.replies-count { display: none; }   /* off until a member turns it on in Settings */
-:root[data-replies="on"] .replies-count { display: inline; }
 .replies-count a { font-weight: bold; }
 .replies-list { list-style: none; padding: 0; margin: 10px 0; }
 .replies-list li { margin: 8px 0; }

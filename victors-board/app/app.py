@@ -182,7 +182,8 @@ def init_db():
                       "ALTER TABLE traffic ADD COLUMN robots INTEGER NOT NULL DEFAULT 0",
                       "ALTER TABLE messages ADD COLUMN alias TEXT",
                       "ALTER TABLE polls ADD COLUMN multi INTEGER NOT NULL DEFAULT 0",
-                      "ALTER TABLE polls ADD COLUMN tally TEXT NOT NULL DEFAULT 'ballot'"):
+                      "ALTER TABLE polls ADD COLUMN tally TEXT NOT NULL DEFAULT 'ballot'",
+                      "ALTER TABLE users ADD COLUMN replies_on INTEGER NOT NULL DEFAULT 0"):
         try:
             db.execute(migration)
         except sqlite3.OperationalError:
@@ -436,7 +437,8 @@ _UNREAD_REPLIES_SQL = """
 
 
 def unread_reply_count(db, u):
-    if not u:
+    # on the account, not the device: flip it once, it's on wherever you log in
+    if not u or not u["replies_on"]:
         return 0
     return db.execute("SELECT COUNT(*) c" + _UNREAD_REPLIES_SQL,
                       (u["id"], u["id"], _replies_since(), u["id"])).fetchone()["c"]
@@ -455,6 +457,16 @@ def unread_replies(db, u):
 def replies():
     db = get_db()
     return render_template("replies.html", replies=unread_replies(db, current_user()))
+
+
+@app.route("/settings/replies", methods=["POST"])
+@login_required
+def settings_replies():
+    db = get_db()
+    db.execute("UPDATE users SET replies_on = ? WHERE id = ?",
+               (1 if request.form.get("on") == "1" else 0, current_user()["id"]))
+    db.commit()
+    return {"ok": True}
 
 
 @app.route("/replies/seen", methods=["POST"])

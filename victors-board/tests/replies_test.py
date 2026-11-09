@@ -41,6 +41,14 @@ karl, rich, danny = client("Karl"), client("Rich"), client("danny")
 inside, page = nav(karl)
 if inside != "":
     fails.append("a count shows with no replies: %r" % inside)
+# off until turned on; the switch is on the account, so it holds on a second device
+st = karl.get("/settings").get_data(as_text=True)
+if 'id="set-replies" data-on="0"' not in st:
+    fails.append("Settings does not show the switch off by default")
+karl.post("/settings/replies", data={"on": "1"})
+karl2 = client("Karl")   # another device
+if 'id="set-replies" data-on="1"' not in karl2.get("/settings").get_data(as_text=True):
+    fails.append("the switch did not hold on a second device")
 
 # Karl posts; Rich and danny reply; Karl replies to himself (doesn't count)
 karl.post("/post", data={"subject": "Is Whitt gone yet?*", "body": ""}, follow_redirects=True)
@@ -97,15 +105,16 @@ inside, _ = nav(karl)
 if inside != "":
     fails.append("an old reply counted: %r" % inside)
 
-# off by default: the count is in the page but hidden until a member turns it on in Settings
-st = karl.get("/settings").get_data(as_text=True)
-if 'id="set-replies"' not in st or 'data-replies-choice="on"' not in st:
-    fails.append("Settings lacks the replies switch")
-if 'localStorage.getItem("replies") === "on"' not in page or 'dataset.replies = "on"' not in page:
-    fails.append("the head script does not honor the on switch")
-css = open(Path(appmod.__file__).parent / "static" / "style.css").read()
-if ".replies-count { display: none; }" not in css or ':root[data-replies="on"] .replies-count { display: inline; }' not in css:
-    fails.append("the count is not hidden by default and shown when on")
+# turned off: no count anywhere, on any device, even with unread replies waiting
+rich.post("/post/%d" % root, data={"subject": "one more*", "body": ""}, follow_redirects=True)
+karl.post("/settings/replies", data={"on": "0"})
+if 'class="replies-count"' in karl.get("/").get_data(as_text=True) or 'class="replies-count"' in karl2.get("/").get_data(as_text=True):
+    fails.append("the count shows while the switch is off")
+karl.post("/settings/replies", data={"on": "1"})
+if ">1</a>" not in (nav(karl2)[0] or ""):
+    fails.append("the count did not come back on the other device when turned on")
+if "replies" in page.split("<body")[0]:
+    fails.append("the head script still carries a per-device replies setting")
 
 # readers without an account: no page
 if appmod.app.test_client().get("/replies").status_code == 200:
