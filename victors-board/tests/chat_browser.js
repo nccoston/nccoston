@@ -34,8 +34,13 @@ const BASE = process.env.BOARD || "http://127.0.0.1:5099";
   // --- phone: the room fills the screen, input in view, header one swipe up
   let f = await rect(phone, "#chat-form"), w = await rect(phone, "#chat-wrap");
   ok(f.bottom <= 844 && f.bottom > 700, "phone: the input is not at the bottom of the screen (" + f.bottom + ")");
-  ok(w.top >= -8 && w.top <= 20, "phone: the page did not open on the chat (wrap top " + w.top + ")");
-  ok(await phone.evaluate(() => window.pageYOffset > 200), "phone: the header was not scrolled away");
+  ok(w.top === 0 && Math.abs(w.height - 844) < 2, "phone: the room is not pinned to the screen (top " + w.top + ", height " + w.height + ")");
+  ok(await phone.evaluate(() => window.pageYOffset === 0 && getComputedStyle(document.body).overflow === "hidden"), "phone: the page under the room can still scroll");
+  ok(await phone.evaluate(() => getComputedStyle(document.getElementById("chat-text")).fontSize === "16px"), "phone: the input is under 16px (an iPhone would zoom)");
+  ok(await phone.isVisible(".chat-back") && !(await desk.isVisible(".chat-back")), "the back link is not phone-only");
+  // a swipe on the page goes nowhere: the header stays off screen
+  await phone.mouse.wheel(0, -600); await phone.waitForTimeout(200);
+  ok(await phone.evaluate(() => window.pageYOffset === 0), "phone: the page scrolled under the room");
   ok(!(await phone.isVisible("#chat-roster")), "phone: the roster is showing by default");
   ok(await phone.isVisible(".chat-mention"), "phone: Ken's mention was not highlighted");
   await phone.screenshot({ path: "chat-1-phone.png" });
@@ -54,7 +59,7 @@ const BASE = process.env.BOARD || "http://127.0.0.1:5099";
   ok(!(await phone.isVisible("#chat-roster")), "phone: the second tap did not hide the roster");
 
   // --- enough traffic to overflow the box; Ken stays pinned to the newest
-  for (let i = 1; i <= 24; i++) await say(desk, "line " + i + " of the pregame argument");
+  for (let i = 1; i <= 44; i++) await say(desk, "line " + i + " of the pregame argument");   // enough to overflow a full-height phone box
   await phone.waitForTimeout(2500);
   ok(await atBottom(phone), "phone: not pinned to the newest message after traffic");
   ok(await phone.isHidden("#chat-new"), "the pill showed while already at the bottom");

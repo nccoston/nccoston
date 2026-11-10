@@ -29,7 +29,7 @@
       href="{{ url_for('rss') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body{% if request.path == '/chat' %} class="seal-bg"{% endif %}>
+<body{% if request.path == '/chat' %} class="seal-bg chat-page"{% endif %}>
 <div class="header-block">{{ header_html | safe }}
 {% if pinned_threads %}
 <p class="pinned-row">

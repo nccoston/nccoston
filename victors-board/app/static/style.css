@@ -518,8 +518,28 @@ body.seal-bg::before {
 }
 .chat-wrap.roster #chat-roster { display: block; }
 #chat-roster-names div { margin: 3px 0; }
+.chat-back { display: none; }
 @media (max-width: 700px) {
-  .chat-flex { flex-direction: column; }
+  /* the room is the screen: pinned, the page under it never moves */
+  body.chat-page { overflow: hidden; overscroll-behavior: none; }
+  .chat-wrap {
+    position: fixed; left: 0; right: 0; top: 0; height: 100dvh;   /* the page script tracks the keyboard */
+    display: flex; flex-direction: column;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    box-sizing: border-box; max-width: none; z-index: 20;
+    background: var(--bg); isolation: isolate;
+  }
+  .chat-wrap::before {   /* the seal rides along */
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: url("/static/U-M-seal.svg") center / 65vmin no-repeat; opacity: 0.06;
+  }
+  :root[data-theme="dark"] .chat-wrap::before { opacity: 0.04; }
+  .chat-wrap .byline { flex: none; margin: 0 0 6px; }
+  .chat-back { display: inline; margin-right: 4px; }
+  .chat-flex { flex: 1; min-height: 0; height: auto; margin-bottom: 6px; flex-direction: column; }
+  #chat-messages { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  #chat-form { flex: none; }
+  #chat-form #chat-text { font-size: 16px; }   /* under 16px an iPhone zooms in on focus */
   #chat-roster { width: auto; flex: none; max-height: 20vh; }
   #chat-roster-names { display: inline; margin-left: 4px; }
   #chat-roster-names div { display: inline; margin: 0; }
