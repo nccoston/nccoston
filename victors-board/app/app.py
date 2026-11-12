@@ -2059,28 +2059,38 @@ def fetch_latest_pod():
 
 
 def pod_stream_window(video_id):
-    """'upcoming' if the video is a scheduled stream, 'today' if its
-    broadcast started within the last 24 hours, else None. The RSS feed
-    dates a scheduled stream by when the schedule was CREATED — days
-    before showtime — so feed freshness alone can't see anticipation.
-    The watch page can."""
+    """'upcoming' if the video is a scheduled stream, 'today' if it is live
+    now or its broadcast started within the last 24 hours, 'unknown' if the
+    watch page couldn't be read, else None. The RSS feed dates a scheduled
+    stream by when the schedule was CREATED — days before showtime — so feed
+    freshness alone can't see anticipation. The watch page can."""
     import requests
     try:
         html = requests.get(
             f"https://www.youtube.com/watch?v={video_id}", timeout=6,
             headers={"User-Agent": "Mozilla/5.0"}).text
-        if '"isUpcoming":true' in html:
-            return "upcoming"
-        m = re.search(r'"startTimestamp":"([^"]+)"', html)
-        if m:
+    except Exception:
+        return "unknown"
+    return _stream_window_from(html)
+
+
+def _stream_window_from(html):
+    if '"isUpcoming":true' in html:
+        return "upcoming"
+    # live right now: YouTube says so in the page before any start time
+    # settles, and that moment is exactly Wednesday evening
+    if '"isLiveNow":true' in html or '"isLive":true' in html:
+        return "today"
+    m = re.search(r'"startTimestamp":"([^"]+)"', html)
+    if m:
+        try:
             started = datetime.fromisoformat(m.group(1))
             if started.tzinfo is None:
                 started = started.replace(tzinfo=timezone.utc)
-            if timedelta() <= datetime.now(timezone.utc) - started \
-                    <= timedelta(hours=24):
+            if timedelta() <= datetime.now(timezone.utc) - started <= timedelta(hours=24):
                 return "today"
-    except Exception:
-        pass
+        except ValueError:
+            pass
     return None
 
 
@@ -2094,15 +2104,22 @@ def pod_box():
     def fetch():
         video = fetch_latest_pod()
         if video:
-            fresh = (datetime.now(timezone.utc) - video["published"]
-                     <= timedelta(hours=48))
-            if not fresh and pod_stream_window(video["video_id"]) is None:
-                video = None   # genuinely stale: a skipped week
+            age = datetime.now(timezone.utc) - video["published"]
+            fresh = age <= timedelta(hours=48)
+            if not fresh:
+                window = pod_stream_window(video["video_id"])
+                # this week's stream, or a watch page we couldn't read for
+                # this week's entry: show it. Only a plainly old entry is
+                # a skipped week.
+                if window is None or (window == "unknown" and age > timedelta(days=7)):
+                    video = None
         return video
 
     # 15-minute cache: fetches only happen on Wednesdays, and the box
-    # should flip to the new episode soon after it uploads
-    return refresh_cache(POD_CACHE, POD_LOCK, "video", 900, fetch)
+    # should flip to the new episode soon after it uploads. keep_empty:
+    # one refresh that can't reach YouTube must not take the box down
+    # for the next fifteen minutes (it did, on 2026-11-11).
+    return refresh_cache(POD_CACHE, POD_LOCK, "video", 900, fetch, keep_empty=True)
 
 
 @app.route("/scores/live.json")
@@ -2160,8 +2177,11 @@ def pod_check():
         "feed_entries": entries,
         "chosen_episode": best,
         "box_shown_now": bool(pod_box()),
+        "cache": {"video": (POD_CACHE.get("video") or {}).get("video_id"),
+                  "busy": bool(POD_CACHE.get("_busy"))},
         "note": "box needs: Wednesday + filter match + (published <48h "
-                "OR stream_window upcoming/today); playable is info only",
+                "OR stream_window upcoming/today, or unknown within 7 days); "
+                "playable is info only; a refresh that fails keeps the last box",
     }
 
 
