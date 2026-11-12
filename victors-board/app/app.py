@@ -1995,8 +1995,10 @@ def harvest_pickem(db, gm, mid):
 #
 # The Victors Pod (Nikos & gbmcq) publishes to YouTube every Wednesday.
 # The channel's built-in RSS feed tells us the newest upload; the homepage
-# shows a collapsed player only on Wednesdays (board time) and only when
-# the episode is fresh, so a skipped week means no box at all.
+# shows a collapsed player while the episode is fresh — two days from
+# upload, or the stream's own day — so a skipped week means no box at all.
+# (It was "Wednesdays only" until an episode went up at 9:16 PM Wednesday
+# and the box lived under three hours.)
 
 POD_FEED = "https://www.youtube.com/feeds/videos.xml?channel_id={cid}"
 POD_CACHE = {"at": -1e9, "video": None}
@@ -2094,18 +2096,18 @@ def _stream_window_from(html):
     return None
 
 
-def pod_box():
-    """The homepage pod box, or None. Strictly Wednesdays, board time.
-    Shows a fresh upload — or the scheduled/live stream, so the box goes
-    up the morning of the show in anticipation."""
-    if datetime.now(timezone.utc).astimezone(BOARD_TZ).weekday() != 2:
-        return None
+POD_FRESH_HOURS = 48
 
+
+def pod_box():
+    """The homepage pod box, or None: the newest episode while it is fresh
+    (two days from upload), or the scheduled/live stream, so the box goes
+    up the morning of the show in anticipation."""
     def fetch():
         video = fetch_latest_pod()
         if video:
             age = datetime.now(timezone.utc) - video["published"]
-            fresh = age <= timedelta(hours=48)
+            fresh = age <= timedelta(hours=POD_FRESH_HOURS)
             if not fresh:
                 window = pod_stream_window(video["video_id"])
                 # this week's stream, or a watch page we couldn't read for
@@ -2115,8 +2117,8 @@ def pod_box():
                     video = None
         return video
 
-    # 15-minute cache: fetches only happen on Wednesdays, and the box
-    # should flip to the new episode soon after it uploads. keep_empty:
+    # 15-minute cache: the box should flip to the new episode soon after
+    # it uploads, and come down on its own two days later. keep_empty:
     # one refresh that can't reach YouTube must not take the box down
     # for the next fifteen minutes (it did, on 2026-11-11).
     return refresh_cache(POD_CACHE, POD_LOCK, "video", 900, fetch, keep_empty=True)
@@ -2179,8 +2181,8 @@ def pod_check():
         "box_shown_now": bool(pod_box()),
         "cache": {"video": (POD_CACHE.get("video") or {}).get("video_id"),
                   "busy": bool(POD_CACHE.get("_busy"))},
-        "note": "box needs: Wednesday + filter match + (published <48h "
-                "OR stream_window upcoming/today, or unknown within 7 days); "
+        "note": "box needs: filter match + (published <48h "
+                "OR stream_window upcoming/today, or unknown within 7 days); any day; "
                 "playable is info only; a refresh that fails keeps the last box",
     }
 

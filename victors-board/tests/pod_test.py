@@ -104,6 +104,30 @@ with appmod.POD_LOCK:
 if box():
     fails.append("an old entry with an unreadable page shows")
 
+# a 9:16 PM Wednesday upload: up all Thursday, down Friday
+class ThuDatetime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        d = datetime(2026, 11, 12, 15, 0, tzinfo=timezone.utc)   # Thursday 10 AM Detroit
+        return d.astimezone(tz) if tz else d.replace(tzinfo=None)
+appmod.datetime = ThuDatetime
+late = dict(feed_video, published=datetime(2026, 11, 12, 2, 16, 8, tzinfo=timezone.utc))
+state["feed"], state["window"] = late, None
+with appmod.POD_LOCK:
+    appmod.POD_CACHE.update({"at": -1e9, "video": None, "_busy": False})
+if not box():
+    fails.append("a late-Wednesday episode is not up on Thursday")
+class FriDatetime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        d = datetime(2026, 11, 14, 15, 0, tzinfo=timezone.utc)   # Friday 10 AM Detroit
+        return d.astimezone(tz) if tz else d.replace(tzinfo=None)
+appmod.datetime = FriDatetime
+with appmod.POD_LOCK:
+    appmod.POD_CACHE.update({"at": -1e9, "video": None, "_busy": False})
+if box():
+    fails.append("the box is still up on Friday")
+
 appmod.datetime = real_datetime
 print("FAILURES:\n  " + "\n  ".join(fails) if fails else "ALL PASS")
 sys.exit(1 if fails else 0)
