@@ -31,7 +31,7 @@ const BASE = process.env.BOARD || "http://127.0.0.1:5099";
   await phone.screenshot({ path: "receipts-2-phone-indiana.png" });
   // tapping a chip jumps
   await phone.click('.chip[data-for="minn"]');
-  await phone.waitForTimeout(900);
+  await phone.waitForTimeout(2500);   // a long smooth scroll from the bottom third
   const y = await phone.evaluate(() => document.getElementById("minn").getBoundingClientRect().top);
   ok(y > 40 && y < 120, "Minnesota did not land under the strip: " + y);
   // no sideways scroll on a phone

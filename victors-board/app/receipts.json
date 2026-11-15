@@ -1,84 +1,1281 @@
 {
-  "season": "2026",
-  "coach": "Kyle Whittingham",
-  "before": [
-    {"when": "Winter", "flag": "The hiring media tour: every show, the same five minutes.", "who": "WardenManual", "id": 90780},
-    {"when": "Winter", "flag": "“You will become us, we won’t become you.” Sold as vision. It was a defense.", "who": "Kashama", "id": 90770},
-    {"when": "Winter", "flag": "The Harley.", "who": "Maize4", "id": 90752},
-    {"when": "January", "flag": "Players in the portal window saying they hadn’t heard from him.", "who": "WardenManual", "id": 90772},
-    {"when": "January", "flag": "The news stories about how vigorously he exercises.", "who": "ralphie", "id": 90753},
-    {"when": "Jan 28", "flag": "Spotted at Crisler with his wife, shellshocked and out of their element. “RR, part 2.” Said it that night, too.", "who": "danny", "id": 90767},
-    {"when": "Preseason", "flag": "Urban is welcome at any practice but one.", "who": "ThWard", "id": 90756},
-    {"when": "Preseason", "flag": "Ohio State is just another game.", "who": "Daytripper", "id": 90746},
-    {"when": "Late July", "flag": "Big Ten media day. Asking how much longer the press conference would take.", "who": "BMH75", "id": 90784}
-  ],
-  "games": [
-    {"key": "wmu", "date": "Sat Sept 5", "opp": "Western Michigan", "abbr": "WMU", "result": "W", "score": "13–12", "receipts": [
-      {"time": "8:23 PM", "who": "Poster P", "quote": "Me too. Gonna be a long season", "id": 19592},
-      {"time": "10:08 PM", "who": "Poster P", "quote": "Whitt is a tired old man. But he drives a Harley so he must be youthful..idiots", "id": 20255},
-      {"time": "10:13 PM", "who": "suede", "quote": "Why is Beigel getting snaps when (a) we are losing, (b) it is the 4th quarter, and most importantly (c) he fucking sucks?", "id": 20293},
-      {"time": "10:21 PM", "who": "Supergoat", "quote": "Whitt looks like he doesnt know where he is", "id": 20372},
-      {"time": "10:23 PM", "who": "BMH75", "quote": "Whit has terrible fucking body language. This ain’t gonna work out.", "id": 20387},
-      {"time": "10:33 PM", "who": "BMH75", "quote": "This program hired a 66yr old with no energy. Throw in a terrible QB and this is going to be a long season", "id": 20459},
-      {"time": "10:49 PM", "who": "Doubl7", "quote": "Do we have tight ends?", "id": 20593},
-      {"day": "Sun", "time": "10:03 AM", "who": "Rich", "quote": "Poor use of personnel. Reminds me of Rich Rod", "id": 21335},
-      {"day": "Sun", "time": "2:12 PM", "who": "Rich", "quote": "If we lose all 4 big games and another game we should win, this staff is on the hot seat next winter", "id": 21687}
-    ]},
-    {"key": "ou", "date": "Sat Sept 12", "opp": "Oklahoma", "abbr": "OU", "result": "W", "score": "17–10", "receipts": [
-      {"time": "3:33 PM", "who": "Falco", "quote": "Huh... you mean tight ends cause a mismatch and can get open?", "id": 27523},
-      {"time": "3:37 PM", "who": "ameriKa", "quote": "Fuck man, try. That east west shit is fucked", "id": 27546},
-      {"day": "Mon", "time": "2:25 PM", "who": "detroitbry", "quote": "Is Beck going to adjust to Marshall and Hiter’s strength or keep running them east/west?", "id": 29986}
-    ]},
-    {"key": "utep", "date": "Sat Sept 19", "opp": "UTEP", "abbr": "UTEP", "result": "W", "score": "52–17", "receipts": [
-      {"time": "4:16 PM", "who": "Eric", "quote": "If you won’t take Bryce’s training wheels off vs. UTEP, when will you?", "id": 33698},
-      {"day": "Fri", "time": "8:26 AM", "who": "Rags", "quote": "I’m encouraged by Beck pointing out that the East/West stuff isn’t working.", "note": "It kept happening for six more weeks.", "id": 38702}
-    ]},
-    {"key": "iowa", "date": "Sat Sept 26", "opp": "Iowa", "abbr": "IOWA", "result": "L", "score": "19–20", "receipts": [
-      {"time": "1:58 PM", "who": "detroitbry", "quote": "I’m not a Beck fan so far either, the continued running east/west when it was not working was pissing me off", "id": 39733},
-      {"time": "7:38 PM", "who": "chief", "quote": "Run a fucking bootleg with a guy mirroring bryce..he can make an easy pass, run, or throw it away...gutless.", "id": 41458},
-      {"day": "Sun", "time": "8:14 PM", "who": "BobEvans", "quote": "In our very last third down, Beck called a running play. I just knew we were not playing to win.", "id": 43044}
-    ]},
-    {"key": "minn", "date": "Sat Oct 3", "opp": "Minnesota", "abbr": "MINN", "away": true, "result": "L", "score": "14–20", "receipts": [
-      {"time": "2:37 PM", "who": "suede", "quote": "Fire Kyle Whittingham.", "note": "The first one.", "id": 47490},
-      {"time": "9:10 PM", "who": "Bluebuck", "quote": "I’ve been a sunshine blower. This loss rocked my optimism.", "id": 48777},
-      {"day": "Tue", "time": "2:23 PM", "who": "Daytripper", "quote": "Zero chance. Old, white mormon with zero ties that said OSU is just another game. GET HIM OUT", "note": "The quote comes home.", "id": 50794}
-    ]},
-    {"key": "bye", "date": "Sat Oct 10", "opp": "Bye week", "abbr": "BYE", "result": "", "score": "", "receipts": [
-      {"day": "Mon", "time": "9:14 PM", "who": "WOK", "quote": "Kyle Whittingham on what the offense has done well: Prior to Minnesota, did a decent job running the football.", "id": 55260},
-      {"day": "Mon", "time": "9:24 PM", "who": "Daytripper", "quote": "The ironic thing about his poor media this week is IT’S NOT EVEN THE MEAT OF THE FUCKING SEASON", "id": 55267}
-    ]},
-    {"key": "psu", "date": "Sat Oct 17", "opp": "Penn State", "abbr": "PSU", "result": "W", "score": "21–18", "receipts": [
-      {"time": "4:26 PM", "who": "Ks", "quote": "More east west bullshit", "id": 58995},
-      {"time": "5:10 PM", "who": "el fuego", "quote": "Bro if you don’t have answers coming out of the bye week, how do you expect any during halftime??", "id": 59340},
-      {"time": "7:12 PM", "who": "suede", "quote": "Fire Kyle Whittingham. Fire Jason Beck. Fucking losers.", "id": 60037},
-      {"day": "Sun", "time": "5:25 PM", "who": "gbmcq", "quote": "They ran more interior than perimeter, and more zone than gap, and more direct runs than reads, for the first time all season.", "note": "Game seven.", "id": 61088}
-    ]},
-    {"key": "iu", "date": "Sat Oct 24", "opp": "Indiana", "abbr": "IU", "result": "L", "score": "6–13 OT", "receipts": [
-      {"time": "12:50 PM", "who": "BMH75", "quote": "THE FUCKING EAST WEST DOESNT WORK!", "id": 65133},
-      {"time": "1:19 PM", "who": "plisar", "quote": "East west runs are responsible for over 20 yards of losses today and a turnover", "id": 65362},
-      {"time": "2:25 PM", "who": "gbmcq", "quote": "Lol the target on that naked bootleg was going to be Beigel. He was the only receiver out there.", "id": 65755},
-      {"time": "3:51 PM", "who": "TheRaven", "quote": "Beck called 1 play I liked, 1 PLAY!", "id": 66268},
-      {"day": "Mon", "time": "10:37 AM", "who": "GoBlueTN24", "quote": "The guy really has no idea where he is at. Between the Ohio State is just another game, we are “pretty good”, no reason to panic about the 130th ranked offense. This guy just doesn’t get it and never will.", "id": 68125}
-    ]},
-    {"key": "rutg", "date": "Sat Oct 31", "opp": "Rutgers", "abbr": "RUTG", "away": true, "result": "W", "score": "28–21", "receipts": [
-      {"time": "2:03 PM", "who": "suede", "quote": "Would you fire Kyle Whittingham?", "id": 72423},
-      {"time": "3:44 PM", "who": "Nikos", "quote": "Fire Kyle Whittingham.", "note": "During a win.", "id": 72951}
-    ]},
-    {"key": "msu", "date": "Sat Nov 7", "opp": "Michigan State", "abbr": "MSU", "result": "L", "score": "6–15", "receipts": [
-      {"time": "4:53 PM", "who": "suede", "quote": "Fire Kyle Whittingham.", "note": "Before kickoff.", "id": 80893},
-      {"time": "9:33 PM", "who": "yarn", "quote": "Vibes from the stadium, pure apathy. Fire Kyle Whittingham", "id": 81960},
-      {"time": "11:37 PM", "who": "KeiTh", "quote": "My name is Keith Van Horn and Michigan must fire Kyle Whittingham", "id": 82711},
-      {"day": "Sun", "time": "1:29 AM", "who": "suede", "quote": "I simply don’t believe you can’t find ~$40M to buyout the staff", "id": 82892},
-      {"day": "Mon", "time": "11:52 AM", "who": "Mothman", "quote": "I love that the tab on my browser says “Fire Kyle Whittingham” all day long", "id": 84401},
-      {"day": "Tue", "time": "8:50 AM", "who": "Alias Guy", "quote": "The Wreck of the Kyle Whittingham, set to the tune of The Wreck of the Edmund Fitzgerald", "id": 85165},
-      {"day": "Tue", "time": "12:10 PM", "who": "Kial J Shittingham", "quote": "You will become us. We will not become you", "id": 85299},
-      {"day": "Thu", "time": "12:50 PM", "who": "el fuego", "quote": "Whittingham and Beck didn’t need to overhaul Michigan’s 2026 offense, they just needed to tweak it here and there. Their whole approach was flawed from the beginning.", "id": 87400},
-      {"day": "Fri", "time": "12:16 PM", "who": "weebay", "quote": "“You will become us” was a defensive statement rather than a statement of vision.", "id": 88437}
-    ]},
-    {"key": "ore", "date": "Sat Nov 14", "opp": "Oregon", "abbr": "ORE", "away": true, "result": "L", "score": "7–31", "receipts": [
-      {"time": "8:04 AM", "who": "danny", "quote": "Flag flying. Usual breakfast. Fire Kyle Whittingham", "id": 89206},
-      {"time": "8:01 PM", "who": "django", "quote": "Somebody that’s more savvy than I am should put a timestamp mapping together of all the red flags from below for the board.", "note": "The post that made this page.", "id": 90819},
-      {"time": "7:35 PM", "who": "suede", "quote": "Minnesota performance. It was the first time I posted “Fire Kyle Whittingham” on the board.", "id": 90749}
-    ]}
-  ]
+ "season": "2026",
+ "coach": "Kyle Whittingham",
+ "before": [
+  {
+   "when": "Winter",
+   "flag": "The hiring media tour: every show, the same five minutes.",
+   "who": "WardenManual",
+   "id": 90780
+  },
+  {
+   "when": "Winter",
+   "flag": "“You will become us, we won’t become you.” Sold as vision. It was a defense.",
+   "who": "Kashama",
+   "id": 90770
+  },
+  {
+   "when": "Winter",
+   "flag": "The Harley.",
+   "who": "Maize4",
+   "id": 90752
+  },
+  {
+   "when": "January",
+   "flag": "Players in the portal window saying they hadn’t heard from him.",
+   "who": "WardenManual",
+   "id": 90772
+  },
+  {
+   "when": "January",
+   "flag": "The news stories about how vigorously he exercises.",
+   "who": "ralphie",
+   "id": 90753
+  },
+  {
+   "when": "Jan 28",
+   "flag": "Spotted at Crisler with his wife, shellshocked and out of their element. “RR, part 2.” Said it that night, too.",
+   "who": "danny",
+   "id": 90767
+  },
+  {
+   "when": "Preseason",
+   "flag": "Urban is welcome at any practice but one.",
+   "who": "ThWard",
+   "id": 90756
+  },
+  {
+   "when": "Preseason",
+   "flag": "Ohio State is just another game.",
+   "who": "Daytripper",
+   "id": 90746
+  },
+  {
+   "when": "Late July",
+   "flag": "Big Ten media day. Asking how much longer the press conference would take.",
+   "who": "BMH75",
+   "id": 90784
+  }
+ ],
+ "games": [
+  {
+   "key": "wmu",
+   "date": "Sat Sept 5",
+   "opp": "Western Michigan",
+   "abbr": "WMU",
+   "result": "W",
+   "score": "13–12",
+   "receipts": [
+    {
+     "time": "8:12 PM",
+     "who": "LS&Play",
+     "quote": "I hope Whitt isn’t mailing it in. It does happen at this age. No bueno.",
+     "id": 19546
+    },
+    {
+     "time": "8:23 PM",
+     "who": "Scouser",
+     "quote": "Kyle, this is Michigan, pound the fucking rock, forget the gimmicky sideline shit that no longer works.",
+     "id": 19584
+    },
+    {
+     "time": "8:23 PM",
+     "who": "Poster P",
+     "quote": "Me too. Gonna be a long season",
+     "id": 19592
+    },
+    {
+     "time": "8:36 PM",
+     "who": "Daytripper",
+     "quote": "Here's a hot take: this is RR 2.0",
+     "id": 19650,
+     "note": "The first Rich Rod call. 8:36 PM, game one."
+    },
+    {
+     "time": "8:37 PM",
+     "who": "Spirit",
+     "quote": "Whitt looks shell-shocked",
+     "id": 19651,
+     "note": "The first body language call. 8:37 PM, game one."
+    },
+    {
+     "time": "8:53 PM",
+     "who": "BMH75",
+     "quote": "Better hope this is a staff that corrects things at halftime.",
+     "id": 19775
+    },
+    {
+     "time": "9:07 PM",
+     "who": "Spirit",
+     "quote": "Nobody talks to Bryce on the sideline.  Whitt talks to nobody on the sideline.  What is going on?",
+     "id": 19880
+    },
+    {
+     "time": "9:50 PM",
+     "who": "Poster P",
+     "quote": "Fire Whitt. Bench Bryce",
+     "id": 20141,
+     "note": "Third quarter of game one."
+    },
+    {
+     "time": "9:53 PM",
+     "who": "BigLake",
+     "quote": "This is an unbelievably poorly coached team. Not just fundamentals and discipline, but schemes, playcalling, energy and so on.",
+     "id": 20159
+    },
+    {
+     "time": "10:08 PM",
+     "who": "Poster P",
+     "quote": "Whitt is a tired old man. But he drives a Harley so he must be youthful..idiots",
+     "id": 20255
+    },
+    {
+     "time": "10:08 PM",
+     "who": "detroitbry",
+     "quote": "Can't run the ball and the defense can't get off the field...uhhh that was supposed to be Whittingham's staple.",
+     "id": 20258
+    },
+    {
+     "time": "10:13 PM",
+     "who": "suede",
+     "quote": "Why is Beigel getting snaps when (a) we are losing, (b) it is the 4th quarter, and most importantly (c) he fucking sucks?",
+     "id": 20293
+    },
+    {
+     "time": "10:21 PM",
+     "who": "Supergoat",
+     "quote": "Whitt looks like he doesnt know where he is",
+     "id": 20372
+    },
+    {
+     "time": "10:23 PM",
+     "who": "BMH75",
+     "quote": "Whit has terrible fucking body language. This ain’t gonna work out.",
+     "id": 20387
+    },
+    {
+     "time": "10:24 PM",
+     "who": "Craig",
+     "quote": "Whitt has looked like a deer in headlights the whole game. He’s never talking on the headset, never talking to players or coaches on the sideline",
+     "id": 20397
+    },
+    {
+     "time": "10:33 PM",
+     "who": "BMH75",
+     "quote": "This program hired a 66yr old with no energy. Throw in a terrible QB and this is going to be a long season",
+     "id": 20459
+    },
+    {
+     "time": "10:49 PM",
+     "who": "Doubl7",
+     "quote": "Do we have tight ends?",
+     "id": 20593
+    },
+    {
+     "time": "10:55 PM",
+     "who": "WOK",
+     "quote": "Kyle Whittingham spoke more to the opposing coach than he did to his team during the game",
+     "id": 20650
+    },
+    {
+     "time": "12:38 AM",
+     "who": "Rich",
+     "quote": "Is Beck a fraud?",
+     "id": 21073,
+     "day": "Sun"
+    },
+    {
+     "time": "8:57 AM",
+     "who": "harbaughdyssey",
+     "quote": "My concern is we hired an OC with no real track record who appears high on his own supply in bizarre offenses because he had some success",
+     "id": 21218,
+     "day": "Sun"
+    },
+    {
+     "day": "Sun",
+     "time": "10:03 AM",
+     "who": "Rich",
+     "quote": "Poor use of personnel. Reminds me of Rich Rod",
+     "id": 21335
+    },
+    {
+     "day": "Sun",
+     "time": "2:12 PM",
+     "who": "Rich",
+     "quote": "If we lose all 4 big games and another game we should win, this staff is on the hot seat next winter",
+     "id": 21687
+    },
+    {
+     "time": "2:56 PM",
+     "who": "LS&Play",
+     "quote": "UW’s D was fine, but the offense was just stunningly bad and never got fixed. They went 4-8 and everyone was fired.",
+     "id": 21713,
+     "day": "Sun"
+    }
+   ]
+  },
+  {
+   "key": "ou",
+   "date": "Sat Sept 12",
+   "opp": "Oklahoma",
+   "abbr": "OU",
+   "result": "W",
+   "score": "17–10",
+   "receipts": [
+    {
+     "time": "2:27 PM",
+     "who": "bluejohn",
+     "quote": "Whitt is Lloyd.  We don't outscheme folks.",
+     "id": 27151
+    },
+    {
+     "time": "2:47 PM",
+     "who": "Krypto",
+     "quote": "Managed to find an offensive coaching staff worse than Moore's. Impressive.",
+     "id": 27229
+    },
+    {
+     "time": "2:51 PM",
+     "who": "BMH75",
+     "quote": "Whitts body language sucks too. Constantly looking frustrated and rubbing his face.",
+     "id": 27266
+    },
+    {
+     "time": "2:54 PM",
+     "who": "Craig",
+     "quote": "Our TEs have barely sniffed the field",
+     "id": 27278
+    },
+    {
+     "time": "2:59 PM",
+     "who": "Rich",
+     "quote": "We moved the ball in the first half throwing downfield.  This half rhino.  Beck sucks",
+     "id": 27306
+    },
+    {
+     "time": "3:05 PM",
+     "who": "Messner's Stache",
+     "quote": "This feels like a Threet-era gameplan.",
+     "id": 27346
+    },
+    {
+     "time": "3:26 PM",
+     "who": "Daytripper",
+     "quote": "Really chickenshit coaching, just hope the defense can bail them out again",
+     "id": 27492
+    },
+    {
+     "time": "3:33 PM",
+     "who": "Falco",
+     "quote": "Huh... you mean tight ends cause a mismatch and can get open?",
+     "id": 27523
+    },
+    {
+     "time": "3:37 PM",
+     "who": "ameriKa",
+     "quote": "Fuck man, try. That east west shit is fucked",
+     "id": 27546
+    },
+    {
+     "time": "3:38 PM",
+     "who": "WOK",
+     "quote": "Why in the fuck are you running Marshall sideline to sideline?!?!?",
+     "id": 27557
+    },
+    {
+     "time": "4:00 PM",
+     "who": "detroitbry",
+     "quote": "The TEs can't be so bad that you don't even consider them, UM does not attack the middle of the field at all",
+     "id": 27687
+    },
+    {
+     "time": "4:04 PM",
+     "who": "ftb",
+     "quote": "Beck coached scared. And may have been right to. But we need more in week 4.",
+     "id": 27708
+    },
+    {
+     "time": "1:28 AM",
+     "who": "Rich",
+     "quote": "Also he got clowned 2 weeks in a row on halftime adjustments.  He got worse in both games.  I'd fire him tomorrow if I could",
+     "id": 28717,
+     "day": "Sun",
+     "note": "The first fire-Beck call."
+    },
+    {
+     "time": "11:05 AM",
+     "who": "Rich",
+     "quote": "\"When things get tough, his only answer is more rhino\"",
+     "id": 28911,
+     "day": "Sun"
+    },
+    {
+     "day": "Mon",
+     "time": "2:25 PM",
+     "who": "detroitbry",
+     "quote": "Is Beck going to adjust to Marshall and Hiter’s strength or keep running them east/west?",
+     "id": 29986
+    }
+   ]
+  },
+  {
+   "key": "utep",
+   "date": "Sat Sept 19",
+   "opp": "UTEP",
+   "abbr": "UTEP",
+   "result": "W",
+   "score": "52–17",
+   "receipts": [
+    {
+     "time": "3:48 PM",
+     "who": "Spirit",
+     "quote": "It's all slow developing easte/west stuff, frustrating",
+     "id": 33522,
+     "note": "First half, UTEP."
+    },
+    {
+     "time": "3:50 PM",
+     "who": "tman",
+     "quote": "Doesn't the TE coach deserve some blame for the piss poor play of the TEs? Unfortunately, his name is Freddie Wittingham.",
+     "id": 33533
+    },
+    {
+     "time": "3:56 PM",
+     "who": "Prominence14",
+     "quote": "The lack of Smash is the biggest indictment on Beck.  The 1 thing we did well (elite-lite) last year with same cast.",
+     "id": 33574
+    },
+    {
+     "time": "3:57 PM",
+     "who": "Nikos",
+     "quote": "Severely unimpressed by this staff",
+     "id": 33586
+    },
+    {
+     "time": "4:06 PM",
+     "who": "ftb",
+     "quote": "We are repeatedly outnumbered at the point of attack, offense and defense. We're either slow or coached slow.",
+     "id": 33647
+    },
+    {
+     "time": "4:06 PM",
+     "who": "Daytripper",
+     "quote": "These coaches let this mediocre team skate all week and come out emotionally unready for a -40 point spread, can't happen, it cannot happen",
+     "id": 33652
+    },
+    {
+     "time": "4:16 PM",
+     "who": "Eric",
+     "quote": "If you won’t take Bryce’s training wheels off vs. UTEP, when will you?",
+     "id": 33698
+    },
+    {
+     "time": "4:18 PM",
+     "who": "tman",
+     "quote": "They have things that are working, albeit against UTEP. But its like the coaches have ADHD: They can't stick with what works.",
+     "id": 33716
+    },
+    {
+     "time": "4:42 PM",
+     "who": "Nikos",
+     "quote": "This staff is a complete disaster. I'm way way out. Oklahoma fans should be furious",
+     "id": 33900
+    },
+    {
+     "time": "4:44 PM",
+     "who": "Nikos",
+     "quote": "this is 2/3 weeks of solid evidence that Whitt and Beck have zero clue what they are doing here.",
+     "id": 33918
+    },
+    {
+     "time": "4:45 PM",
+     "who": "LS&Play",
+     "quote": "Let there be no doubt: This is a check cashing job for Whitt.",
+     "id": 33933
+    },
+    {
+     "time": "4:52 PM",
+     "who": "Nikos",
+     "quote": "if Jason Beck were a gambling addict on the take, it would not look any different than this.",
+     "id": 34011
+    },
+    {
+     "time": "4:54 PM",
+     "who": "Daytripper",
+     "quote": "Whitt's body language is a dead ringer for RR. Hoke looked overwhelmed. RR and Whitt look confused",
+     "id": 34019
+    },
+    {
+     "time": "5:02 PM",
+     "who": "UMdad",
+     "quote": "Isn't it obvious? We have a gameplan and will stick to it even when it's not working. No attempt to adapt to the situation. Very Lloyd-like.",
+     "id": 34073
+    },
+    {
+     "time": "5:25 PM",
+     "who": "Craig",
+     "quote": "Have our real TEs even been on the field",
+     "id": 34200
+    },
+    {
+     "time": "9:11 PM",
+     "who": "Craig",
+     "quote": "I think Beck is really wedded to a certain thing he wants to do. Instead of blocky-catchy guys, he wants blocky guys.",
+     "id": 34949
+    },
+    {
+     "day": "Fri",
+     "time": "8:26 AM",
+     "who": "Rags",
+     "quote": "I’m encouraged by Beck pointing out that the East/West stuff isn’t working.",
+     "note": "It kept happening for six more weeks.",
+     "id": 38702
+    }
+   ]
+  },
+  {
+   "key": "iowa",
+   "date": "Sat Sept 26",
+   "opp": "Iowa",
+   "abbr": "IOWA",
+   "result": "L",
+   "score": "19–20",
+   "receipts": [
+    {
+     "time": "10:30 AM",
+     "who": "harbaughdyssey",
+     "quote": "His resume as a QB coach is very strong. As an OC it’s very short but promising. A lot of the offseason analysis had zero caution though",
+     "id": 39574
+    },
+    {
+     "time": "1:58 PM",
+     "who": "detroitbry",
+     "quote": "I’m not a Beck fan so far either, the continued running east/west when it was not working was pissing me off",
+     "id": 39733
+    },
+    {
+     "time": "5:08 PM",
+     "who": "jjwalker",
+     "quote": "Oh my god I'm starting to loathe this coaching staff. Fucking dinosaur football.",
+     "id": 40408
+    },
+    {
+     "time": "5:35 PM",
+     "who": "hambone",
+     "quote": "Running game ain’t there Beck",
+     "id": 40534
+    },
+    {
+     "time": "5:41 PM",
+     "who": "Bluebuck",
+     "quote": "This is shaping up to be a Rich Rod special with a million yards and a handful of points.",
+     "id": 40589
+    },
+    {
+     "time": "6:13 PM",
+     "who": "Daytripper",
+     "quote": "lol these clowns have no clue what is going on, how are they being paid to do this???????",
+     "id": 40797
+    },
+    {
+     "time": "6:41 PM",
+     "who": "jjwalker",
+     "quote": "Just throw the fucking ball downfield. These coaches can't adjust their priors.",
+     "id": 40976
+    },
+    {
+     "time": "6:45 PM",
+     "who": "detroitbry",
+     "quote": "If this is the offensive system that Whittingham is going to be content to run at UM, blow this shit up after one year and let the next AD hire his coach",
+     "id": 40989
+    },
+    {
+     "time": "7:03 PM",
+     "who": "hambone",
+     "quote": "Fire Whitt into hell",
+     "id": 41158
+    },
+    {
+     "time": "7:38 PM",
+     "who": "chief",
+     "quote": "Run a fucking bootleg with a guy mirroring bryce..he can make an easy pass, run, or throw it away...gutless.",
+     "id": 41458
+    },
+    {
+     "time": "7:41 PM",
+     "who": "ameriKa",
+     "quote": "That guy is cashed out.  He stands on the sideline looking shocked at everything and apparently doing nothing.  He didn’t use to be like that.  He’s washed",
+     "id": 41476
+    },
+    {
+     "time": "7:57 PM",
+     "who": "BMH75",
+     "quote": "It doesn't help that Mormon Hoke has the worst fucking body language every game. Constantly rubbing his face. Shaking his head. Shoulders slumped. Who the fuck would get excited about seeing that.",
+     "id": 41598
+    },
+    {
+     "time": "8:46 PM",
+     "who": "ftb",
+     "quote": "We can all imagine improvement from here. But a seemingly clueless HC and possibly outright bad OC = 6-6.",
+     "id": 41836,
+     "note": "5–5 and counting."
+    },
+    {
+     "time": "11:04 PM",
+     "who": "chief",
+     "quote": "They don't coach like they are at Michigan, they coach like an upstart mountain west team.",
+     "id": 42175
+    },
+    {
+     "time": "7:21 AM",
+     "who": "Mark II",
+     "quote": "I’m afraid we’ve got the worst of both worlds; as risk averse as Lloyd and as stubborn about coaching philosophy as RichRod.",
+     "id": 42309,
+     "day": "Sun"
+    },
+    {
+     "time": "9:07 AM",
+     "who": "Rich",
+     "quote": "His quote this past week was 'this is what we have always run'.   Very RR like.  He is not changing.  More rhino!!!",
+     "id": 42386,
+     "day": "Sun"
+    },
+    {
+     "day": "Sun",
+     "time": "8:14 PM",
+     "who": "BobEvans",
+     "quote": "In our very last third down, Beck called a running play. I just knew we were not playing to win.",
+     "id": 43044
+    }
+   ]
+  },
+  {
+   "key": "minn",
+   "date": "Sat Oct 3",
+   "opp": "Minnesota",
+   "abbr": "MINN",
+   "away": true,
+   "result": "L",
+   "score": "14–20",
+   "receipts": [
+    {
+     "time": "12:36 PM",
+     "who": "LS&Play",
+     "quote": "1. At least one catastrophic mistake on special teams per game  2. Endless drive-killing penalties  3. You will not score 20 points against any Top 100 opponent",
+     "id": 46906
+    },
+    {
+     "time": "12:44 PM",
+     "who": "bluejohn",
+     "quote": "Safeties are creeping way down.  Run the tight end straight up the field.",
+     "id": 46949
+    },
+    {
+     "time": "1:27 PM",
+     "who": "Spirit",
+     "quote": "They coach scared, they play scared.  We're F'ing Michigan Whitt",
+     "id": 47098
+    },
+    {
+     "time": "1:48 PM",
+     "who": "Beave",
+     "quote": "God is Whitt's body language just bad. Like he looks sad and confused every time they pan to him.",
+     "id": 47166
+    },
+    {
+     "time": "1:54 PM",
+     "who": "BMH75",
+     "quote": "They appear to be scared to run any and all plays. Everything is outside the hashes.  Run plays are outside and tentative. The must be the easiest offense to defend.",
+     "id": 47187
+    },
+    {
+     "time": "2:37 PM",
+     "who": "suede",
+     "quote": "Fire Kyle Whittingham.",
+     "note": "The first one.",
+     "id": 47490
+    },
+    {
+     "time": "2:49 PM",
+     "who": "Rich",
+     "quote": "Beck is stubborn.  Incapable of learning.  I think he's an idiot",
+     "id": 47589
+    },
+    {
+     "time": "2:51 PM",
+     "who": "harbaughdyssey",
+     "quote": "Everyone on offense looks bad. What’s the common element",
+     "id": 47623
+    },
+    {
+     "time": "2:59 PM",
+     "who": "Ev",
+     "quote": "Basically this same group was a dominant downhill run team last year. Pissed it away for some gimmicky side to side bullshit with an extra o lineman.",
+     "id": 47703
+    },
+    {
+     "time": "3:37 PM",
+     "who": "WOK",
+     "quote": "They have no ability to control how this team plays. They get what they get and the coaches can’t do anything to change it once it’s on the field.",
+     "id": 48033
+    },
+    {
+     "time": "4:07 PM",
+     "who": "Mark II",
+     "quote": "Start with an OC determined to run Utah’s offense with players ill equipped to do it.",
+     "id": 48160
+    },
+    {
+     "time": "5:31 PM",
+     "who": "Boom King",
+     "quote": "Transition costs don’t exist anymore. Cignetti and Dusty are the model. Fire Whitt and hire Chesney is the move",
+     "id": 48399
+    },
+    {
+     "time": "5:36 PM",
+     "who": "Daytripper",
+     "quote": "Correct. It's hopium to think you improve more in season than fall and spring. These coaches didn't coach anything all offseason. Can't fix that now",
+     "id": 48408
+    },
+    {
+     "time": "8:13 PM",
+     "who": "ameriKa",
+     "quote": "They’re already stale.  They come up with some basic, proto game plan, and when that inevitably fails there are zero answers",
+     "id": 48709
+    },
+    {
+     "time": "9:10 PM",
+     "who": "Bluebuck",
+     "quote": "I’ve been a sunshine blower. This loss rocked my optimism.",
+     "id": 48777
+    },
+    {
+     "time": "9:48 PM",
+     "who": "LS&Play",
+     "quote": "Whitt does nothing. They’ll make no changes. Whitt “supposes” something might be different next week. But it won’t be.",
+     "id": 48839
+    },
+    {
+     "day": "Tue",
+     "time": "2:23 PM",
+     "who": "Daytripper",
+     "quote": "Zero chance. Old, white mormon with zero ties that said OSU is just another game. GET HIM OUT",
+     "note": "The quote comes home.",
+     "id": 50794
+    }
+   ]
+  },
+  {
+   "key": "bye",
+   "date": "Sat Oct 10",
+   "opp": "Bye week",
+   "abbr": "BYE",
+   "result": "",
+   "score": "",
+   "receipts": [
+    {
+     "day": "Mon",
+     "time": "9:14 PM",
+     "who": "WOK",
+     "quote": "Kyle Whittingham on what the offense has done well: Prior to Minnesota, did a decent job running the football.",
+     "id": 55260
+    },
+    {
+     "day": "Mon",
+     "time": "9:24 PM",
+     "who": "Daytripper",
+     "quote": "The ironic thing about his poor media this week is IT’S NOT EVEN THE MEAT OF THE FUCKING SEASON",
+     "id": 55267
+    }
+   ]
+  },
+  {
+   "key": "psu",
+   "date": "Sat Oct 17",
+   "opp": "Penn State",
+   "abbr": "PSU",
+   "result": "W",
+   "score": "21–18",
+   "receipts": [
+    {
+     "time": "9:24 AM",
+     "who": "jBdub",
+     "quote": "No apathy. Eager to see if this coaching staff is capable of identifying and correcting.",
+     "id": 58411
+    },
+    {
+     "time": "2:23 PM",
+     "who": "Bluebuck",
+     "quote": "He's at a tight end factory and we don't use them at all.",
+     "id": 58669
+    },
+    {
+     "time": "4:02 PM",
+     "who": "suede",
+     "quote": "Beautiful east-west running plays.",
+     "id": 58880
+    },
+    {
+     "time": "4:22 PM",
+     "who": "bluebossa",
+     "quote": "Whitt looks so vacant on the sideline much of the time",
+     "id": 58977
+    },
+    {
+     "time": "4:26 PM",
+     "who": "Ks",
+     "quote": "More east west bullshit",
+     "id": 58995
+    },
+    {
+     "time": "5:10 PM",
+     "who": "el fuego",
+     "quote": "Bro if you don’t have answers coming out of the bye week, how do you expect any during halftime??",
+     "id": 59340
+    },
+    {
+     "time": "5:15 PM",
+     "who": "Cap",
+     "quote": "When the head coach repeatedly says on TV that he doesn't know what to do, it's not a good sign.",
+     "id": 59369
+    },
+    {
+     "time": "5:44 PM",
+     "who": "WOK",
+     "quote": "Beck is just a spaz. They ran 11 pistol once or twice in the first half. Shit works and then he throws it in the trash bin.",
+     "id": 59557
+    },
+    {
+     "time": "5:57 PM",
+     "who": "Craig",
+     "quote": "We have TEs?",
+     "id": 59641
+    },
+    {
+     "time": "6:33 PM",
+     "who": "coop",
+     "quote": "Beck's obsession with horizontal run action is insane considering how ineffective it is.",
+     "id": 59818
+    },
+    {
+     "time": "7:12 PM",
+     "who": "suede",
+     "quote": "Fire Kyle Whittingham. Fire Jason Beck. Fucking losers.",
+     "id": 60037
+    },
+    {
+     "time": "8:11 PM",
+     "who": "yarn",
+     "quote": "Jason Beck had a bye week and that was what he came up with. Lmao. Lol.",
+     "id": 60181
+    },
+    {
+     "time": "1:22 AM",
+     "who": "BMH75",
+     "quote": "This game changes nothing. It only further confirmed this staff has to go.  The offense is completely predictable and uses only about 1/4 of the field.",
+     "id": 60546,
+     "day": "Sun"
+    },
+    {
+     "time": "10:30 AM",
+     "who": "Nikos",
+     "quote": "JMO, but this was not a lightbulb game for Beck. if anything, the opposite. he ran his same shit to a 0-point, 80-yard 1H and begrudgingly ran a small handful of plays that worked exceptionally well in the 2H",
+     "id": 60727,
+     "day": "Sun"
+    },
+    {
+     "day": "Sun",
+     "time": "5:25 PM",
+     "who": "gbmcq",
+     "quote": "They ran more interior than perimeter, and more zone than gap, and more direct runs than reads, for the first time all season.",
+     "note": "Game seven.",
+     "id": 61088
+    },
+    {
+     "time": "6:28 PM",
+     "who": "michjd",
+     "quote": "It’s bizarre how he repeatedly acts like he’s a complete bystander to the offense. You’re the freaking head coach! If something is broken then fix it",
+     "id": 61118,
+     "day": "Sun"
+    }
+   ]
+  },
+  {
+   "key": "iu",
+   "date": "Sat Oct 24",
+   "opp": "Indiana",
+   "abbr": "IU",
+   "result": "L",
+   "score": "6–13 OT",
+   "receipts": [
+    {
+     "time": "9:13 AM",
+     "who": "LS&Play",
+     "quote": "Almost every time they show Whit his headset is flipped up. He talks to no one. Very odd",
+     "id": 64852
+    },
+    {
+     "time": "12:26 PM",
+     "who": "Bluerock",
+     "quote": "We have real tight ends. Would be nice to use them",
+     "id": 65011
+    },
+    {
+     "time": "12:27 PM",
+     "who": "Brandt",
+     "quote": "Thanks for the east-west run call on 2d and 5, Beck.",
+     "id": 65016
+    },
+    {
+     "time": "12:50 PM",
+     "who": "BMH75",
+     "quote": "THE FUCKING EAST WEST DOESNT WORK!",
+     "id": 65133
+    },
+    {
+     "time": "12:52 PM",
+     "who": "Spirit",
+     "quote": "Utah fans told us his answer to offensive problems was \"more rhino\" and he has said multiple times in AA that the answer was \"more rhino\".  He is a fucking idiot.",
+     "id": 65147
+    },
+    {
+     "time": "1:08 PM",
+     "who": "bluejohn",
+     "quote": "A competent offense and Michigan is undefeated.  They've made no adjustments all season.",
+     "id": 65272
+    },
+    {
+     "time": "1:13 PM",
+     "who": "BMH75",
+     "quote": "The players know this offense is useless. The body language is obvious",
+     "id": 65319
+    },
+    {
+     "time": "1:19 PM",
+     "who": "plisar",
+     "quote": "East west runs are responsible for over 20 yards of losses today and a turnover",
+     "id": 65362
+    },
+    {
+     "time": "2:25 PM",
+     "who": "gbmcq",
+     "quote": "Lol the target on that naked bootleg was going to be Beigel. He was the only receiver out there.",
+     "id": 65755
+    },
+    {
+     "time": "3:38 PM",
+     "who": "xcheck",
+     "quote": "2nd and goal at IU 4 with 1:00 left.  Bo scores.  Mo scores.  Lloyd scores.  Harbaugh scores.  Sherrone scores. Hoke?  Maybe. RichRod and Whitt are the only guys who I know won’t score.  They just won’t",
+     "id": 66188
+    },
+    {
+     "time": "3:45 PM",
+     "who": "GoBlueTN24",
+     "quote": "I’d put my entire bank account on Whitt saying the difference in the game was our 2 turnovers",
+     "id": 66237
+    },
+    {
+     "time": "3:51 PM",
+     "who": "TheRaven",
+     "quote": "Beck called 1 play I liked, 1 PLAY!",
+     "id": 66268
+    },
+    {
+     "time": "4:04 PM",
+     "who": "suede",
+     "quote": "Kyle Whittingham weighs in: \"If that's the No. 6 team in the country, then we're pretty good, even though we're sitting here at 4-3.\"",
+     "id": 66315
+    },
+    {
+     "time": "4:58 PM",
+     "who": "WOK",
+     "quote": "The goal line naked boot is a Beck tendency. Ran it with Bryce, ran it at Utah. The DL had it downloaded.",
+     "id": 66452
+    },
+    {
+     "time": "9:35 PM",
+     "who": "Rich",
+     "quote": "They installed the wrong offense for this team and the talent.   They totally disregarded skill and experience and probably didn't do their homework in the offseason.",
+     "id": 66778
+    },
+    {
+     "time": "10:02 PM",
+     "who": "jonsbrother",
+     "quote": "“That was not a good football call,” Whittingham said. “That was not a good call at that point in time.”",
+     "id": 66809
+    },
+    {
+     "time": "11:49 PM",
+     "who": "Paul",
+     "quote": "Whittingham's quotes after the game were the most DGAF things I've ever heard in anything like that context",
+     "id": 66917
+    },
+    {
+     "time": "12:29 AM",
+     "who": "jjwalker",
+     "quote": "Yeah, and you have a shaky 4-3 coin flip season. Which is a massive failure. I love how Whitt just narrates what's happening to \"his\" program. Third person observer.",
+     "id": 66937,
+     "day": "Sun"
+    },
+    {
+     "day": "Mon",
+     "time": "10:37 AM",
+     "who": "GoBlueTN24",
+     "quote": "The guy really has no idea where he is at. Between the Ohio State is just another game, we are “pretty good”, no reason to panic about the 130th ranked offense. This guy just doesn’t get it and never will.",
+     "id": 68125
+    }
+   ]
+  },
+  {
+   "key": "rutg",
+   "date": "Sat Oct 31",
+   "opp": "Rutgers",
+   "abbr": "RUTG",
+   "away": true,
+   "result": "W",
+   "score": "28–21",
+   "receipts": [
+    {
+     "time": "1:10 PM",
+     "who": "Cap",
+     "quote": "Opponents are completely shocked anytime a tight end is on the field for us, much less goes out to catch a pass.",
+     "id": 72154
+    },
+    {
+     "time": "1:23 PM",
+     "who": "ameriKa",
+     "quote": "This game and probably next week will encourage beck and beachfront and we will get destroyed at autzen",
+     "id": 72198,
+     "note": "Oregon 31, Michigan 7."
+    },
+    {
+     "time": "1:49 PM",
+     "who": "tman",
+     "quote": "5 penalties for 50 yards; 2.7 yards per rush against a defense that gives up 6+ yards per carry. Well-coached team!",
+     "id": 72328
+    },
+    {
+     "time": "2:03 PM",
+     "who": "BMH75",
+     "quote": "Some great talent but zero coaching. Zero discipline. Zero focus. This program is toast for years.",
+     "id": 72418
+    },
+    {
+     "time": "2:03 PM",
+     "who": "suede",
+     "quote": "Would you fire Kyle Whittingham?",
+     "id": 72423
+    },
+    {
+     "time": "2:06 PM",
+     "who": "Bender",
+     "quote": "We have coaches who are stubborn to an extreme level.",
+     "id": 72437
+    },
+    {
+     "time": "2:06 PM",
+     "who": "LewisBullox",
+     "quote": "I generally think things like so and so is checked out is lazy sports radio stuff, but I believe it for Whitt. Look at that interview at half",
+     "id": 72439
+    },
+    {
+     "time": "3:28 PM",
+     "who": "DetUMICH",
+     "quote": "they will not hang with ucla, oregon, or ohio state with this shit.",
+     "id": 72862
+    },
+    {
+     "time": "3:44 PM",
+     "who": "Nikos",
+     "quote": "Fire Kyle Whittingham.",
+     "note": "During a win.",
+     "id": 72951
+    },
+    {
+     "time": "3:46 PM",
+     "who": "Ghost",
+     "quote": "Whittingham looked like a zombie walking out to midfield for that handshake.",
+     "id": 72963
+    },
+    {
+     "time": "4:22 PM",
+     "who": "Craig",
+     "quote": "Whittingham never dives. He’s never given the impression of being all in. Hell, he’s rarely given the impression of even knowing it was Saturday. It’s ridiculous to think that players don’t see this.",
+     "id": 73055
+    },
+    {
+     "time": "10:06 PM",
+     "who": "toffee",
+     "quote": "Can’t believer people thought this POS staff could get this team to cover and would dominate Rutgers.  This team probably loses out.",
+     "id": 73457,
+     "note": "Two straight since."
+    }
+   ]
+  },
+  {
+   "key": "msu",
+   "date": "Sat Nov 7",
+   "opp": "Michigan State",
+   "abbr": "MSU",
+   "result": "L",
+   "score": "6–15",
+   "receipts": [
+    {
+     "time": "4:53 PM",
+     "who": "suede",
+     "quote": "Fire Kyle Whittingham.",
+     "note": "Before kickoff.",
+     "id": 80893
+    },
+    {
+     "time": "7:59 PM",
+     "who": "BMH75",
+     "quote": "Every failing offense has fired their OC except this fucking guy.",
+     "id": 81280
+    },
+    {
+     "time": "8:09 PM",
+     "who": "plisar",
+     "quote": "Why is everything east/west? Why are we starting a three star who does the same shit as the five star does???",
+     "id": 81349
+    },
+    {
+     "time": "8:40 PM",
+     "who": "danny",
+     "quote": "I don’t think Whitt ever even talks into his headset.  It is a listening device, at best",
+     "id": 81586
+    },
+    {
+     "time": "9:20 PM",
+     "who": "LKLIII",
+     "quote": "The rhino stuff is baffling. The OL is totally lost RE their assignments. ROUTINELY spent 6 to block 3-4 rushers &amp; guys came in like hot knife thru butter.",
+     "id": 81912
+    },
+    {
+     "time": "9:33 PM",
+     "who": "yarn",
+     "quote": "Vibes from the stadium, pure apathy. Fire Kyle Whittingham",
+     "id": 81960
+    },
+    {
+     "time": "9:58 PM",
+     "who": "EricP",
+     "quote": "One staff made adjustments and one didn't",
+     "id": 82114
+    },
+    {
+     "time": "10:06 PM",
+     "who": "Supergoat",
+     "quote": "For fucksnsake, give him a TE to throw to",
+     "id": 82170
+    },
+    {
+     "time": "10:53 PM",
+     "who": "jhamm",
+     "quote": "Shit Whiff’s body language throughout the game speaks volumes.  One way or another, I’m beginning to think he’s gone before December.",
+     "id": 82519
+    },
+    {
+     "time": "11:37 PM",
+     "who": "KeiTh",
+     "quote": "My name is Keith Van Horn and Michigan must fire Kyle Whittingham",
+     "id": 82711
+    },
+    {
+     "time": "11:42 PM",
+     "who": "BBA",
+     "quote": "Michigan HC Kyle Whittingham on if something has to change with Jason Beck:   \"Not right now. Not right here as I sit at the podium.\"   He says he'll evaluate after the season and determine what the best course of action is.",
+     "id": 82725,
+     "note": "Beck was fired the next afternoon, over his head."
+    },
+    {
+     "time": "11:53 PM",
+     "who": "suede",
+     "quote": "Sayfie: Answering a question about why he has confidence in the offense being fixed, Michigan head coach Kyle Whittingham says that they have a good 2027 recruiting class coming in and the transfer portal season upcoming.",
+     "id": 82750
+    },
+    {
+     "time": "12:01 AM",
+     "who": "6p",
+     "quote": "Kyle Whittingham said “it certainly looked like” Michigan State wanted it more. “It’s my fault for not getting our guys in the right frame of mind.”",
+     "id": 82768,
+     "day": "Sun"
+    },
+    {
+     "time": "1:04 AM",
+     "who": "gbmcq",
+     "quote": "Told the players, \"I don't get it. I don't know what's going on. Maybe you all just can't get it.\"",
+     "id": 82849,
+     "day": "Sun"
+    },
+    {
+     "day": "Sun",
+     "time": "1:29 AM",
+     "who": "suede",
+     "quote": "I simply don’t believe you can’t find ~$40M to buyout the staff",
+     "id": 82892
+    },
+    {
+     "time": "2:36 AM",
+     "who": "withnail",
+     "quote": "X: From a friend of mine who has been going to Michigan practices since Bo:  “I’ve never seen a Michigan coach less involved in a practice than Kyle Whittingham.”",
+     "id": 82922,
+     "day": "Sun"
+    },
+    {
+     "time": "8:16 AM",
+     "who": "Rich",
+     "quote": "Also his 'figuring out' the problems on offense involves no change to scheme. Just changing players",
+     "id": 83010,
+     "day": "Sun"
+    },
+    {
+     "time": "9:42 AM",
+     "who": "suede",
+     "quote": "Kyle Whittingham, November 2nd: “This game is the Super Bowl, particularly for them,” Whittingham said Monday. He added: “I don’t want to downplay it at all — it’s a very important game",
+     "id": 83155,
+     "day": "Sun"
+    },
+    {
+     "time": "5:06 PM",
+     "who": "danny",
+     "quote": "Beck fired - THAMEL",
+     "id": 83638,
+     "day": "Sun"
+    },
+    {
+     "time": "5:14 PM",
+     "who": "LS&Play",
+     "quote": "Has Whitt found out yet that Beck was fired?",
+     "id": 83652,
+     "day": "Sun"
+    },
+    {
+     "day": "Mon",
+     "time": "11:52 AM",
+     "who": "Mothman",
+     "quote": "I love that the tab on my browser says “Fire Kyle Whittingham” all day long",
+     "id": 84401
+    },
+    {
+     "day": "Tue",
+     "time": "8:50 AM",
+     "who": "Alias Guy",
+     "quote": "The Wreck of the Kyle Whittingham, set to the tune of The Wreck of the Edmund Fitzgerald",
+     "id": 85165
+    },
+    {
+     "day": "Tue",
+     "time": "12:10 PM",
+     "who": "Kial J Shittingham",
+     "quote": "You will become us. We will not become you",
+     "id": 85299
+    },
+    {
+     "day": "Thu",
+     "time": "12:50 PM",
+     "who": "el fuego",
+     "quote": "Whittingham and Beck didn’t need to overhaul Michigan’s 2026 offense, they just needed to tweak it here and there. Their whole approach was flawed from the beginning.",
+     "id": 87400
+    },
+    {
+     "day": "Fri",
+     "time": "12:16 PM",
+     "who": "weebay",
+     "quote": "“You will become us” was a defensive statement rather than a statement of vision.",
+     "id": 88437
+    }
+   ]
+  },
+  {
+   "key": "ore",
+   "date": "Sat Nov 14",
+   "opp": "Oregon",
+   "abbr": "ORE",
+   "away": true,
+   "result": "L",
+   "score": "7–31",
+   "receipts": [
+    {
+     "time": "3:12 PM",
+     "who": "WOK",
+     "quote": "Interim Michigan OC Jim Harding on pregame radio: \"I told (the staff) point blank, I need help. It's going to be a collaboration in terms of the game plan. I'll ultimately call plays, but there will be a lot of collaboration",
+     "id": 89629
+    },
+    {
+     "time": "3:26 PM",
+     "who": "suede",
+     "quote": "\"Well, we changed coordinators. We have a routine that's worked for years and years in terms of practice and meeting structure. What you can't do is panic.\"",
+     "id": 89656
+    },
+    {
+     "time": "4:07 PM",
+     "who": "LS&Play",
+     "quote": "Whitt check: Microphone up. Staring into space.",
+     "id": 89807
+    },
+    {
+     "time": "4:26 PM",
+     "who": "jhamm",
+     "quote": "They used him north/south not dancing east/west.",
+     "id": 89918
+    },
+    {
+     "time": "4:31 PM",
+     "who": "Bender",
+     "quote": "And Whitt didn't want to fire Beck!",
+     "id": 89945
+    },
+    {
+     "time": "5:43 PM",
+     "who": "hurryup",
+     "quote": "I don't know what QB would look competent in this offense. This is coaching malpractice at least as bad as Charlie Weis at Notre Dame.",
+     "id": 90286
+    },
+    {
+     "time": "6:37 PM",
+     "who": "BMH75",
+     "quote": "Last 5 plays on offense were runs. Down 2 scores. Under 7 min. It's unfathomable that they aren't even trying to win.",
+     "id": 90561
+    },
+    {
+     "time": "6:44 PM",
+     "who": "Daytripper",
+     "quote": "I cannot fathom what goes on in practice. Like, I can't fathom it. If you were making these mistakes in fall camp the entire team would do nothing but run gassers. IT'S MID NOVEMBER",
+     "id": 90601
+    },
+    {
+     "time": "7:35 PM",
+     "who": "suede",
+     "quote": "Minnesota performance. It was the first time I posted “Fire Kyle Whittingham” on the board.",
+     "id": 90749
+    },
+    {
+     "time": "7:40 PM",
+     "who": "chief",
+     "quote": "Kyle Whittingham:  \"I thought we were certainly ready to play. Locker room was very passionate. When I'm coaching the game, it's tough to see everything going on behind you. But I didn't see any lack of effort or anybody quitting.",
+     "id": 90765
+    },
+    {
+     "time": "8:01 PM",
+     "who": "django",
+     "quote": "Somebody that’s more savvy than I am should put a timestamp mapping together of all the red flags from below for the board.",
+     "note": "The post that made this page.",
+     "id": 90819
+    },
+    {
+     "time": "8:36 PM",
+     "who": "Nikos",
+     "quote": "plenty of anecdotes from fans in attendance today. again confirming Whitt does literally nothing all day, wanders the sideline talking to no one, headset mic flipped up all day.",
+     "id": 90890
+    },
+    {
+     "time": "8:04 AM",
+     "who": "danny",
+     "quote": "Flag flying. Usual breakfast. Fire Kyle Whittingham",
+     "id": 89206
+    }
+   ]
+  }
+ ]
 }
