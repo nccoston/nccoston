@@ -2798,6 +2798,37 @@ def story():
                            chart_max=chart_max, loc=loc)
 
 
+@app.route("/receipts")
+def receipts():
+    """The season's red flags, each tied to the post that called it at the
+    time. The list lives in receipts.json; the one running number — how
+    often the board has said the words — is counted live."""
+    data = json.loads((APP_DIR / "receipts.json").read_text())
+    db = get_db()
+    fired = db.execute(
+        "SELECT COUNT(*) c FROM messages"
+        " WHERE lower(subject) LIKE '%fire kyle whittingham%'").fetchone()["c"]
+    first = db.execute(
+        "SELECT created_at FROM messages"
+        " WHERE lower(subject) LIKE 'fire kyle whittingham%'"
+        " ORDER BY created_at LIMIT 1").fetchone()
+    first_when = None
+    if first:
+        dt = datetime.fromisoformat(first["created_at"].replace("Z", "+00:00"))
+        first_when = dt.astimezone(BOARD_TZ).strftime("%b %-d at %-I:%M %p")
+    games = data["games"]
+    total = 0
+    for gm in games:
+        total += len(gm["receipts"])
+        gm["running"] = total
+    wins = sum(1 for gm in games if gm["result"] == "W")
+    losses = sum(1 for gm in games if gm["result"] == "L")
+    return render_template("receipts.html", before=data["before"], games=games,
+                           total=total, record="%d–%d" % (wins, losses),
+                           fired=fired, first_when=first_when,
+                           most=max(len(gm["receipts"]) for gm in games))
+
+
 # ---------------------------------------------------------- Victard Bowl
 #
 # A pixel football game (static canvas JS) for members. The only server
