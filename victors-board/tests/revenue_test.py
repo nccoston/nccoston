@@ -38,7 +38,7 @@ with appmod.app.app_context():
 # --- off: nothing shows, links untouched, pages identical
 home_off = c.get("/").get_data(as_text=True)
 page_off = c.get("/message/%d" % mid).get_data(as_text=True)
-for word in ("Help pay for the server", "Amazon Associate", "affiliate link"):
+for word in ("Server cost", "Amazon Associate", "affiliate link"):
     if word in home_off:
         fails.append("footer shows %r with nothing set" % word)
 if 'href="%s"' % BOOK not in page_off or "tag=victors" in page_off or "sponsored" in page_off:
@@ -47,7 +47,7 @@ if 'href="%s"' % BOOK not in page_off or "tag=victors" in page_off or "sponsored
 # --- only the tip link
 appmod.TIP_URL = "https://ko-fi.com/victorsboard"
 home = c.get("/").get_data(as_text=True)
-if 'href="https://ko-fi.com/victorsboard" rel="noopener" target="_blank">Help pay for the server</a>' not in home:
+if 'href="https://ko-fi.com/victorsboard" rel="noopener" target="_blank">Server cost</a>' not in home:
     fails.append("no tip link in the footer, or the wrong words")
 if "Amazon Associate" in home or "affiliate link" in home:
     fails.append("the tip link brought company")
@@ -106,7 +106,7 @@ appmod.TIP_URL = appmod.TICKETS_URL = appmod.TICKETS_NAME = None
 postmarkup.AMAZON_TAG = None
 if c.get("/message/%d" % mid).get_data(as_text=True).count("amazon") != page_off.count("amazon"):
     fails.append("unsetting the tag did not put the links back")
-if "Help pay" in c.get("/").get_data(as_text=True):
+if "Server cost" in c.get("/").get_data(as_text=True):
     fails.append("the tip link stayed after unsetting")
 
 print("FAILURES:\n  " + "\n  ".join(fails) if fails else "ALL PASS")
