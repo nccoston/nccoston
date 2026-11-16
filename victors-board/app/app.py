@@ -2655,6 +2655,25 @@ def voice_status():
     return {"ok": True}
 
 
+@app.route("/admin/lights")
+@admin_required
+def lights_check():
+    """Which of the hosting-support values the running board can see.
+    Names only, never values, plus any environment name that looks like a
+    misspelling of one, so a typo in the dashboard shows up here."""
+    wanted = ("KOFI_URL", "AMAZON_ASSOCIATE_TAG", "TICKETS_AFFILIATE_URL",
+              "TICKETS_PROGRAM_NAME")
+    seen = {k: bool(os.environ.get(k)) for k in wanted}
+    lookalikes = sorted(k for k in os.environ
+                        if k not in wanted and any(w in k.upper() for w in
+                                                   ("KOFI", "AMAZON", "TICKET", "TIP_")))
+    return {"set": [k for k, v in seen.items() if v],
+            "not_set": [k for k, v in seen.items() if not v],
+            "lookalike_names": lookalikes,
+            "footer_shows": {"tip": bool(TIP_URL), "amazon": bool(postmarkup.AMAZON_TAG),
+                             "tickets": bool(TICKETS_URL)}}
+
+
 @app.route("/admin/voice-check")
 @admin_required
 def voice_check():
