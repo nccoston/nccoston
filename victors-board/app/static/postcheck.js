@@ -16,6 +16,8 @@
   var SUBJECT_ONLY = /(\*|\bnm\b|\(nm\)|\bn\/m\b|no message)\s*$/i;
   // a subject that is nothing but punctuation and the marker
   var EMPTY_SUBJECT = /^[\s*.\-_(),:;!?nm\/]*$/i;
+  // a message box holding nothing but the marker: it belongs on the subject
+  var MARKER_ONLY = /^[\s().\-]*(\*+|nm|n\/m|no message)[\s().\-*]*$/i;
   // a link that stopped before it started: the scheme and then nothing, or
   // a host with no dot in it (https://mgoblog, cut off mid-paste)
   var BROKEN_LINK = /https?:\/\/(?=\s|$)|https?:\/\/[^\s\/.]+(?=[\s\/]|$)/i;
@@ -58,7 +60,13 @@
                      boardInput.value = "main"; } } });
       }
 
-      if (!b && !attached() && EMPTY_SUBJECT.test(s)) {
+      if (b && MARKER_ONLY.test(b) && !attached()) {
+        out.push({ text: "The message is just “" + b + "”. That goes at the end " +
+                         "of the subject, not in the box.",
+                   fix: { label: "Put it on the subject and post", run: function () {
+                     body.value = "";
+                     if (!subjectOnly) subject.value = s + "*"; } } });
+      } else if (!b && !attached() && EMPTY_SUBJECT.test(s)) {
         out.push({ text: "This post is completely empty — no subject to speak of, " +
                          "no message, nothing attached." });
       } else if (!b && !attached() && untouchedReply) {

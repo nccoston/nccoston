@@ -1058,6 +1058,24 @@ def apple_touch_icon():
     return send_from_directory(APP_DIR / "static", "apple-touch-icon.png")
 
 
+# subject-only conventions: a trailing *, or nm / (nm) / n/m / no message
+SUBJECT_ONLY_RE = re.compile(r"(\*|\bnm\b|\(nm\)|\bn/m\b|no message)\s*$", re.I)
+# a message box holding nothing but the marker
+MARKER_ONLY_RE = re.compile(r"^[\s().\-]*(\*+|nm|n/m|no message)[\s().\-*]*$", re.I)
+
+
+def subject_only(subject, body):
+    """'nm' typed into the message box means what it means at the end of a
+    subject: there is no message. Keep it out of the body and put the mark
+    on the subject, so the post reads the way the board has read them for
+    thirty years."""
+    if body and MARKER_ONLY_RE.match(body):
+        body = ""
+        if not SUBJECT_ONLY_RE.search(subject):
+            subject = subject + "*"
+    return subject, body
+
+
 @app.route("/post", methods=["GET", "POST"])
 @app.route("/post/<int:reply_to>", methods=["GET", "POST"])
 @login_required
@@ -1076,6 +1094,7 @@ def post(reply_to=None):
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
         body = resolve_gif_pages(resolve_reddit_links(request.form.get("body", "").strip()))
+        subject, body = subject_only(subject, body)
         image_url = request.form.get("image_url", "").strip()
         poll_lines = [ln.strip() for ln in
                       request.form.get("poll_options", "").splitlines() if ln.strip()][:10]
@@ -3648,6 +3667,7 @@ def edit(message_id):
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
         body = resolve_gif_pages(resolve_reddit_links(request.form.get("body", "").strip()))
+        subject, body = subject_only(subject, body)
         image_url = request.form.get("image_url", "").strip()
         if not subject:
             flash("A subject is required.")

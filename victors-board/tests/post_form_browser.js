@@ -57,6 +57,22 @@ const BASE = process.env.BOARD || "http://127.0.0.1:5099";
   ok(/not about cards/.test(main), "redirected post did not land on main");
   console.log("2. Cards -> main: posted on main");
 
+  // ---- 3. "nm" typed into the message box is caught, and the fix moves it
+  p = await page(0.5);
+  await p.goto(BASE + "/post");
+  await p.fill('input[name="subject"]', "Can anyone steelman the case?");
+  await p.fill('textarea[name="body"]', "nm");
+  await p.click('button[type="submit"]');
+  await p.waitForTimeout(200);
+  const t3 = await panel(p);
+  ok(t3 && /goes at the end of the subject/.test(t3), "nm-in-the-box warning missing: " + t3);
+  await p.click('.postcheck button:has-text("Put it on the subject")');
+  await p.waitForURL(u => !/\/post/.test(u.pathname), { timeout: 6000 });
+  const posted = await p.content();
+  ok(/Can anyone steelman the case\?\*/.test(posted), "the subject did not get its *");
+  ok(!/class="message-body"[^>]*>\s*(<p>)?\s*nm\b/.test(posted), "nm landed in the body");
+  console.log("3. nm in the box: moved to the subject");
+
   await b.close();
   console.log();
   console.log(problems.length ? "PROBLEMS:\n  " + problems.join("\n  ") : "ALL PASS");
