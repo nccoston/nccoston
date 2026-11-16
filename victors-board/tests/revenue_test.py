@@ -58,8 +58,10 @@ if c.get("/message/%d" % mid).get_data(as_text=True).count("amazon") != page_off
 postmarkup.AMAZON_TAG = "victors0ff-20"
 home = c.get("/").get_data(as_text=True)
 page = c.get("/message/%d" % mid).get_data(as_text=True)
-if "As an Amazon Associate I earn from qualifying purchases." not in home:
-    fails.append("the disclosure sentence is missing or not exact")
+if "Amazon Associate" in home:
+    fails.append("the disclosure is in the footer; it belongs on the stats page")
+if "As an Amazon Associate I earn from qualifying purchases." not in c.get("/stats").get_data(as_text=True):
+    fails.append("the disclosure sentence is missing from the stats page or not exact")
 if ('<a href="https://www.amazon.com/dp/0345337662?tag=victors0ff-20" rel="sponsored nofollow noopener" target="_blank">%s</a>' % BOOK) not in page:
     fails.append("the product link did not get the tag, the rel, and the untouched text: %s"
                  % [h for h in re.findall(r'<a href="[^"]*amazon[^"]*"[^>]*>', page)])
