@@ -2670,6 +2670,8 @@ def lights_check():
     return {"set": [k for k, v in seen.items() if v],
             "not_set": [k for k, v in seen.items() if not v],
             "lookalike_names": lookalikes,
+            "board_started": datetime.fromtimestamp(ASSET_VERSION, timezone.utc)
+                             .astimezone(BOARD_TZ).strftime("%b %-d %-I:%M %p"),
             "footer_shows": {"tip": bool(TIP_URL), "amazon": bool(postmarkup.AMAZON_TAG),
                              "tickets": bool(TICKETS_URL)}}
 
