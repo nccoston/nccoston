@@ -114,6 +114,12 @@
   function connection() {
     if (pc) return pc;
     pc = new RTCPeerConnection({ iceServers: ICE ? [{ urls: ICE }] : [] });
+    var mine = pc;
+    // a listening connection that fails is rebuilt on the spot, with
+    // everyone who is talking pulled onto a fresh relay session
+    pc.onconnectionstatechange = function () {
+      if (mine === pc && mine.connectionState === "failed" && state !== "off") pull((lastVoice && lastVoice.tracks) || [], true);
+    };
     pc.ontrack = function (e) {
       var key = byMid[e.transceiver && e.transceiver.mid];
       var a = document.createElement("audio");
@@ -152,16 +158,28 @@
   }
 
   // --- listening: pull whoever is talking into our session
-  function pull(tracks) {
+  // fresh: start the listening side over (the relay lost our session, or our
+  // connection failed); the board answers with everyone who is talking
+  function resetListen() {
+    if (pc) { try { pc.close(); } catch (e) {} }
+    pc = null; seen = {}; byMid = {}; audio = {};
+    sounds.textContent = "";
+  }
+  function pull(tracks, fresh) {
     return queue(function () {
-      var want = tracks.filter(function (t) { return !seen[t.sid + "|" + t.track]; });
+      var want = fresh ? tracks.slice() : tracks.filter(function (t) { return !seen[t.sid + "|" + t.track]; });
       if (!want.length || state === "off") return;
-      want.forEach(function (t) { seen[t.sid + "|" + t.track] = true; });
+      if (!fresh) want.forEach(function (t) { seen[t.sid + "|" + t.track] = true; });
       var c = connection();
-      return post("/chat/voice/pull", { tracks: JSON.stringify(want) }).then(function (d) {
-        lastPull = { ok: !!d.ok, offer: !!(d.sdp && d.type === "offer"), tracks: (d.tracks || []).length, error: d.error || null };
+      return post("/chat/voice/pull", { tracks: JSON.stringify(want), fresh: fresh ? "1" : "0" }).then(function (d) {
+        lastPull = { ok: !!d.ok, offer: !!(d.sdp && d.type === "offer"), tracks: (d.tracks || []).length, error: d.error || null, fresh: !!d.fresh };
         if (c !== pc) return;   // we left (and maybe came back) while this was in flight: not ours any more
-        if (!d.ok) { want.forEach(function (t) { delete seen[t.sid + "|" + t.track]; }); return; }
+        if (!d.ok) { if (!fresh) want.forEach(function (t) { delete seen[t.sid + "|" + t.track]; }); return; }
+        if (d.fresh) {
+          resetListen();
+          c = connection();
+          (d.tracks || []).forEach(function (t) { seen[t.sid + "|" + t.track] = true; });
+        }
         (d.tracks || []).forEach(function (t) { if (t.mid != null) byMid[t.mid] = t.sid + "|" + t.track; });
         if (!d.sdp || d.type !== "offer") { lastErr = "pull came back without an offer"; return; }
         return c.setRemoteDescription({ type: "offer", sdp: d.sdp })
@@ -386,7 +404,10 @@
       var live = {};
       (v.tracks || []).forEach(function (t) { live[t.sid + "|" + t.track] = true; });
       Object.keys(seen).forEach(function (k) { if (!live[k]) drop(k); });
-      pull(v.tracks || []);
+      // a listening side that is dead, or whose last pull the relay refused, starts over
+      var dead = !!pc && (pc.connectionState === "failed" || pc.connectionState === "closed");
+      var refused = !!(lastPull && !lastPull.ok && lastPull.error);
+      pull(v.tracks || [], dead || refused);
       // a listener who came in on their own goes out the same way, a minute after the talking stops
       if (auto && state === "in") {
         if (talking) quietSince = null;

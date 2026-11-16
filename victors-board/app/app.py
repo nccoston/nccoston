@@ -2586,23 +2586,47 @@ def voice_publish():
 def voice_pull():
     """Subscribe to talkers' tracks -> the relay's offer, to be answered."""
     user, me = _voice_me()
+    if not me:
+        return {"ok": False}
     try:
         wanted = json.loads(request.form.get("tracks") or "[]")
     except ValueError:
         wanted = []
-    live = {(p["pub"], p["track"]) for p in VOICE_PEERS.values() if p["track"]}
-    tracks = [{"location": "remote", "sessionId": t["sid"], "trackName": t["track"]}
-              for t in wanted if isinstance(t, dict)
-              and (t.get("sid"), t.get("track")) in live
-              and t["sid"] not in (me["sid"], me["pub"])] if me else []
+    fresh = request.form.get("fresh") == "1"
+
+    def remote(items):
+        live = {(p["pub"], p["track"]) for p in VOICE_PEERS.values() if p["track"]}
+        return [{"location": "remote", "sessionId": t["sid"], "trackName": t["track"]}
+                for t in items if isinstance(t, dict)
+                and (t.get("sid"), t.get("track")) in live
+                and t["sid"] not in (me["sid"], me["pub"])]
+    everyone = [{"sid": p["pub"], "track": p["track"]} for p in VOICE_PEERS.values() if p["track"]]
+    tracks = remote(everyone if fresh else wanted)
     if not tracks:
         return {"ok": False}
-    try:
-        d = _cf("/sessions/%s/tracks/new" % me["sid"], {"tracks": tracks})
-    except Exception:
-        return {"ok": False, "error": "the voice relay is not answering"}
+    d = None
+    if not fresh:
+        try:
+            d = _cf("/sessions/%s/tracks/new" % me["sid"], {"tracks": tracks})
+        except Exception:
+            d = None   # the session may be gone from the relay: start over below
+    if d is None:
+        # A listening session that sat idle with no connection ever built on
+        # it (the admin who opened the room before anyone talked) gets dropped
+        # by the relay, and so does one whose connection failed. Rather than
+        # fail every pull from then on, make a fresh session and put everyone
+        # who is talking on it; the page rebuilds its side on "fresh".
+        tracks = remote(everyone)
+        try:
+            sid = _cf("/sessions/new")["sessionId"]
+            d = _cf("/sessions/%s/tracks/new" % sid, {"tracks": tracks})
+        except Exception:
+            return {"ok": False, "error": "the voice relay is not answering"}
+        with CHAT_LOCK:
+            me["sid"] = sid
+        fresh = True
     sd = d.get("sessionDescription") or {}
-    return {"ok": True, "sdp": sd.get("sdp"), "type": sd.get("type"),
+    return {"ok": True, "sdp": sd.get("sdp"), "type": sd.get("type"), "fresh": fresh,
             "renegotiate": bool(d.get("requiresImmediateRenegotiation")),
             "tracks": [{"mid": t.get("mid"), "track": t.get("trackName"),
                         "sid": t.get("sessionId")} for t in d.get("tracks", [])]}

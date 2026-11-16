@@ -9,8 +9,10 @@ const { chromium } = require("playwright-core");
 const BASE = process.env.BOARD || "http://127.0.0.1:5099";
 const FAKE_RTC = `
   window.__rtc = { offers: 0, answers: 0, remote: [], closed: 0, tracks: 0 };
+  window.__pcs = [];
   class FakePC {
-    constructor() { this.localDescription = null; this.ontrack = null; this._mid = 0; this._r = 0; }
+    constructor() { this.localDescription = null; this.ontrack = null; this._mid = 0; this._r = 0;
+      this.connectionState = "connected"; this.iceConnectionState = "connected"; window.__pcs.push(this); }
     addTransceiver(track, opts) { return { mid: String(this._mid++), direction: opts && opts.direction, stop() {} }; }
     createOffer() { window.__rtc.offers++;
       if (window.__failOffer) { window.__failOffer = false; return Promise.reject(new Error("fake offer failure")); }
@@ -169,6 +171,17 @@ const FAKE_RTC = `
   await rich.evaluate(() => document.querySelector("#voice-sounds audio").pause());
   await tick(rich, 2600);
   ok((await rich.evaluate(() => window.__plays)) > playsBefore, "a paused sound was not played again");
+
+  // Ken's listening connection fails (Rose Bowl Champion's "sound disappeared"): it is rebuilt on the spot,
+  // on a fresh relay session, with Rich pulled again
+  const closedBeforeFail = (await rtc(ken)).closed, offersBeforeFail = (await rtc(ken)).remote.length;
+  await ken.evaluate(() => { const p = window.__pcs.filter((x) => x.ontrack).pop(); p.connectionState = "failed"; p.onconnectionstatechange(); });
+  await tick(ken, 2000);
+  r = await rtc(ken);
+  ok(r.closed === closedBeforeFail + 1 && r.remote.length > offersBeforeFail && (await sounds(ken)) === 1,
+     "a failed listening connection was not rebuilt: " + JSON.stringify(r) + " sounds=" + await sounds(ken));
+  ok(await ken.evaluate(() => window.__pcs.filter((x) => x.ontrack).pop().connectionState === "connected"), "the page is still on the failed connection");
+  await is(ken, "· 🎙 mute · leave 🎙 Ken, Rich", "Ken lost his place after the rebuild");
 
   // mute: still in, silent, off the talking line
   await ken.click("#voice-mute"); await tick(ken);

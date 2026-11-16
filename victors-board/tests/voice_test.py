@@ -211,6 +211,36 @@ if ken.post("/chat/voice/status", data={"s": "not json"}).get_json() != {"ok": F
     fails.append("a bad status report was accepted")
 ken.post("/chat/voice/leave")
 
+# a listening session the relay has dropped (Nikos opened the room before anyone talked, and his session
+# sat idle until the relay forgot it): the pull starts a fresh session with everyone talking on it
+nikos.post("/chat/voice/join")   # an admin opens voice
+ken.post("/chat/voice/join")
+rich.post("/chat/voice/join")
+rich.post("/chat/voice/publish", data={"sdp": "OFFER-RICH", "mid": "0"})
+peer = lambda h: next(p for p in appmod.VOICE_PEERS.values() if p["handle"] == h)
+ken_sid = peer("Ken")["sid"]
+dead = {ken_sid}
+def flaky_cf(path, body=None, method="POST"):
+    if path.endswith("/tracks/new") and path.split("/")[2] in dead:
+        raise RuntimeError("404 session not found")
+    return fake_cf(path, body, method)
+appmod._cf = flaky_cf
+rich_track = {"sid": peer("Rich")["pub"], "track": peer("Rich")["track"]}
+d = ken.post("/chat/voice/pull", data={"tracks": json.dumps([rich_track])}).get_json()
+if not (d.get("ok") and d.get("fresh") and d.get("type") == "offer" and len(d.get("tracks", [])) == 1):
+    fails.append("a dead listening session did not come back fresh: %r" % d)
+if peer("Ken")["sid"] == ken_sid:
+    fails.append("the dead session was kept")
+if calls[-1][1] != "/sessions/%s/tracks/new" % peer("Ken")["sid"] or calls[-2][1] != "/sessions/new":
+    fails.append("the fresh pull did not make a new session and pull onto it: %r" % calls[-3:])
+# asked for fresh outright (the page's connection failed): a new session, everyone on it, no retry of the old one
+before = len(calls)
+d = ken.post("/chat/voice/pull", data={"tracks": "[]", "fresh": "1"}).get_json()
+if not (d.get("ok") and d.get("fresh")) or calls[before][1] != "/sessions/new":
+    fails.append("a fresh pull on request did not start over: %r" % d)
+appmod._cf = fake_cf
+ken.post("/chat/voice/leave"); rich.post("/chat/voice/leave"); nikos.post("/chat/voice/leave")
+
 # the relay failing is an answer, not a crash
 def broken(path, body=None, method="POST"):
     raise RuntimeError("down")
