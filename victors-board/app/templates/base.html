@@ -91,7 +91,9 @@
   <a href="https://nick-coston.com/" rel="noopener">Nick Coston</a> &middot;
   <a href="{{ url_for('rss') }}">RSS</a> &middot;
   <a href="{{ url_for('stats') }}">Stats</a> &middot;
-  <a href="{{ url_for('receipts') }}">Receipts</a></p>
+  <a href="{{ url_for('receipts') }}">Receipts</a>
+  {%- if tip_url %} &middot; <a href="{{ tip_url }}" rel="noopener" target="_blank">Buy the server a beer</a>{% endif %}
+  {%- if amazon_tag %}<br><span class="affiliate-note">As an Amazon Associate, the board earns from qualifying purchases.</span>{% endif %}</p>
 <script>
 // the header clock. The server hands over the seconds remaining, so a
 // device with the wrong time still shows everyone the same number.

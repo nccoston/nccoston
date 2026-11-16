@@ -53,6 +53,25 @@ FART_RE = re.compile(r"\[fart\]", re.IGNORECASE)
 FART_HTML = ('<button type="button" class="fart-btn" data-fart '
              'title="you know what this does">&#128168;</button>')
 FART_MAX = 3
+# An Amazon link carries the board's affiliate tag when one is set (the app
+# sets it from the environment). The text of the link stays as the member
+# wrote it; only where it goes changes, and only at render time, so unsetting
+# the tag puts every link back.
+AMAZON_TAG = None
+AMAZON_RE = re.compile(
+    r"^(https?://(?:www\.|smile\.)?amazon\.(?:com|ca|co\.uk)/[^\s?#]*)(\?[^#]*)?(#.*)?$")
+
+
+def with_affiliate(url):
+    if not AMAZON_TAG:
+        return url
+    m = AMAZON_RE.match(url)
+    if not m:
+        return url
+    base, query, frag = m.group(1), m.group(2) or "", m.group(3) or ""
+    params = [p for p in query.lstrip("?").split("&") if p and not p.startswith("tag=")]
+    params.append("tag=" + AMAZON_TAG)
+    return base + "?" + "&".join(params) + frag
 
 
 def _escape(text):
@@ -98,7 +117,8 @@ def _linkify(url):
         return (f'<blockquote class="tiktok-embed" cite="{esc}" '
                 f'data-video-id="{m.group(1)}" style="max-width:605px">'
                 f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a></blockquote>')
-    return f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a>'
+    href = escape(with_affiliate(url), quote=True)
+    return f'<a href="{href}" rel="nofollow noopener" target="_blank">{escape(url)}</a>'
 
 
 def _safe_url(value):

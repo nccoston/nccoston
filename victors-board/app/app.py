@@ -252,7 +252,16 @@ def admin_required(f):
 
 # ---------------------------------------------------------- template helpers
 
+import postmarkup
 from postmarkup import render_post, resolve_gif_pages
+
+# Keeping the lights on, all optional and all off until the environment says
+# otherwise: a tip page in the footer, an Amazon affiliate tag on members'
+# Amazon links, a ticket-exchange link on the week line.
+TIP_URL = os.environ.get("TIP_URL")
+AMAZON_TAG = os.environ.get("AMAZON_TAG")
+TICKETS_URL = os.environ.get("TICKETS_URL")
+postmarkup.AMAZON_TAG = AMAZON_TAG
 from stadiums import load as load_stadiums
 
 
@@ -516,6 +525,9 @@ def inject_globals():
         "has_flag": FLAG_FILE.exists(),
         "has_song": SONG_FILE.exists(),
         "pinned_threads": pinned,
+        "tip_url": TIP_URL,
+        "amazon_tag": postmarkup.AMAZON_TAG,
+        "tickets_url": TICKETS_URL,
     }
 
 
