@@ -2894,6 +2894,13 @@ def story():
                            receipts_n=receipts_n)
 
 
+@app.route("/thanks")
+def thanks():
+    """The thank-you page: the M, confetti, the flag, and the fight song on
+    a tap. No words. Unlisted, like /story."""
+    return render_template("thanks.html", has_song=SONG_FILE.exists())
+
+
 @app.route("/receipts")
 def receipts():
     """The season's red flags, each tied to the post that called it at the
