@@ -224,7 +224,8 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
     directs a construction crew: deciding what to build, reviewing everything
     against the community's thirty years of instinct, and testing on the
     toughest QA department in existence &mdash; the members themselves,
-    live.</p>
+    live. {{ days_live }} days and {{ changes }} shipped changes later, he
+    still can't read the code. He can tell you what every line is for.</p>
   <p>The admin title came afterward, the old-fashioned way: he built the
     place, so he holds the keys.</p>
   <p>The design brief was one sentence: <em>keep everything the community
@@ -257,7 +258,60 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
     <li><b>Week 6</b> — Two games, built from nothing and put on the
       board. A member asks for a countdown clock at one in the morning and
       has one by breakfast.</li>
+    <li><b>Week 10</b> — The board becomes an MCP server. Any AI assistant
+      can read it, search it, and follow the archive in order; nothing a
+      logged-out reader can't already see.</li>
+    <li><b>Week 11</b> — Polls become threads. Chat learns to fill a phone
+      screen, which is where most of the members live.</li>
+    <li><b>Week 12</b> — Live polls in the room, then live voice: an
+      admin opens it, whoever talks reaches everyone, nothing to find and
+      nothing recorded. A hit on its first night.</li>
+    <li><b>Week 14</b> — The offensive coordinator is fired on a Sunday
+      afternoon. The voice room holds hundreds of members that day, most of
+      them on phones, screens off.</li>
+    <li><b>Week 15</b> — A member asks for a timeline of every red flag the
+      board called in real time. The board reads its own archive through its
+      own MCP server, 29,000 posts, and publishes the receipts by Sunday.</li>
   </ul>
+</section>
+
+<section>
+  <h2>Live voice, on phones</h2>
+  <p class="lede">The request was one sentence: hands-free, zero-lift voice
+    chat. Open the room, hear the room.</p>
+  <p>Listening is automatic. If someone is talking when you open chat, you
+    hear them, the way you'd hear a room you walked into. Talking is the
+    opt-in: one tap, and a mute and a leave. The board brokers sessions with
+    Cloudflare's real-time relay and never touches the audio; nothing is
+    recorded, and the room closes itself when it has been empty two hours.</p>
+  <p>Every rule in it was written by a phone. The first night, a talker on an
+    iPhone could not be heard, so the microphone got a connection of its own.
+    An admin's phone dropped and closed the room on thirty people, so the room
+    learned to stay open until an admin closes it. A member's car Bluetooth
+    handed the board a silent microphone, so the board now watches the mic and
+    says so. The screen stays on while you're in the room, because a phone
+    that sleeps hangs up.</p>
+  <p>The build took an evening. The next three were spent listening to the
+    people using it.</p>
+</section>
+
+<section>
+  <h2>A board any assistant can read</h2>
+  <p>Point an AI assistant at <code>/mcp</code> and it can search the board,
+    read a thread, follow the archive in order, and look up the standings.
+    The server is read-only in a way that can be tested rather than promised:
+    it opens the database in read-only mode, and the rule for what it may
+    return is <em>exactly what a logged-out browser can already see</em>. The
+    test suite seeds a board where every post carries the same address and
+    every account the same password hash, then tries to reach them through
+    every tool.</p>
+  <p>It paid for itself in week fifteen. When the season went bad and a
+    member asked for a timeline of every red flag the board had called in
+    real time, the board read its own ten game weekends through its own
+    server, about 29,000 posts, and <a href="{{ url_for('receipts') }}">published
+    the receipts</a>: {{ receipts_n }} of them, each one a quote, a poster, a
+    timestamp, and a link to the post as written. The first body-language
+    call was 8:37 PM on opening night.</p>
 </section>
 
 <section>
@@ -361,6 +415,33 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
       and rejected if it sits more than 25 miles away. Champaign to Lincoln is
       450.</p>
   </div>
+  <div class="incident">
+    <b>The voice room that closed on thirty people</b>
+    <p>Voice stayed open only while an admin was connected. An admin's phone
+      dropped its connection and the room ended for everyone in it.</p>
+    <p class="fix">Fix: the room is open once an admin opens it, and stays
+      open until an admin closes it or it sits empty for two hours. The
+      admin's connection is a connection, not a key.</p>
+  </div>
+  <div class="incident">
+    <b>The talker nobody could hear</b>
+    <p>Listening and talking shared one connection to the relay. On an
+      iPhone, adding the microphone to a connection already pulling the room
+      renegotiated it into silence.</p>
+    <p class="fix">Fix: the microphone gets a session of its own. The board
+      also watches the outgoing audio and tells the talker, in words, when the
+      phone has quietly muted them.</p>
+  </div>
+  <div class="incident">
+    <b>The podcast box that vanished at midnight</b>
+    <p>The week's episode showed on the homepage on Wednesdays. One week it
+      went up at 9:16 PM on Wednesday, so the box appeared for two hours and
+      forty-four minutes and was gone by morning. Some weeks the show is
+      recorded on a Thursday, and those never showed at all.</p>
+    <p class="fix">Fix: the box follows the episode, not the calendar: two
+      days from upload, any day of the week, and it stays through a bad
+      refresh instead of blanking.</p>
+  </div>
 </section>
 
 <section>
@@ -384,6 +465,11 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
       filing history's most 1998 bug report. Restored within the hour,
       retroactively, across every post they ever made.</footer>
   </blockquote>
+  <blockquote>&ldquo;Yea that would be sick, AI could do it given the data.
+    Nikos, get on it, you're free right :)&rdquo;
+    <footer>&mdash; a member, the night the receipts were requested. They were
+      live the next day.</footer>
+  </blockquote>
 </section>
 
 <section>
@@ -391,15 +477,20 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
   <p class="stack">One Python file &mdash; <code>{{ "{:,}".format(loc) }}
     lines</code> as of this page load &mdash; plus SQLite, plain HTML
     templates, and one small CSS file. No framework churn, no build step, no
-    JavaScript beyond what the chat and scoreboard genuinely need. It runs on
-    a single <code>$7/month</code> server with a persistent disk, behind a
-    CDN, deploying automatically on every push.</p>
+    JavaScript beyond what the chat, the voice room and the scoreboard
+    genuinely need. It runs on a single <code>$7/month</code> server with a
+    persistent disk, behind a CDN, deploying automatically on every push.
+    Voice rides Cloudflare's real-time relay; scores come from ESPN; the
+    rest is the one file.</p>
   <p class="stack">The code was written by AI (Claude Code) under direction;
     every feature was specified, reviewed, and accepted by a human who knows
-    the community — then tested by 350 people who don't file bug reports so
-    much as post them publicly with jokes attached. Feature requests routinely
-    shipped the same afternoon they were posted, which the members found
-    funnier than the features.</p>
+    the community — then tested by {{ members }} people who don't file bug
+    reports so much as post them publicly with jokes attached. Feature
+    requests routinely shipped the same afternoon they were posted, which the
+    members found funnier than the features. Every change is in
+    <a href="{{ url_for('changelog') }}">a public running log</a> on the
+    board, {{ changes }} entries as of this page load, and each ships with
+    the test that proves it.</p>
 </section>
 
 <section>
@@ -410,6 +501,10 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
     everything else.</p>
   <p>AI didn't replace a developer here. It let a community person become the
     architect &mdash; social and engineering, both halves.</p>
+  <p>Fifteen weeks in, the members have stopped being surprised that things
+    ship. The surprise now runs the other way: a request is posted at night as
+    a joke, and in the morning it is a page on the board. That is the part of
+    this story that is not about software.</p>
 </section>
 
 </div>

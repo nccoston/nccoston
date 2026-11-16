@@ -2791,11 +2791,21 @@ def story():
     chart = [dict(r) for r in reversed(week)][:-1]   # last 14 full days
     chart_max = max((c["pageviews"] for c in chart), default=1)
     loc = (APP_DIR / "app.py").read_text().count("\n")
+    try:
+        changes = len(json.loads((APP_DIR / "changelog.json").read_text()))
+    except (OSError, ValueError):
+        changes = 0
+    try:
+        receipts_n = sum(len(g["receipts"]) for g in
+                         json.loads((APP_DIR / "receipts.json").read_text())["games"])
+    except (OSError, ValueError, KeyError):
+        receipts_n = 0
     return render_template("story.html", members=members, messages=messages,
                            pageviews=row["pageviews"] if row else 0,
                            hof=hof, games=games, photos=photos, arcade=arcade,
                            days_live=days_live, chart=chart,
-                           chart_max=chart_max, loc=loc)
+                           chart_max=chart_max, loc=loc, changes=changes,
+                           receipts_n=receipts_n)
 
 
 @app.route("/receipts")
