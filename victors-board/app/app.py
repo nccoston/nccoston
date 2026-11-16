@@ -258,9 +258,10 @@ from postmarkup import render_post, resolve_gif_pages
 # Keeping the lights on, all optional and all off until the environment says
 # otherwise: a tip page in the footer, an Amazon affiliate tag on members'
 # Amazon links, a ticket-exchange link on the week line.
-TIP_URL = os.environ.get("TIP_URL")
-AMAZON_TAG = os.environ.get("AMAZON_TAG")
-TICKETS_URL = os.environ.get("TICKETS_URL")
+TIP_URL = os.environ.get("KOFI_URL") or os.environ.get("TIP_URL")
+AMAZON_TAG = os.environ.get("AMAZON_ASSOCIATE_TAG") or os.environ.get("AMAZON_TAG")
+TICKETS_URL = os.environ.get("TICKETS_AFFILIATE_URL") or os.environ.get("TICKETS_URL")
+TICKETS_NAME = os.environ.get("TICKETS_PROGRAM_NAME")
 postmarkup.AMAZON_TAG = AMAZON_TAG
 from stadiums import load as load_stadiums
 
@@ -528,6 +529,7 @@ def inject_globals():
         "tip_url": TIP_URL,
         "amazon_tag": postmarkup.AMAZON_TAG,
         "tickets_url": TICKETS_URL,
+        "tickets_name": TICKETS_NAME,
     }
 
 
@@ -3684,7 +3686,7 @@ def rss():
         title = (f"[{label}] " if label else "") + r["subject"]
         desc = f"By {r['author_name']}."
         if r["body"]:
-            desc += " " + render_post(r["body"])
+            desc += " " + render_post(r["body"], tagged=False)   # no affiliate tags in a feed
         items.append(
             f"<item><title>{xesc(title)}</title><link>{xesc(link)}</link>"
             f"<guid>{xesc(link)}</guid><pubDate>{pub}</pubDate>"

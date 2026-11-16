@@ -58,8 +58,9 @@ FART_MAX = 3
 # wrote it; only where it goes changes, and only at render time, so unsetting
 # the tag puts every link back.
 AMAZON_TAG = None
-AMAZON_RE = re.compile(
-    r"^(https?://(?:www\.|smile\.)?amazon\.(?:com|ca|co\.uk)/[^\s?#]*)(\?[^#]*)?(#.*)?$")
+# the host, exactly: amazon.com or www.amazon.com. Short links (a.co,
+# amzn.to) are left alone, and so is a link that already carries a tag.
+AMAZON_RE = re.compile(r"^(https?://(?:www\.)?amazon\.com/[^\s?#]*)(\?[^#]*)?(#.*)?$")
 
 
 def with_affiliate(url):
@@ -69,7 +70,9 @@ def with_affiliate(url):
     if not m:
         return url
     base, query, frag = m.group(1), m.group(2) or "", m.group(3) or ""
-    params = [p for p in query.lstrip("?").split("&") if p and not p.startswith("tag=")]
+    params = [p for p in query.lstrip("?").split("&") if p]
+    if any(p.startswith("tag=") for p in params):
+        return url
     params.append("tag=" + AMAZON_TAG)
     return base + "?" + "&".join(params) + frag
 
@@ -79,8 +82,10 @@ def _escape(text):
     return FART_RE.sub(FART_HTML, escape(text), count=FART_MAX)
 
 
-def _linkify(url):
-    """Turn a bare URL into a link — or a player/embed for YouTube and tweets."""
+def _linkify(url, tagged=True):
+    """Turn a bare URL into a link — or a player/embed for YouTube and tweets.
+    tagged=False keeps the affiliate tag off, for feeds and anything that
+    isn't a page of the board."""
     esc = escape(url, quote=True)
     m = YOUTUBE_RE.match(url)
     if m:
@@ -117,8 +122,9 @@ def _linkify(url):
         return (f'<blockquote class="tiktok-embed" cite="{esc}" '
                 f'data-video-id="{m.group(1)}" style="max-width:605px">'
                 f'<a href="{esc}" rel="nofollow noopener" target="_blank">{escape(url)}</a></blockquote>')
-    href = escape(with_affiliate(url), quote=True)
-    return f'<a href="{href}" rel="nofollow noopener" target="_blank">{escape(url)}</a>'
+    target = with_affiliate(url) if tagged else url
+    rel = "sponsored nofollow noopener" if target != url else "nofollow noopener"
+    return f'<a href="{escape(target, quote=True)}" rel="{rel}" target="_blank">{escape(url)}</a>'
 
 
 def _safe_url(value):
@@ -127,11 +133,12 @@ def _safe_url(value):
 
 
 class _Renderer(HTMLParser):
-    def __init__(self):
+    def __init__(self, tagged=True):
         super().__init__(convert_charrefs=True)
         self.out = []
         self.open_stack = []
         self.in_link = 0  # don't auto-link text that's already inside <a>
+        self.tagged = tagged
 
     def handle_starttag(self, tag, attrs):
         if tag not in ALLOWED_TAGS:
@@ -179,7 +186,7 @@ class _Renderer(HTMLParser):
         last = 0
         for m in URL_RE.finditer(data):
             pieces.append(_escape(data[last:m.start()]))
-            pieces.append(_linkify(m.group(1)))
+            pieces.append(_linkify(m.group(1), self.tagged))
             last = m.end()
         pieces.append(_escape(data[last:]))
         self.out.append("".join(pieces).replace("\n", "<br>\n"))
@@ -258,10 +265,12 @@ def resolve_gif_pages(text):
     return TENOR_PAGE_RE.sub(tenor, GOOGLE_SHARE_RE.sub(google, text))
 
 
-def render_post(text):
+def render_post(text, tagged=True):
+    """tagged=False for feeds and anything that isn't a page of the board:
+    the affiliate tag stays off."""
     if not text:
         return ""
-    p = _Renderer()
+    p = _Renderer(tagged)
     p.feed(text)
     p.close()
     return p.result()
