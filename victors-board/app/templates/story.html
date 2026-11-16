@@ -5,125 +5,112 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Victors — a community rescue story</title>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<script>
+(function () {
+  var saved = localStorage.getItem("theme");
+  if (!saved && window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches) saved = "dark";
+  if (saved === "dark" || saved === "goblue") document.documentElement.dataset.theme = "dark";
+})();
+</script>
 <style>
 :root {
-  --blue: #00274C;
-  --maize: #FFCB05;
-  --ink: #1c2733;
-  --paper: #ffffff;
-  --soft: #5b6b7b;
-  --rule: #e3e8ee;
+  --blue: #00274C; --maize: #FFCB05;
+  --ink: #1c2733; --paper: #f7f6f2; --card: #ffffff; --soft: #5b6b7b; --rule: #e1e4e8;
+  --name: #00274C; --accent: #00274C; --warm: #b3261e;
 }
-@media (prefers-color-scheme: dark) {
-  :root { --ink: #e8e6e1; --paper: #121820; --soft: #9aa8b6; --rule: #26303b; }
+:root[data-theme="dark"] {
+  --ink: #e8e6e1; --paper: #0f141a; --card: #171e27; --soft: #97a4b2; --rule: #273140;
+  --name: #FFCB05; --accent: #7fb2e5; --warm: #ff7b6f;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: Georgia, 'Times New Roman', serif;
-  background: var(--paper);
-  color: var(--ink);
-  line-height: 1.65;
-}
-.hero {
-  background: var(--blue);
-  color: #fff;
-  text-align: center;
-  padding: 64px 24px 56px;
-}
-.hero img { height: 72px; }
-.hero h1 {
-  font-size: clamp(30px, 5.5vw, 52px);
-  color: var(--maize);
-  margin: 18px 0 10px;
-  letter-spacing: 0.5px;
-}
-.hero p {
-  font-size: clamp(16px, 2.4vw, 21px);
-  color: #cfd8e3;
-  max-width: 620px;
-  margin: 0 auto;
-}
-.wrap { max-width: 680px; margin: 0 auto; padding: 0 24px; }
-section { padding: 44px 0 8px; }
-h2 {
-  font-size: 15px;
-  font-family: Verdana, sans-serif;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--soft);
-  border-bottom: 2px solid var(--maize);
-  display: inline-block;
-  padding-bottom: 4px;
-  margin-bottom: 18px;
-}
-p + p { margin-top: 14px; }
-.lede { font-size: 19px; }
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 14px;
-  margin: 26px 0 10px;
-}
-.stat {
-  border: 1px solid var(--rule);
-  border-top: 4px solid var(--maize);
-  padding: 16px 14px 13px;
-  text-align: center;
-}
-.stat b {
-  display: block;
-  font-size: clamp(26px, 4vw, 38px);
-  color: var(--blue);
-  font-family: Verdana, sans-serif;
-}
-@media (prefers-color-scheme: dark) { .stat b { color: var(--maize); } }
-.stat span { font-size: 12px; font-family: Verdana, sans-serif; color: var(--soft); }
-.stat i { display: block; font-size: 10px; color: var(--soft); font-style: normal; margin-top: 3px; }
-.timeline { list-style: none; margin: 8px 0; }
-.timeline li {
-  padding: 9px 0 9px 22px;
-  border-left: 3px solid var(--maize);
-  margin-left: 6px;
-}
-.timeline b { color: var(--blue); font-family: Verdana, sans-serif; font-size: 13px; }
-@media (prefers-color-scheme: dark) { .timeline b { color: var(--maize); } }
-.chart { margin: 22px 0 4px; }
-.chart svg { width: 100%; height: auto; display: block; }
-.bar { fill: var(--maize); }
-.bar-max { fill: var(--blue); }
-.axis { font: 12px Verdana, sans-serif; fill: var(--soft); }
-@media (prefers-color-scheme: dark) { .bar-max { fill: #7fb2e5; } }
-.incident { margin: 16px 0; padding-left: 18px; border-left: 3px solid var(--rule); }
-.incident b { font-family: Verdana, sans-serif; font-size: 13.5px; color: var(--blue); }
-@media (prefers-color-scheme: dark) { .incident b { color: var(--maize); } }
-.incident p { font-size: 15px; margin-top: 3px; }
-.incident .fix { color: var(--soft); font-size: 14px; }
-.stack { font-size: 15.5px; }
-.stack code {
-  font-family: Menlo, Consolas, monospace;
-  font-size: 13px;
-  background: var(--rule);
-  padding: 1px 6px;
-  border-radius: 3px;
-}
-blockquote {
-  border-left: 4px solid var(--blue);
-  padding: 6px 0 6px 18px;
-  margin: 18px 0;
-  font-style: italic;
-  font-size: 17px;
-}
-@media (prefers-color-scheme: dark) { blockquote { border-color: var(--maize); } }
-blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); margin-top: 4px; }
-.foot {
-  margin-top: 52px;
-  background: var(--blue);
-  color: #cfd8e3;
-  text-align: center;
-  padding: 34px 24px;
-  font-family: Verdana, sans-serif;
-  font-size: 12px;
-}
+html { scroll-behavior: smooth; }
+body { font-family: Georgia, 'Times New Roman', serif; background: var(--paper); color: var(--ink); line-height: 1.6; }
+a { color: inherit; }
+
+.hero { background: var(--blue); color: #fff; padding: 52px 20px 40px; text-align: center; }
+.hero img { height: 60px; }
+.hero h1 { font-size: clamp(34px, 7vw, 64px); color: var(--maize); line-height: 1.05; margin: 16px auto 12px; max-width: 760px; letter-spacing: -0.5px; }
+.hero p { color: #cfd8e3; max-width: 580px; margin: 0 auto; font-size: clamp(16px, 2.3vw, 19px); }
+.nums { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px 32px; margin-top: 30px; font-family: Verdana, sans-serif; }
+.nums div { min-width: 110px; }
+.nums b { display: block; font-size: clamp(26px, 5vw, 38px); color: #fff; line-height: 1.1; }
+.nums span { font-size: 11px; color: #9fb0c3; letter-spacing: 1px; text-transform: uppercase; }
+.nums i { display: block; font-style: normal; font-size: 11px; color: #cfd8e3; margin-top: 2px; }
+
+/* the chapter strip: sticks to the top, follows the reader */
+.strip { position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--rule); }
+.strip-in { display: flex; gap: 6px; overflow-x: auto; padding: 10px 16px; scroll-snap-type: x proximity; scrollbar-width: none; max-width: 1040px; margin: 0 auto; }
+.strip-in::-webkit-scrollbar { display: none; }
+.chip { flex: 0 0 auto; scroll-snap-align: center; font: 11px Verdana, sans-serif; letter-spacing: .5px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--rule); color: var(--soft); white-space: nowrap; text-decoration: none; }
+.chip b { font-weight: normal; color: var(--soft); margin-right: 4px; }
+.chip.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+.chip.on b { color: var(--maize); }
+
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+section { scroll-margin-top: 54px; padding-top: 40px; }
+h2 { font: 12px Verdana, sans-serif; letter-spacing: 3px; text-transform: uppercase; color: var(--soft); border-bottom: 2px solid var(--maize); display: inline-block; padding-bottom: 4px; margin-bottom: 16px; }
+.kicker { font: 11px Verdana, sans-serif; letter-spacing: 2px; text-transform: uppercase; color: var(--soft); margin-bottom: 4px; }
+.lede { font-size: clamp(19px, 2.6vw, 23px); line-height: 1.4; margin-bottom: 14px; }
+p + p { margin-top: 12px; }
+.big { font-size: clamp(28px, 6vw, 44px); line-height: 1.1; font-family: Georgia, serif; margin: 6px 0 14px; }
+.big em { color: var(--name); font-style: normal; }
+
+/* stat tiles */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 14px 0; }
+.stat { background: var(--card); border: 1px solid var(--rule); border-top: 4px solid var(--maize); padding: 14px 12px 11px; text-align: center; }
+.stat b { display: block; font: bold clamp(24px, 4vw, 34px) Verdana, sans-serif; color: var(--name); }
+.stat span { font: 12px Verdana, sans-serif; color: var(--soft); }
+.stat i { display: block; font-style: normal; font: 10px Verdana, sans-serif; color: var(--soft); margin-top: 3px; }
+
+/* charts */
+.chart { background: var(--card); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 12px 10px; margin: 14px 0; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .lbl { font: 10px Verdana, sans-serif; fill: var(--soft); }
+.chart .area { fill: var(--accent); opacity: .18; }
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.chart .tick { stroke: var(--maize); stroke-width: 2; }
+.chart .peak { font: bold 11px Verdana, sans-serif; fill: var(--ink); }
+.chart .bar { fill: var(--accent); opacity: .85; }
+.chart .bar.hi { fill: var(--maize); opacity: 1; }
+.chart .members { fill: none; stroke: var(--maize); stroke-width: 2.5; }
+.chart h3 { font: 11px Verdana, sans-serif; letter-spacing: 2px; text-transform: uppercase; color: var(--soft); margin-bottom: 8px; }
+.cap { font: 11px Verdana, sans-serif; color: var(--soft); margin-top: 6px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
+
+/* the five homes */
+.homes { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 14px 0; }
+.home { background: var(--card); border: 1px solid var(--rule); padding: 12px 10px; border-left: 4px solid var(--rule); }
+.home.now { border-left-color: var(--maize); }
+.home b { display: block; font: bold 20px Verdana, sans-serif; color: var(--name); }
+.home span { font-size: 14px; }
+.home i { display: block; font: 10px Verdana, sans-serif; color: var(--soft); font-style: normal; margin-top: 4px; }
+
+/* the timeline */
+.tl { list-style: none; margin: 10px 0 0; position: relative; }
+.tl::before { content: ""; position: absolute; left: 70px; top: 6px; bottom: 6px; width: 2px; background: var(--rule); }
+.tl li { position: relative; display: grid; grid-template-columns: 56px 1fr; gap: 28px; padding: 9px 0; }
+.tl li b { font: bold 11px Verdana, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--name); text-align: right; padding-top: 4px; }
+.tl li::before { content: ""; position: absolute; left: 65px; top: 16px; width: 12px; height: 12px; border-radius: 50%; background: var(--maize); border: 2px solid var(--card); box-shadow: 0 0 0 2px var(--maize); }
+.tl li.loud::before { background: var(--warm); box-shadow: 0 0 0 2px var(--warm); }
+.tl li b { white-space: nowrap; }
+.tl li span { font-size: 16px; }
+
+/* rule cards, incident cards, quote cards */
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+@media (max-width: 620px) { .cards { grid-template-columns: 1fr; } }
+.card { background: var(--card); border: 1px solid var(--rule); border-left: 4px solid var(--maize); border-radius: 4px; padding: 12px 14px; }
+.card b { display: block; font: bold 13px Verdana, sans-serif; color: var(--name); margin-bottom: 4px; }
+.card p { font-size: 15px; }
+.card .fix { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--rule); font-size: 14px; color: var(--soft); }
+.card .fix::before { content: "FIX "; font: bold 10px Verdana, sans-serif; letter-spacing: 1px; color: var(--name); margin-right: 4px; }
+.quote { background: var(--card); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px 12px; font-size: 17px; font-style: italic; position: relative; }
+.quote::before { content: "\201C"; position: absolute; left: 10px; top: -6px; font-size: 48px; color: var(--maize); font-style: normal; line-height: 1; }
+.quote footer { font: 12px Verdana, sans-serif; font-style: normal; color: var(--soft); margin-top: 8px; }
+
+.stack code { font-family: Menlo, Consolas, monospace; font-size: 13px; background: var(--rule); padding: 1px 6px; border-radius: 3px; }
+.foot { margin-top: 48px; background: var(--blue); color: #cfd8e3; text-align: center; padding: 30px 20px; font: 12px Verdana, sans-serif; }
 .foot b { color: var(--maize); }
 .foot a { color: var(--maize); }
 </style>
@@ -134,377 +121,317 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
   <img src="{{ url_for('static', filename='umich.png') }}" alt="Block M">
   <h1>The board that refused to die</h1>
   <p>How a thirty-year-old community lost its home, got a new one in six
-     days, and came back bigger than ever.</p>
+     days, and came back bigger than ever. Built by a member who can't read
+     code, and {{ members }} people who can't stop asking for things.</p>
+  <div class="nums">
+    <div><b>{{ members }}</b><span>members</span><i>285 at the old board's peak</i></div>
+    <div><b>{{ "{:,}".format(messages) }}</b><span>posts</span><i>since August 3</i></div>
+    <div><b>{{ "{:,}".format(pageviews) }}</b><span>pageviews</span><i>yesterday, counted</i></div>
+    <div><b>{{ days_live }}</b><span>days live</span><i>{{ changes }} changes shipped</i></div>
+  </div>
 </div>
+
+<nav class="strip" aria-label="Chapters">
+  <div class="strip-in">
+    <a class="chip" href="#numbers" data-for="numbers"><b>1</b>Numbers</a>
+    <a class="chip" href="#crash" data-for="crash"><b>2</b>The crash</a>
+    <a class="chip" href="#homes" data-for="homes"><b>3</b>Five homes</a>
+    <a class="chip" href="#rebuild" data-for="rebuild"><b>4</b>The rebuild</a>
+    <a class="chip" href="#season" data-for="season"><b>5</b>The season</a>
+    <a class="chip" href="#gameday" data-for="gameday"><b>6</b>Game day</a>
+    <a class="chip" href="#voice" data-for="voice"><b>7</b>Voice</a>
+    <a class="chip" href="#arcade" data-for="arcade"><b>8</b>Arcade</a>
+    <a class="chip" href="#incidents" data-for="incidents"><b>9</b>Incidents</a>
+    <a class="chip" href="#assistant" data-for="assistant"><b>10</b>MCP</a>
+    <a class="chip" href="#members" data-for="members"><b>11</b>Members</a>
+    <a class="chip" href="#stack" data-for="stack"><b>12</b>The stack</a>
+    <a class="chip" href="#lesson" data-for="lesson"><b>13</b>The lesson</a>
+  </div>
+</nav>
 
 <div class="wrap">
 
-<section>
+<section id="numbers">
   <h2>The numbers, live</h2>
-  <div class="stats">
-    <div class="stat"><b>{{ members }}</b><span>members</span><i>285 at the old board's peak</i></div>
-    <div class="stat"><b>{{ "{:,}".format(messages) }}</b><span>messages posted</span><i>since August 3</i></div>
-    <div class="stat"><b>{{ "{:,}".format(pageviews) }}</b><span>pageviews yesterday</span><i>counted, not estimated</i></div>
-    <div class="stat"><b>$7</b><span>per month, total</span><i>the whole operation</i></div>
-  </div>
-  <div class="stats">
-    <div class="stat"><b>{{ "{:,}".format(photos) }}</b><span>photos &amp; clips hosted</span><i>compressed, EXIF-corrected</i></div>
-    <div class="stat"><b>{{ games }}</b><span>polls &amp; pick 'em games</span><i>member-created</i></div>
-    <div class="stat"><b>{{ hof }}</b><span>Hall of Fame posts</span><i>enshrined by member vote</i></div>
-    {% if arcade %}
-    <div class="stat"><b>{{ "{:,}".format(arcade) }}</b><span>arcade games played</span><i>on games built for the board</i></div>
-    {% else %}
-    <div class="stat"><b>{{ days_live }}</b><span>days since launch</span><i>zero data lost</i></div>
-    {% endif %}
-  </div>
-  <p style="font-size:12px; font-family: Verdana, sans-serif; color: var(--soft)">
-    These figures are queried live from the board's database every time this
-    page loads &mdash; this page is served by the same $7 server it describes.
-    {{ days_live }} days live, zero data lost.</p>
-
-  {% if chart %}
+  <p class="lede">Every figure on this page is read from the board's database
+    as the page loads. The server that serves this page is the one it
+    describes.</p>
+  {% if life|length > 2 %}
   <div class="chart">
-    <svg viewBox="0 0 560 130" role="img"
-         aria-label="Daily pageviews, last {{ chart|length }} days">
-      {% set n = chart|length %}
-      {% set bw = (560 / n) - 6 %}
-      {% for c in chart %}
-      {% set h = (100 * c['pageviews'] / chart_max) if chart_max else 0 %}
-      <rect class="bar{% if c['pageviews'] == chart_max %} bar-max{% endif %}"
-            x="{{ loop.index0 * (560 / n) + 3 }}" y="{{ 110 - h }}"
-            width="{{ bw }}" height="{{ h }}"><title>{{ c['day'] }}:
-        {{ "{:,}".format(c['pageviews']) }} pageviews</title></rect>
+    <h3>Pageviews, every day since launch</h3>
+    {% set W = 680 %}{% set H = 150 %}{% set top = 22 %}{% set base = 122 %}{% set n = life|length %}
+    {% set step = W / (n - 1) %}
+    <svg viewBox="0 0 {{ W }} {{ H }}" role="img" aria-label="Daily pageviews since launch">
+      {% set ns = namespace(d="", a="") %}
+      {% for c in life %}
+        {% set x = loop.index0 * step %}{% set y = base - (base - top) * c['pageviews'] / life_max %}
+        {% set ns.d = ns.d ~ (" L" if loop.index0 else "M") ~ " " ~ x ~ " " ~ y %}
       {% endfor %}
-      <text class="axis" x="3" y="126">{{ chart[0]['day'] }}</text>
-      <text class="axis" x="557" y="126" text-anchor="end">{{ chart[-1]['day'] }}</text>
-      <text class="axis" x="557" y="14" text-anchor="end">peak
-        {{ "{:,}".format(chart_max) }}/day</text>
+      <path class="area" d="{{ ns.d }} L {{ W }} {{ base }} L 0 {{ base }} Z"/>
+      <path class="line" d="{{ ns.d }}"/>
+      {% for c in life %}
+        {% if c['day'] in gamedays %}
+        <line class="tick" x1="{{ loop.index0 * step }}" y1="{{ base + 2 }}" x2="{{ loop.index0 * step }}" y2="{{ base + 9 }}"><title>{{ c['day'] }}: game day</title></line>
+        {% endif %}
+      {% endfor %}
+      {% if peak %}
+        {% set px = life.index(peak) * step %}
+        <text class="peak" x="{{ px if px < W - 120 else W }}" y="{{ top - 8 }}" text-anchor="{{ 'start' if px < W - 120 else 'end' }}">{{ "{:,}".format(peak['pageviews']) }} on {{ peak['day'] }}</text>
+      {% endif %}
+      <text class="lbl" x="0" y="{{ H - 2 }}">{{ life[0]['day'] }}</text>
+      <text class="lbl" x="{{ W }}" y="{{ H - 2 }}" text-anchor="end">{{ life[-1]['day'] }}</text>
     </svg>
-    <p style="font-size:11px; font-family: Verdana, sans-serif; color: var(--soft); margin-top:2px">
-      Daily pageviews, most recent {{ chart|length }} days &mdash; drawn from
-      the live traffic table at page load.</p>
+    <p class="cap">People, not robots. The maize ticks are Michigan game days.</p>
+  </div>
+  <div class="two">
+    <div class="chart">
+      <h3>Members</h3>
+      {% set mx = roster[-1] if roster else 1 %}
+      <svg viewBox="0 0 330 110" role="img" aria-label="Members over time">
+        {% set ns2 = namespace(d="") %}
+        {% for r in roster %}
+          {% set ns2.d = ns2.d ~ (" L" if loop.index0 else "M") ~ " " ~ (loop.index0 * 330 / (n - 1)) ~ " " ~ (96 - 80 * r / mx) %}
+        {% endfor %}
+        <path class="members" d="{{ ns2.d }}"/>
+        <text class="lbl" x="0" y="108">{{ roster[0] if roster else 0 }} on day one</text>
+        <text class="lbl" x="330" y="108" text-anchor="end">{{ mx }} now</text>
+      </svg>
+    </div>
+    <div class="chart">
+      <h3>Changes shipped, per week</h3>
+      {% set smax = (ship | map(attribute='n') | max) if ship else 1 %}
+      {% set sw = 330 / (ship|length if ship else 1) %}
+      <svg viewBox="0 0 330 110" role="img" aria-label="Changes shipped per week">
+        {% for s in ship %}
+        {% set h = 80 * s['n'] / smax %}
+        <rect class="bar{% if s['n'] == smax %} hi{% endif %}" x="{{ loop.index0 * sw + 2 }}" y="{{ 96 - h }}" width="{{ sw - 4 }}" height="{{ h }}" rx="1"><title>week of {{ s['week'] }}: {{ s['n'] }}</title></rect>
+        {% endfor %}
+        <text class="lbl" x="0" y="108">{{ changes }} in all</text>
+        <text class="lbl" x="330" y="108" text-anchor="end">busiest week {{ smax }}</text>
+      </svg>
+    </div>
   </div>
   {% endif %}
+  <div class="stats">
+    <div class="stat"><b>{{ "{:,}".format(photos) }}</b><span>photos &amp; clips</span><i>compressed, kept upright</i></div>
+    <div class="stat"><b>{{ games }}</b><span>polls &amp; pick 'ems</span><i>member-made</i></div>
+    <div class="stat"><b>{{ hof }}</b><span>Hall of Fame</span><i>by member vote</i></div>
+    {% if arcade %}<div class="stat"><b>{{ "{:,}".format(arcade) }}</b><span>arcade games</span><i>played on the board</i></div>{% endif %}
+    <div class="stat"><b>$7</b><span>a month</span><i>the whole operation</i></div>
+    <div class="stat"><b>0</b><span>data lost</span><i>{{ days_live }} days, nightly tested backups</i></div>
+  </div>
 </section>
 
-<section>
+<section id="crash">
   <h2>The crash</h2>
-  <p class="lede">Since 1995 &mdash; before Google existed &mdash; a few
-    hundred Michigan fans have argued about football on a message board that
-    still looks the way the internet did then. Threaded replies, handles, an
-    asterisk in the subject line when the subject is the whole post. Marriages, kids, jobs, and
-    national championships all got announced there. One member found it via
-    Ask Jeeves. Another wrote a book about it.</p>
-  <p>In the summer of 2026 the free service hosting it crashed and never came
-    back. No warning, no export, no support &mdash; the host's own help forum
-    had been dead for years. Thirty years of community suddenly had no
-    address.</p>
+  <p class="big">Thirty years of community, and one morning <em>no address.</em></p>
+  <p class="lede">Since 1995, before Google existed, a few hundred Michigan
+    fans have argued about football on a message board that still looks the
+    way the internet did then. Threaded replies, handles, an asterisk in the
+    subject line when the subject is the whole post.</p>
+  <p>Marriages, kids, jobs, and national championships all got announced
+    there. One member found it via Ask Jeeves. Another wrote a book about it.
+    In the summer of 2026 the free service hosting it crashed and never came
+    back. No warning, no export, no support; the host's own help forum had
+    been dead for years.</p>
 </section>
 
-<section>
+<section id="homes">
   <h2>Thirty years, five homes</h2>
-  <p>The community predates its every address. It began on a fan-run
-    recruiting board in <b>1995</b>, moved to the beloved &ldquo;VV
-    board&rdquo; in <b>1996</b> (famous for showing whole posts without a
-    click), became <em>The Victors</em> around <b>1999</b>, and rode a free
-    1998-era host for decades after that &mdash; through outages, ads, and
-    neglect &mdash; because moving felt impossible.</p>
-  <p>The 2026 crash forced the question. The answer, this time, was an
-    address the community owns. When the new board ran a roll call, members
-    dated themselves to every era back to 1995 &mdash; and the founder of the
-    1996 board showed up in the thread, to a chorus of &ldquo;long time no
-    see.&rdquo;</p>
+  <p class="lede">The community predates its every address.</p>
+  <div class="homes">
+    <div class="home"><b>1995</b><span>A fan-run recruiting board</span><i>where it began</i></div>
+    <div class="home"><b>1996</b><span>The "VV board"</span><i>whole posts, no click</i></div>
+    <div class="home"><b>1999</b><span>Becomes The Victors</span><i>the name sticks</i></div>
+    <div class="home"><b>2000s</b><span>A free 1998-era host</span><i>outages, ads, neglect</i></div>
+    <div class="home now"><b>2026</b><span>An address it owns</span><i>this one</i></div>
+  </div>
+  <p>When the new board ran a roll call, members dated themselves to every
+    era back to 1995, and the founder of the 1996 board showed up in the
+    thread, to a chorus of "long time no see."</p>
 </section>
 
-<section>
+<section id="rebuild">
   <h2>The rebuild</h2>
-  <p>Nick Coston &mdash; not a developer, not the admin, not even an elder;
-    a member since 2017 and one of the board's youngest &mdash; rebuilt it in
-    six evenings, directing AI tools (Claude Code) the way an architect
-    directs a construction crew: deciding what to build, reviewing everything
-    against the community's thirty years of instinct, and testing on the
-    toughest QA department in existence &mdash; the members themselves,
-    live. {{ days_live }} days and {{ changes }} shipped changes later, he
-    still can't read the code. He can tell you what every line is for.</p>
-  <p>The admin title came afterward, the old-fashioned way: he built the
-    place, so he holds the keys.</p>
+  <p class="big">Six evenings. <em>Not a developer.</em></p>
+  <p class="lede">Nick Coston, a member since 2017 and one of the board's
+    youngest, rebuilt it by directing AI tools (Claude Code) the way an
+    architect directs a construction crew: deciding what to build, reviewing
+    everything against the community's thirty years of instinct, and testing
+    on the toughest QA department in existence, the members themselves,
+    live.</p>
+  <p>{{ days_live }} days and {{ changes }} shipped changes later, he still
+    can't read the code. He can tell you what every line is for. The admin
+    title came afterward, the old-fashioned way: he built the place, so he
+    holds the keys.</p>
   <p>The design brief was one sentence: <em>keep everything the community
     loved, fix everything the old host wouldn't.</em> The 1998 look stayed.
-    The threads, handles, and asterisk culture stayed. Underneath: photo and
-    video posting, polls, score-prediction games with a leaderboard, a live
-    college scoreboard, an ephemeral chat room, a member-voted Hall of Fame,
-    cross-device read tracking, moderation tools, privacy-preserving
-    analytics, and nightly tested backups &mdash; so no crash can ever take
-    the community's history again.</p>
+    The threads, handles and asterisk culture stayed. Underneath: photos and
+    video, polls, pick 'em games with a leaderboard, a live college
+    scoreboard, a chat room, a member-voted Hall of Fame, read tracking across
+    devices, moderation tools, anonymous analytics, and nightly tested backups,
+    so no crash can ever take the community's history again.</p>
 </section>
 
-<section>
+<section id="season">
   <h2>Six days, then a season</h2>
-  <ul class="timeline">
-    <li><b>Day 0</b> — The old host dies. The community waits around a dead URL.</li>
-    <li><b>Day 3</b> — A clean rebuild goes live on its own address. Members
-      re-register by the dozens the first night.</li>
-    <li><b>Week 1</b> — Photos, polls, search, edit, dark mode; the member
-      feature-request firehose opens and never closes.</li>
-    <li><b>Week 2</b> — Pick 'em games, Hall of Fame, live chat, video clips;
-      the community passes its old size.</li>
-    <li><b>Week 3</b> — Live scoreboards, game-day mode, a weekly podcast
-      integration, tested disaster recovery. 350 members, ~35,000 pageviews a
-      day.</li>
-    <li><b>Week 5</b> — The season opens. The first football Saturday
-      finds the ceilings: the server hits its memory limit under real load,
-      and the month's bandwidth allowance goes in six days. Both fixed
-      inside the weekend.</li>
-    <li><b>Week 6</b> — Two games, built from nothing and put on the
-      board. A member asks for a countdown clock at one in the morning and
-      has one by breakfast.</li>
-    <li><b>Week 10</b> — The board becomes an MCP server. Any AI assistant
-      can read it, search it, and follow the archive in order; nothing a
-      logged-out reader can't already see.</li>
-    <li><b>Week 11</b> — Polls become threads. Chat learns to fill a phone
-      screen, which is where most of the members live.</li>
-    <li><b>Week 12</b> — Live polls in the room, then live voice: an
-      admin opens it, whoever talks reaches everyone, nothing to find and
-      nothing recorded. A hit on its first night.</li>
-    <li><b>Week 14</b> — The offensive coordinator is fired on a Sunday
-      afternoon. The voice room holds hundreds of members that day, most of
-      them on phones, screens off.</li>
-    <li><b>Week 15</b> — A member asks for a timeline of every red flag the
-      board called in real time. The board reads its own archive through its
-      own MCP server, 29,000 posts, and publishes the receipts by Sunday.</li>
+  <ul class="tl">
+    <li class="loud"><b>Day 0</b><span>The old host dies. The community waits around a dead URL.</span></li>
+    <li><b>Day 3</b><span>A clean rebuild goes live on its own address. Members re-register by the dozens the first night.</span></li>
+    <li><b>Week 1</b><span>Photos, polls, search, edit, dark mode. The member feature-request firehose opens and never closes.</span></li>
+    <li><b>Week 2</b><span>Pick 'em games, Hall of Fame, live chat, video clips. The community passes its old size.</span></li>
+    <li><b>Week 3</b><span>Live scoreboards, game-day mode, the weekly podcast, tested disaster recovery. 350 members, 35,000 pageviews a day.</span></li>
+    <li class="loud"><b>Week 5</b><span>The season opens. The first football Saturday finds the ceilings: the server hits its memory limit under real load, and the month's bandwidth allowance goes in six days. Both fixed inside the weekend.</span></li>
+    <li><b>Week 6</b><span>Two games, built from nothing and put on the board. A member asks for a countdown clock at one in the morning and has one by breakfast.</span></li>
+    <li><b>Week 10</b><span>The board becomes an MCP server. Any AI assistant can read it, search it, and follow the archive in order. Nothing a logged-out reader can't already see.</span></li>
+    <li><b>Week 11</b><span>Polls become threads. Chat learns to fill a phone screen, which is where most of the members live.</span></li>
+    <li><b>Week 12</b><span>Live polls in the room, then live voice: an admin opens it, whoever talks reaches everyone, nothing to find and nothing recorded. A hit on its first night.</span></li>
+    <li class="loud"><b>Week 14</b><span>The offensive coordinator is fired on a Sunday afternoon. The voice room holds hundreds of members that day, most of them on phones, screens off.</span></li>
+    <li><b>Week 15</b><span>A member asks for a timeline of every red flag the board called in real time. The board reads its own archive through its own MCP server, 29,000 posts, and publishes <a href="{{ url_for('receipts') }}">the receipts</a> by Sunday.</span></li>
   </ul>
 </section>
 
-<section>
-  <h2>Live voice, on phones</h2>
-  <p class="lede">The request was one sentence: hands-free, zero-lift voice
-    chat. Open the room, hear the room.</p>
-  <p>Listening is automatic. If someone is talking when you open chat, you
-    hear them, the way you'd hear a room you walked into. Talking is the
-    opt-in: one tap, and a mute and a leave. The board brokers sessions with
-    Cloudflare's real-time relay and never touches the audio; nothing is
-    recorded, and the room closes itself when it has been empty two hours.</p>
-  <p>Every rule in it was written by a phone. The first night, a talker on an
-    iPhone could not be heard, so the microphone got a connection of its own.
-    An admin's phone dropped and closed the room on thirty people, so the room
-    learned to stay open until an admin closes it. A member's car Bluetooth
-    handed the board a silent microphone, so the board now watches the mic and
-    says so. The screen stays on while you're in the room, because a phone
-    that sleeps hangs up.</p>
-  <p>The build took an evening. The next three were spent listening to the
-    people using it.</p>
-</section>
-
-<section>
-  <h2>A board any assistant can read</h2>
-  <p>Point an AI assistant at <code>/mcp</code> and it can search the board,
-    read a thread, follow the archive in order, and look up the standings.
-    The server is read-only in a way that can be tested rather than promised:
-    it opens the database in read-only mode, and the rule for what it may
-    return is <em>exactly what a logged-out browser can already see</em>. The
-    test suite seeds a board where every post carries the same address and
-    every account the same password hash, then tries to reach them through
-    every tool.</p>
-  <p>It paid for itself in week fifteen. When the season went bad and a
-    member asked for a timeline of every red flag the board had called in
-    real time, the board read its own ten game weekends through its own
-    server, about 29,000 posts, and <a href="{{ url_for('receipts') }}">published
-    the receipts</a>: {{ receipts_n }} of them, each one a quote, a poster, a
-    timestamp, and a link to the post as written. The first body-language
-    call was 8:37 PM on opening night.</p>
-</section>
-
-<section>
+<section id="gameday">
   <h2>Game day</h2>
   <p class="lede">A football board is only as good as it is on a Saturday.</p>
-  <p>The Scores board carries a live scoreboard for all of college football
-    — every game in the top division, not just Michigan's, refreshed from the
-    wire and with rules about when a game is finished enough to leave the
-    page. On game day the whole board changes: a banner, a waving flag, the
-    marching band's pregame one tap away.</p>
-  <p>The week's pick 'em thread is posted by <b>Skeeps</b>, a reserved
-    account that is not a person. It goes up on Monday so there is a week to
-    think about it, locks itself at kickoff, counts the picks — including the
-    ones left the old-fashioned way, as replies — and posts the standings
-    when the game is over.</p>
-  <p>The scoring rule was not designed. It was <i>remembered</i>: closest to
-    the final total, win or lose, which is how this board has always done it.
-    A member corrected the first version from memory and the correction
-    shipped that afternoon. The board also tracks Slippery Rock, a Division
-    II school in Pennsylvania, for reasons every Michigan fan understands and
-    nobody else ever will.</p>
+  <p>The Scores board carries a live scoreboard for all of college football,
+    every game in the top division, refreshed from the wire, with rules about
+    when a game is finished enough to leave the page. On game day the whole
+    board changes: a banner, a waving flag, the marching band's pregame one
+    tap away.</p>
+  <p>The week's pick 'em thread is posted by <b>Skeeps</b>, a reserved account
+    that is not a person. It goes up on Monday so there is a week to think, locks
+    itself at kickoff, counts the picks, including the ones left the
+    old-fashioned way as replies, and posts the standings when the game is
+    over. The scoring rule was not designed. It was <i>remembered</i>: closest
+    to the final, win or lose, which is how this board has always done it. A
+    member corrected the first version from memory and the correction shipped
+    that afternoon.</p>
+  <p>The board also tracks Slippery Rock, a Division II school in
+    Pennsylvania, for reasons every Michigan fan understands and nobody else
+    ever will.</p>
 </section>
 
-<section>
+<section id="voice">
+  <h2>Live voice, on phones</h2>
+  <p class="big">Open the room, <em>hear the room.</em></p>
+  <p class="lede">The request was one sentence: hands-free, zero-lift voice
+    chat. Listening is automatic. If someone is talking when you open chat, you
+    hear them, the way you'd hear a room you walked into. Talking is the
+    opt-in: one tap, a mute, a leave.</p>
+  <p>The board brokers sessions with Cloudflare's real-time relay and never
+    touches the audio. Nothing is recorded. The room closes itself after two
+    empty hours. The build took an evening. The next three were spent
+    listening to the people using it, and every rule below was written by a
+    phone.</p>
+  <div class="cards">
+    <div class="card"><b>An iPhone talker nobody could hear</b><p>So the microphone got a connection of its own.</p></div>
+    <div class="card"><b>An admin's phone dropped</b><p>And closed the room on thirty people. So the room stays open until an admin closes it.</p></div>
+    <div class="card"><b>A car's Bluetooth handed over a silent mic</b><p>So the board watches the mic and says, in words, when the phone has muted you.</p></div>
+    <div class="card"><b>A phone that sleeps hangs up</b><p>So the screen stays on while you're in the room.</p></div>
+  </div>
+</section>
+
+<section id="arcade">
   <h2>The arcade</h2>
   <p class="lede">Six weeks in, the members stopped asking for features and
     started asking for toys.</p>
   <p>So the board grew two games of its own. <b>Victard Bowl</b> is a pixel
-    football game — Michigan's real schedule, twelve weeks, you call the
-    plays and you can take the field on defense too. <b>Stadium Guesser</b>
-    drops you in front of a college football stadium and asks you to find it
-    on a map of the lower 48; 135 of them, scored on how many miles you were
-    off.</p>
+    football game: Michigan's real schedule, twelve weeks, you call the plays
+    and you can take the field on defense too. <b>Stadium Guesser</b> drops you
+    in front of a college football stadium and asks you to find it on a map of
+    the lower 48; 135 of them, scored on how many miles you were off.</p>
   <p>Neither one phones anywhere. The football game is a canvas and a few
-    hundred lines of JavaScript. The map is not a mapping service — it is
-    public-domain census outlines projected once at build time, so there is no
-    key to buy, no bill to run up, and nothing to break when somebody else's
-    service changes. Both keep leaderboards on the board itself, and the
-    house robot posts the standings to the Scores page once a month.</p>
-  {% if arcade >= 50 %}
-  <p>{{ "{:,}".format(arcade) }} games played so far. On a message board.</p>
-  {% endif %}
+    hundred lines of JavaScript. The map is public-domain census outlines
+    projected once at build time: no key to buy, no bill to run up, nothing to
+    break when somebody else's service changes. Both keep leaderboards on the
+    board, and the house robot posts the standings to the Scores page once a
+    month.{% if arcade >= 50 %} {{ "{:,}".format(arcade) }} games played so far.
+    On a message board.{% endif %}</p>
 </section>
 
-<section>
+<section id="incidents">
   <h2>Incident log</h2>
-  <p>Real communities generate real production incidents. A selection, each
-    diagnosed and fixed in hours &mdash; usually before most members noticed:</p>
-  <div class="incident">
-    <b>Photos posting sideways</b>
-    <p>Phone cameras store orientation as metadata; the upload compressor was
-      stripping it without applying it.</p>
-    <p class="fix">Fix: apply orientation before resizing. Every phone photo
-      since lands right-side up.</p>
-  </div>
-  <div class="incident">
-    <b>A password reset that didn't stop anyone</b>
-    <p>Year-long login sessions meant a reset password couldn't kick a
-      problem user's existing logins.</p>
-    <p class="fix">Fix: per-account session tokens, rotated on reset — every
-      live session dies instantly, on every device.</p>
-  </div>
-  <div class="incident">
-    <b>3,900 daily "visitors" on a 350-member board</b>
-    <p>The traffic counter was counting the CDN's relay addresses as people.</p>
-    <p class="fix">Fix: read the real client address from the CDN header.
-      Honest numbers overnight; the analytics stayed anonymous throughout.</p>
-  </div>
-  <div class="incident">
-    <b>Chat messages appearing twice</b>
-    <p>Two overlapping refresh requests could each draw the same new
-      messages — a classic race, surfacing only when the room got busy.</p>
-    <p class="fix">Fix: client-side dedupe by message id, one refresh in
-      flight at a time.</p>
-  </div>
-  <div class="incident">
-    <b>The backup that would have hung the board at midnight</b>
-    <p>The first nightly-snapshot implementation ran inside an open database
-      transaction — a deadlock that would fire on the first pageview of every
-      new day.</p>
-    <p class="fix">Fix: caught before it ever shipped, by an actual restore
-      drill. Untested backups are hope; these are tested.</p>
-  </div>
-  <div class="incident">
-    <b>A 48-megapixel phone photo against a 512MB server</b>
-    <p>Modern phone cameras produce files that decode to roughly 150MB of raw
-      pixels. Two members uploading at once on game day was enough to walk the
-      instance into its memory ceiling and restart it.</p>
-    <p class="fix">Fix: decode at reduced scale rather than full size, rotate
-      after shrinking instead of before, and allow only two decodes at a time.
-      The ceiling stopped being reachable.</p>
-  </div>
-  <div class="incident">
-    <b>Four Memorial Stadiums</b>
-    <p>Illinois and Indiana were both handed a photograph of Nebraska's
-      stadium. Four schools call their ground Memorial Stadium, and the lookup
-      was keyed by the stadium's name — so all four shared one slot and
-      overwrote each other.</p>
-    <p class="fix">Fix: key by the school, and stop trusting names altogether.
-      Every photograph is now checked against the stadium's real coordinates
-      and rejected if it sits more than 25 miles away. Champaign to Lincoln is
-      450.</p>
-  </div>
-  <div class="incident">
-    <b>The voice room that closed on thirty people</b>
-    <p>Voice stayed open only while an admin was connected. An admin's phone
-      dropped its connection and the room ended for everyone in it.</p>
-    <p class="fix">Fix: the room is open once an admin opens it, and stays
-      open until an admin closes it or it sits empty for two hours. The
-      admin's connection is a connection, not a key.</p>
-  </div>
-  <div class="incident">
-    <b>The talker nobody could hear</b>
-    <p>Listening and talking shared one connection to the relay. On an
-      iPhone, adding the microphone to a connection already pulling the room
-      renegotiated it into silence.</p>
-    <p class="fix">Fix: the microphone gets a session of its own. The board
-      also watches the outgoing audio and tells the talker, in words, when the
-      phone has quietly muted them.</p>
-  </div>
-  <div class="incident">
-    <b>The podcast box that vanished at midnight</b>
-    <p>The week's episode showed on the homepage on Wednesdays. One week it
-      went up at 9:16 PM on Wednesday, so the box appeared for two hours and
-      forty-four minutes and was gone by morning. Some weeks the show is
-      recorded on a Thursday, and those never showed at all.</p>
-    <p class="fix">Fix: the box follows the episode, not the calendar: two
-      days from upload, any day of the week, and it stays through a bad
-      refresh instead of blanking.</p>
+  <p class="lede">Real communities generate real production incidents. A
+    selection, each diagnosed and fixed in hours, usually before most members
+    noticed.</p>
+  <div class="cards">
+    <div class="card"><b>Photos posting sideways</b><p>Phone cameras store orientation as metadata; the upload compressor was stripping it without applying it.</p><p class="fix">Apply orientation before resizing. Every phone photo since lands right-side up.</p></div>
+    <div class="card"><b>A password reset that didn't stop anyone</b><p>Year-long login sessions meant a reset password couldn't kick a problem user's existing logins.</p><p class="fix">Per-account session tokens, rotated on reset. Every live session dies instantly, on every device.</p></div>
+    <div class="card"><b>3,900 daily "visitors" on a 350-member board</b><p>The traffic counter was counting the CDN's relay addresses as people.</p><p class="fix">Read the real client address from the CDN header. Honest numbers overnight; the analytics stayed anonymous throughout.</p></div>
+    <div class="card"><b>Chat messages appearing twice</b><p>Two overlapping refreshes could each draw the same new messages. A classic race, surfacing only when the room got busy.</p><p class="fix">Dedupe by message id, one refresh in flight at a time.</p></div>
+    <div class="card"><b>The backup that would have hung the board at midnight</b><p>The first nightly snapshot ran inside an open database transaction: a deadlock that would fire on the first pageview of every new day.</p><p class="fix">Caught before it shipped, by an actual restore drill. Untested backups are hope; these are tested.</p></div>
+    <div class="card"><b>A 48-megapixel photo against a 512MB server</b><p>Modern phone cameras produce files that decode to roughly 150MB of raw pixels. Two members uploading at once on game day walked the instance into its memory ceiling.</p><p class="fix">Decode at reduced scale, rotate after shrinking, two decodes at a time. The ceiling stopped being reachable.</p></div>
+    <div class="card"><b>Four Memorial Stadiums</b><p>Illinois and Indiana were both handed a photograph of Nebraska's stadium. Four schools call their ground Memorial Stadium and the lookup was keyed by name.</p><p class="fix">Key by the school, and check every photograph against the stadium's real coordinates. Champaign to Lincoln is 450 miles.</p></div>
+    <div class="card"><b>The voice room that closed on thirty people</b><p>Voice stayed open only while an admin was connected. An admin's phone dropped its connection and the room ended for everyone in it.</p><p class="fix">Open once an admin opens it, open until an admin closes it or two empty hours pass. The admin's connection is a connection, not a key.</p></div>
+    <div class="card"><b>The talker nobody could hear</b><p>Listening and talking shared one connection to the relay. On an iPhone, adding the microphone to a connection already pulling the room renegotiated it into silence.</p><p class="fix">The microphone gets a session of its own, and the board watches the outgoing audio and tells the talker when the phone has quietly muted them.</p></div>
+    <div class="card"><b>The podcast box that vanished at midnight</b><p>The week's episode showed on the homepage on Wednesdays. One week it went up at 9:16 PM, so the box appeared for two hours and forty-four minutes. Thursday episodes never showed at all.</p><p class="fix">The box follows the episode, not the calendar: two days from upload, any day, and it survives a bad refresh.</p></div>
   </div>
 </section>
 
-<section>
+<section id="assistant">
+  <h2>A board any assistant can read</h2>
+  <p class="big">Point an AI at <em>/mcp.</em></p>
+  <p class="lede">It can search the board, read a thread, follow the archive in
+    order, and look up the standings. Read-only in a way that can be tested
+    rather than promised.</p>
+  <p>The server opens the database in read-only mode, and the rule for what
+    it may return is <em>exactly what a logged-out browser can already see</em>.
+    The test suite seeds a board where every post carries the same address and
+    every account the same password hash, then tries to reach them through
+    every tool.</p>
+  <p>It paid for itself in week fifteen. When the season went bad and a member
+    asked for a timeline of every red flag the board had called in real time,
+    the board read its own ten game weekends through its own server, about
+    29,000 posts, and <a href="{{ url_for('receipts') }}">published the
+    receipts</a>: {{ receipts_n }} of them, each a quote, a poster, a timestamp
+    and a link to the post as written. The first body-language call was 8:37 PM
+    on opening night.</p>
+</section>
+
+<section id="members">
   <h2>What the members say</h2>
-  <blockquote>&ldquo;Here, I realized at that moment, are my people. And,
-    nearly a quarter of a century later, I'm still there.&rdquo;
-    <footer>&mdash; from a member's published book about this community</footer>
-  </blockquote>
-  <blockquote>&ldquo;Thank you for everything you've done. I know I speak for
-    many in saying we'd like to help pay for this.&rdquo;
-    <footer>&mdash; a member, unprompted, offering money to a free board</footer>
-  </blockquote>
-  <blockquote>&ldquo;This redesign has generally been fantastic.&rdquo;
-    <footer>&mdash; a member of 20 years</footer>
-  </blockquote>
-  <blockquote>&ldquo;You're going to need Jira.&rdquo;
-    <footer>&mdash; a member, on the speed of shipped feature requests</footer>
-  </blockquote>
-  <blockquote>&ldquo;I would like my ampersand back.&rdquo;
-    <footer>&mdash; a member whose handle lost its &amp; in the migration,
-      filing history's most 1998 bug report. Restored within the hour,
-      retroactively, across every post they ever made.</footer>
-  </blockquote>
-  <blockquote>&ldquo;Yea that would be sick, AI could do it given the data.
-    Nikos, get on it, you're free right :)&rdquo;
-    <footer>&mdash; a member, the night the receipts were requested. They were
-      live the next day.</footer>
-  </blockquote>
+  <div class="cards">
+    <div class="quote">Here, I realized at that moment, are my people. And, nearly a quarter of a century later, I'm still there.<footer>from a member's published book about this community</footer></div>
+    <div class="quote">Thank you for everything you've done. I know I speak for many in saying we'd like to help pay for this.<footer>a member, unprompted, offering money to a free board</footer></div>
+    <div class="quote">You're going to need Jira.<footer>a member, on the speed of shipped feature requests</footer></div>
+    <div class="quote">I would like my ampersand back.<footer>a member whose handle lost its &amp; in the migration, filing history's most 1998 bug report. Restored within the hour, across every post they ever made.</footer></div>
+    <div class="quote">Yea that would be sick, AI could do it given the data. Nikos, get on it, you're free right :)<footer>a member, the night the receipts were requested. They were live the next day.</footer></div>
+    <div class="quote">This redesign has generally been fantastic.<footer>a member of 20 years</footer></div>
+  </div>
 </section>
 
-<section>
+<section id="stack">
   <h2>The stack</h2>
-  <p class="stack">One Python file &mdash; <code>{{ "{:,}".format(loc) }}
-    lines</code> as of this page load &mdash; plus SQLite, plain HTML
-    templates, and one small CSS file. No framework churn, no build step, no
-    JavaScript beyond what the chat, the voice room and the scoreboard
-    genuinely need. It runs on a single <code>$7/month</code> server with a
-    persistent disk, behind a CDN, deploying automatically on every push.
-    Voice rides Cloudflare's real-time relay; scores come from ESPN; the
-    rest is the one file.</p>
-  <p class="stack">The code was written by AI (Claude Code) under direction;
-    every feature was specified, reviewed, and accepted by a human who knows
-    the community — then tested by {{ members }} people who don't file bug
-    reports so much as post them publicly with jokes attached. Feature
-    requests routinely shipped the same afternoon they were posted, which the
-    members found funnier than the features. Every change is in
+  <p class="lede stack">One Python file, <code>{{ "{:,}".format(loc) }} lines</code>
+    as of this page load, plus SQLite, plain HTML templates and one small CSS
+    file.</p>
+  <p class="stack">No framework churn, no build step, no JavaScript beyond
+    what the chat, the voice room and the scoreboard need. It runs on a single
+    <code>$7/month</code> server with a persistent disk, behind a CDN,
+    deploying automatically on every push. Voice rides Cloudflare's real-time
+    relay; scores come from ESPN; the rest is the one file.</p>
+  <p class="stack">The code was written by AI (Claude Code) under direction.
+    Every feature was specified, reviewed and accepted by a human who knows the
+    community, then tested by {{ members }} people who don't file bug reports
+    so much as post them publicly with jokes attached. Every change is in
     <a href="{{ url_for('changelog') }}">a public running log</a> on the
-    board, {{ changes }} entries as of this page load, and each ships with
-    the test that proves it.</p>
+    board, {{ changes }} entries as of this page load, and each ships with the
+    test that proves it.</p>
 </section>
 
-<section>
+<section id="lesson">
   <h2>The lesson</h2>
-  <p class="lede">The engineering turned out to be the easy half. The hard
-    half was twenty-five years in the making: knowing what a community needs,
-    what it will reject, and when to say no &mdash; then saying yes fast to
-    everything else.</p>
+  <p class="big">The engineering was <em>the easy half.</em></p>
+  <p class="lede">The hard half was twenty-five years in the making: knowing
+    what a community needs, what it will reject, and when to say no. Then
+    saying yes, fast, to everything else.</p>
   <p>AI didn't replace a developer here. It let a community person become the
-    architect &mdash; social and engineering, both halves.</p>
-  <p>Fifteen weeks in, the members have stopped being surprised that things
-    ship. The surprise now runs the other way: a request is posted at night as
-    a joke, and in the morning it is a page on the board. That is the part of
-    this story that is not about software.</p>
+    architect, social and engineering, both halves. Fifteen weeks in, the
+    members have stopped being surprised that things ship. The surprise now
+    runs the other way: a request is posted at night as a joke, and in the
+    morning it is a page on the board. That is the part of this story that is
+    not about software.</p>
 </section>
 
 </div>
@@ -513,9 +440,37 @@ blockquote footer { font-style: normal; font-size: 13px; color: var(--soft); mar
   <b>The Victors</b> &middot; est. 1995, rebuilt August 2026 &middot;
   Flask + SQLite on a $7 server &middot; built with Claude Code<br>
   Community architecture by <b><a href="https://nick-coston.com/" rel="noopener">Nick Coston</a></b><br>
-  <span style="color:#7d8ea1">P.S. — the board hid two easter eggs.
-  The members found both. Of course they did.</span>
+  <span style="color:#7d8ea1">P.S. The board hid two easter eggs. The members found both. Of course they did.</span>
 </div>
 
+<script>
+// the chapter strip follows the reader
+(function () {
+  var chips = {};
+  document.querySelectorAll(".chip").forEach(function (c) { chips[c.getAttribute("data-for")] = c; });
+  var cur = null;
+  function light(id) {
+    if (cur === id) return;
+    cur = id;
+    Object.keys(chips).forEach(function (k) { chips[k].classList.toggle("on", k === id); });
+    var c = chips[id];
+    if (c && c.scrollIntoView) c.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }
+  if (!("IntersectionObserver" in window)) return;
+  var seen = {};
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting ? e.boundingClientRect.top : null; });
+    var best = null, bestTop = Infinity;
+    Object.keys(seen).forEach(function (k) {
+      var t = seen[k];
+      if (t === null || t === undefined) return;
+      var d = Math.abs(t - 80);
+      if (d < bestTop) { bestTop = d; best = k; }
+    });
+    if (best) light(best);
+  }, { rootMargin: "-54px 0px -40% 0px", threshold: [0, 0.1, 0.5] });
+  document.querySelectorAll("section[id]").forEach(function (s) { io.observe(s); });
+})();
+</script>
 </body>
 </html>

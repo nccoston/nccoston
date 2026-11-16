@@ -2804,16 +2804,47 @@ def story():
     launched = datetime(2026, 8, 3, tzinfo=BOARD_TZ)
     days_live = (datetime.now(timezone.utc).astimezone(BOARD_TZ)
                  - launched).days
-    week = db.execute(
-        "SELECT day, pageviews FROM traffic ORDER BY day DESC LIMIT 15"
-    ).fetchall()
-    chart = [dict(r) for r in reversed(week)][:-1]   # last 14 full days
-    chart_max = max((c["pageviews"] for c in chart), default=1)
+    # the whole life of the board, a day at a time, up to yesterday
+    today = datetime.now(timezone.utc).astimezone(BOARD_TZ).strftime("%Y-%m-%d")
+    life = [dict(r) for r in db.execute(
+        "SELECT day, pageviews FROM traffic WHERE day < ? ORDER BY day", (today,))]
+    life_max = max((c["pageviews"] for c in life), default=1)
+    peak = max(life, key=lambda c: c["pageviews"]) if life else None
+    # Michigan game days, to tick on the chart
+    gamedays = set()
+    for r in db.execute("SELECT kickoff_at FROM games WHERE kickoff_at IS NOT NULL"):
+        try:
+            gamedays.add(datetime.fromisoformat(r["kickoff_at"].replace("Z", "+00:00"))
+                         .astimezone(BOARD_TZ).strftime("%Y-%m-%d"))
+        except ValueError:
+            pass
+    # members, cumulative, on the same days
+    joined = {}
+    for r in db.execute("SELECT substr(created_at, 1, 10) d, COUNT(*) c"
+                        " FROM users GROUP BY d"):
+        joined[r["d"]] = r["c"]
+    running, roster = 0, []
+    before = sum(c for d, c in joined.items() if life and d < life[0]["day"])
+    running = before
+    for c in life:
+        running += joined.get(c["day"], 0)
+        roster.append(running)
     loc = (APP_DIR / "app.py").read_text().count("\n")
     try:
-        changes = len(json.loads((APP_DIR / "changelog.json").read_text()))
+        log = json.loads((APP_DIR / "changelog.json").read_text())
     except (OSError, ValueError):
-        changes = 0
+        log = []
+    changes = len(log)
+    # changes shipped per week, oldest first
+    by_week = {}
+    for e in log:
+        try:
+            d = datetime.strptime(e.get("day", ""), "%Y-%m-%d")
+        except ValueError:
+            continue
+        key = (d - timedelta(days=d.weekday())).strftime("%Y-%m-%d")
+        by_week[key] = by_week.get(key, 0) + 1
+    ship = [{"week": k, "n": by_week[k]} for k in sorted(by_week)]
     try:
         receipts_n = sum(len(g["receipts"]) for g in
                          json.loads((APP_DIR / "receipts.json").read_text())["games"])
@@ -2822,8 +2853,9 @@ def story():
     return render_template("story.html", members=members, messages=messages,
                            pageviews=row["pageviews"] if row else 0,
                            hof=hof, games=games, photos=photos, arcade=arcade,
-                           days_live=days_live, chart=chart,
-                           chart_max=chart_max, loc=loc, changes=changes,
+                           days_live=days_live, life=life, life_max=life_max,
+                           peak=peak, gamedays=gamedays, roster=roster,
+                           ship=ship, loc=loc, changes=changes,
                            receipts_n=receipts_n)
 
 

@@ -84,8 +84,21 @@ with appmod.app.app_context():
         post("Michigan vs Oklahoma — pick 'em",
              "Post your score. Closest to the final wins, win or lose.",
              "Skeeps", board="scores")
-        db.execute("INSERT INTO traffic (day, pageviews, uniques)"
-                   " VALUES ('2026-09-06', 35104, 912)")
+        # a life's worth of traffic, so the story page's charts have a shape:
+        # a climb, Saturdays spiking, one freak peak
+        import datetime as _dt
+        start = _dt.date(2026, 8, 3)
+        for i in range(105):
+            day = start + _dt.timedelta(days=i)
+            pv = 8000 + i * 350 + (22000 if day.weekday() == 5 and i > 30 else 0)
+            if i == 72:
+                pv = 111069
+            db.execute("INSERT OR REPLACE INTO traffic (day, pageviews, uniques)"
+                       " VALUES (?, ?, ?)", (day.isoformat(), pv, pv // 30))
+        for i in range(40):   # members trickling in over the first weeks
+            db.execute("INSERT INTO users (handle, password_hash, created_at) VALUES (?, ?, ?)",
+                       ("member%02d" % i, generate_password_hash("pw"),
+                        (start + _dt.timedelta(days=i * 2)).isoformat() + "T12:00:00+00:00"))
         db.commit()
 
 appmod.app.run(host="127.0.0.1", port=int(os.environ.get("PORT", 5099)),
