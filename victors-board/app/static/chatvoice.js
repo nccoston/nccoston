@@ -120,12 +120,25 @@
       a.autoplay = true;
       a.setAttribute("playsinline", "");
       a.srcObject = (e.streams && e.streams[0]) || new MediaStream([e.track]);
+      // a phone pauses playing sounds when the mic opens, a call comes in,
+      // or headphones switch modes; a paused sound that is still ours plays again
+      a.addEventListener("pause", function () {
+        setTimeout(function () { if (a.parentNode && a.paused && !a.hasAttribute("data-blocked")) play(a); }, 300);
+      });
       sounds.appendChild(a);
       if (key) audio[key] = a;
       play(a);
     };
     return pc;
   }
+  // and every couple of seconds, in case the pause came with no event
+  function resume() {
+    var all = sounds.querySelectorAll("audio");
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].paused && !all[i].hasAttribute("data-blocked")) play(all[i]);
+    }
+  }
+  setInterval(function () { if (state !== "off") resume(); }, 2000);
   // a phone may refuse to play until the page is touched; the next touch retries
   function play(a) {
     var p = a.play();
@@ -184,6 +197,7 @@
     if (!md || !md.getUserMedia) { say("no mic"); return; }
     md.getUserMedia({ audio: true }).then(function (stream) {
       mic = stream; micTrack = stream.getAudioTracks()[0];
+      resume();   // opening the mic can stop the room's sound on a phone
       if (pub) { try { pub.close(); } catch (e) {} }
       var c = pub = new RTCPeerConnection({ iceServers: ICE ? [{ urls: ICE }] : [] });
       var tx = c.addTransceiver(micTrack, { direction: "sendonly" });
@@ -198,7 +212,7 @@
             if (!d.ok) { throw new Error(d.error || "the relay did not take the mic"); }
             return c.setRemoteDescription({ type: "answer", sdp: d.sdp });
           })
-          .then(function () { state = "talking"; auto = false; watchMic(c); draw(); })
+          .then(function () { state = "talking"; auto = false; watchMic(c); draw(); resume(); })
           .catch(function (e) { failed = e; });
       }).then(function () {
         if (!failed) return;
@@ -283,7 +297,7 @@
     if (lock) { var l = lock; lock = null; try { l.release(); } catch (e) {} }
   }
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden && state !== "off") keepAwake();
+    if (!document.hidden && state !== "off") { keepAwake(); resume(); }
   });
 
   function mute() {
@@ -330,6 +344,7 @@
       pub: pub ? pub.connectionState + "/" + pub.iceConnectionState : null,
       pulled: Object.keys(seen).length, sounds: sounds.children.length,
       blocked: sounds.querySelectorAll("audio[data-blocked]").length,
+      paused: Array.prototype.filter.call(sounds.querySelectorAll("audio"), function (a) { return a.paused; }).length,
       warn: warn, last: lastPull ? JSON.stringify(lastPull) : null, err: lastErr,
       hidden: document.hidden, ua: navigator.userAgent.slice(0, 100)
     }) }).catch(function () {});

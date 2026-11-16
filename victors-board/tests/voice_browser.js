@@ -44,8 +44,10 @@ const FAKE_RTC = `
   window.__touched = false;
   document.addEventListener("pointerdown", () => { window.__touched = true; }, true);
   document.addEventListener("keydown", () => { window.__touched = true; }, true);
+  window.__plays = 0;
   HTMLMediaElement.prototype.play = function () {
-    return window.__touched ? Promise.resolve() : Promise.reject(new Error("NotAllowedError")); };
+    if (!window.__touched) return Promise.reject(new Error("NotAllowedError"));
+    window.__plays++; return Promise.resolve(); };
   const mic = { enabled: true, stopped: 0, stop() { this.stopped++; } };
   window.__mic = mic;
   navigator.mediaDevices.getUserMedia = () => Promise.resolve({ getAudioTracks: () => [mic], getTracks: () => [mic] });
@@ -160,6 +162,13 @@ const FAKE_RTC = `
   await tick(rich);
   ok((await sounds(rich)) === 1 && (await sounds(nikos)) === 2, "Ken was not pulled by the others");
   await shot(ken, "voice-5-talking.png");
+
+  // a talker's phone pauses the room's sound when the mic opens (or a call comes in): it plays again on its own
+  await rich.click("#chat-messages");   // Rich's page is touched, so play is allowed
+  const playsBefore = await rich.evaluate(() => window.__plays);
+  await rich.evaluate(() => document.querySelector("#voice-sounds audio").pause());
+  await tick(rich, 2600);
+  ok((await rich.evaluate(() => window.__plays)) > playsBefore, "a paused sound was not played again");
 
   // mute: still in, silent, off the talking line
   await ken.click("#voice-mute"); await tick(ken);
