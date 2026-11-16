@@ -105,8 +105,8 @@
   {% if poll and poll['tally'] == 'thread' %}
   {# results wait until you've voted, so the tally can't lean on you;
      a reader with no account can't vote and sees the counts — the names
-     stay among members #}
-  {% set show_results = (not user) or my_picks %}
+     stay among members. An admin sees the results without voting. #}
+  {% set show_results = (not user) or my_picks or user['is_admin'] %}
   <div class="bigpoll">
     <div class="bigpoll-head">&#128202; BOARD POLL{% if poll['multi'] %} &middot; pick all that apply{% endif %}
       {% if show_results %}<span>{{ total_votes }} voted</span>{% endif %}</div>
