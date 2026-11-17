@@ -23,8 +23,10 @@ The same settings are already applied in the sandbox, except the head office add
 `revenue_report.py` prints paying members by plan, monthly recurring revenue, new and ended subscriptions, members set
 to cancel, failing cards, and payments collected.
 
-**Make a read-only key** (Dashboard → Developers → API keys → *Create restricted key*), named "Revenue report", with
-**Read** on: Customers, Subscriptions, Products, Prices, Charges. Everything else: None.
+**Make a read-only key** (Dashboard → Developers → API keys → *Create a secret key* → *Building your own
+integration* → *Custom permissions*), named "Revenue report", with **Read** on: Customers, Subscriptions, Products,
+Prices, Charges and Refunds. Everything else: None. Done on Nov 17, 2026 (key ends `tYl7`, stored in the owner's
+password manager).
 
 **Run it** (Mac Terminal):
 
@@ -59,5 +61,6 @@ Substack named its prices in Stripe.
 
 ## Already handled by Substack, so nothing to build here
 
-Checkout, the plan picker, cancel/upgrade/update-card, failed-payment retries and receipts. Do check
-**Settings → Billing → Revenue recovery** in live mode: Smart Retries and the "update your card" emails should be on.
+Checkout, the plan picker, cancel/upgrade/update-card, failed-payment retries and receipts. Smart Retries is
+on (Settings → Billing → Subscriptions and emails → Manage failed payments → Card payments). Customer emails are
+left to Substack.
