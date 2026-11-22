@@ -103,6 +103,17 @@ with appmod.POD_LOCK:
     appmod.POD_CACHE.update({"at": -1e9, "video": None, "_busy": False})
 if box():
     fails.append("an old entry with an unreadable page shows")
+# an unreadable page buys a day past the fresh window, not a week (the box that stayed up all week)
+state["feed"] = dict(feed_video, published=FakeNow.wednesday() - timedelta(hours=60))
+with appmod.POD_LOCK:
+    appmod.POD_CACHE.update({"at": -1e9, "video": None, "_busy": False})
+if not box():
+    fails.append("an unreadable page took the box down inside the day of grace")
+state["feed"] = dict(feed_video, published=FakeNow.wednesday() - timedelta(hours=80))
+with appmod.POD_LOCK:
+    appmod.POD_CACHE.update({"at": -1e9, "video": None, "_busy": False})
+if box():
+    fails.append("an unreadable page kept the box up past the day of grace")
 
 # a 9:16 PM Wednesday upload: up all Thursday, down Friday
 class ThuDatetime(datetime):

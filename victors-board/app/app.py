@@ -2143,10 +2143,11 @@ def pod_box():
             fresh = age <= timedelta(hours=POD_FRESH_HOURS)
             if not fresh:
                 window = pod_stream_window(video["video_id"])
-                # this week's stream, or a watch page we couldn't read for
-                # this week's entry: show it. Only a plainly old entry is
-                # a skipped week.
-                if window is None or (window == "unknown" and age > timedelta(days=7)):
+                # this week's stream: show it. A watch page we couldn't
+                # read gets a day's grace past the fresh window and no
+                # more: the week of Nov 16 the page was unreadable from the
+                # server all week, and the box stayed up all week with it.
+                if window is None or (window == "unknown" and age > timedelta(hours=POD_FRESH_HOURS + 24)):
                     video = None
         return video
 
@@ -2215,7 +2216,7 @@ def pod_check():
         "cache": {"video": (POD_CACHE.get("video") or {}).get("video_id"),
                   "busy": bool(POD_CACHE.get("_busy"))},
         "note": "box needs: filter match + (published <48h "
-                "OR stream_window upcoming/today, or unknown within 7 days); any day; "
+                "OR stream_window upcoming/today, or unknown within 72h); any day; "
                 "playable is info only; a refresh that fails keeps the last box",
     }
 
