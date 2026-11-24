@@ -1,5 +1,13 @@
 [
  {
+  "day": "2026-11-24",
+  "what": "CANONICAL_HOST: the board's own address, and every other host goes there"
+ },
+ {
+  "day": "2026-11-23",
+  "what": "A note on the boot stamp"
+ },
+ {
   "day": "2026-11-22",
   "what": "Pod box: an unreadable watch page buys a day, not a week"
  },

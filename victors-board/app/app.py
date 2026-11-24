@@ -3133,8 +3133,28 @@ COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 # a way to be contacted; requests without one get refused, which is what a
 # datacentre IP like ours runs into first. The board's public address does
 # that job — the admin's personal email is not theirs to have.
-SITE_URL = "https://the-victors-board.onrender.com/"
+# The board's own address. CANONICAL_HOST (victorsboard.com) makes it the
+# address in every link the board hands out and sends any other host there;
+# unset, the Render address stays home and nothing redirects.
+CANONICAL_HOST = (os.environ.get("CANONICAL_HOST") or "").strip().lower().rstrip("/")
+SITE_URL = ("https://%s/" % CANONICAL_HOST) if CANONICAL_HOST else "https://the-victors-board.onrender.com/"
 WIKI_UA = "TheVictorsBoard/1.0 (%s) python-requests" % SITE_URL
+
+
+@app.before_request
+def _come_home():
+    """Any other host (the old Render address, www) goes to the canonical
+    one, path and query intact. The MCP endpoint answers on every host,
+    since a client told the old address would not follow a redirect on a
+    POST; so do static files and uploads, which old pages still reference."""
+    if not CANONICAL_HOST:
+        return None
+    host = (request.host or "").split(":")[0].lower()
+    if host == CANONICAL_HOST or host in ("localhost", "127.0.0.1"):
+        return None
+    if request.path.startswith(("/mcp", "/static/", "/uploads/", "/healthz")):
+        return None
+    return redirect("https://" + CANONICAL_HOST + request.full_path.rstrip("?"), 301)
 WIKI_REST = "https://en.wikipedia.org/api/rest_v1/page/summary/"
 WIKI_GAP = 1.1          # seconds between calls; their limiter is not a suggestion
 WIKI_TITLES = 40        # titles per query — the API takes up to 50
