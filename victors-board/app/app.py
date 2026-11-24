@@ -91,7 +91,7 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=365)  # stay logged in
 # Safe because uploads have immutable random names, and every static URL
 # carries ?v=<boot time>, so each deploy busts the cache by itself.
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = timedelta(days=30)
-ASSET_VERSION = int(time.time())
+ASSET_VERSION = int(time.time())   # the boot stamp on every static URL; also how a deploy is confirmed from outside
 
 
 @app.url_defaults
