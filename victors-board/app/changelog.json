@@ -1,6 +1,10 @@
 [
  {
   "day": "2026-11-24",
+  "what": "Days since our last humiliation: the sign under the header"
+ },
+ {
+  "day": "2026-11-24",
   "what": "CANONICAL_HOST: the board's own address, and every other host goes there"
  },
  {

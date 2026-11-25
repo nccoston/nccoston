@@ -425,6 +425,25 @@ def board_countdown():
             "when": when.strftime("%B %-d, %Y").replace(" 0", " ")}
 
 
+def board_sign():
+    """The workplace sign, Damaniac's idea: days since our last humiliation.
+    An admin sets the date and what it was; the board counts up, board time,
+    and an admin resets it when the next one lands."""
+    raw = (get_setting("humiliation_at") or "").strip()
+    if not raw:
+        return None
+    try:
+        since = datetime.fromisoformat(raw).date()
+    except ValueError:
+        return None
+    today = datetime.now(timezone.utc).astimezone(BOARD_TZ).date()
+    days = (today - since).days
+    if days < 0:
+        return None
+    return {"days": days, "what": (get_setting("humiliation_what") or "").strip(),
+            "since": since.strftime("%B %-d, %Y")}
+
+
 # Replies to you that you haven't opened, from the last week. The board
 # already knows what each member has read (message_reads, cross-device), so
 # "unread reply to my post" is a query, not a notification system. A week,
@@ -522,6 +541,7 @@ def inject_globals():
         "header_html": get_setting("header_html"),
         "links_html": get_setting("links_html"),
         "countdown": board_countdown(),
+        "sign": board_sign(),
         "voice_seconds": VOICE_SECONDS,
         "has_flag": FLAG_FILE.exists(),
         "has_song": SONG_FILE.exists(),
@@ -3952,6 +3972,17 @@ def _admin_post(db):
         set_setting("countdown_at", when)
         set_setting("countdown_label",
                     request.form.get("countdown_label", "").strip())
+        since = request.form.get("humiliation_at", "").strip()
+        if since:
+            try:
+                datetime.fromisoformat(since)
+            except ValueError:
+                flash("That humiliation date isn't a date I can read — try "
+                      "2026-11-14, or leave it blank to take the sign down.")
+                since = get_setting("humiliation_at") or ""
+        set_setting("humiliation_at", since)
+        set_setting("humiliation_what",
+                    request.form.get("humiliation_what", "").strip())
         flash("Settings saved.")
     elif action == "create_user":
         handle = request.form.get("handle", "").strip()
@@ -4071,6 +4102,8 @@ def admin_settings():
                            podcast_title_filter=get_setting("podcast_title_filter"),
                            countdown_at=get_setting("countdown_at"),
                            countdown_label=get_setting("countdown_label"),
+                           humiliation_at=get_setting("humiliation_at"),
+                           humiliation_what=get_setting("humiliation_what"),
                            registration_open=get_setting("registration_open") == "1")
 
 

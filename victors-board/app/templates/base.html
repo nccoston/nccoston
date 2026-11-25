@@ -39,6 +39,11 @@
   {% endfor %}
 </p>
 {% endif %}
+{% if sign %}
+<p class="sign" title="since {{ sign.since }}"><span class="sign-days">{{ sign.days }}</span>
+  <span class="sign-label">day{{ '' if sign.days == 1 else 's' }} since our last humiliation</span>{% if sign.what %}
+  <span class="sign-what">&middot; {{ sign.what }}</span>{% endif %}</p>
+{% endif %}
 </div>
 
 <h1 class="board-title"><a href="{{ url_for('index', board_name='main') }}">{{ site_title }}</a></h1>

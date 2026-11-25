@@ -730,3 +730,27 @@ body.seal-bg::before {
 .bigpoll-names { font-size: 12px; color: var(--hint); margin-top: 3px; }
 .bigpoll-vote { margin-top: 12px; }
 .bigpoll-vote button { margin: 3px 6px 3px 0; }
+
+/* the sign under the header — Damaniac's idea */
+.sign {
+  text-align: center;
+  margin: 8px 0 2px;
+  font-size: 12px;
+  color: var(--hint);
+}
+.sign-days {
+  display: inline-block;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-weight: bold;
+  font-size: 15px;
+  color: #00274C;
+  background: #FFCB05;
+  border: 2px solid #00274C;
+  border-radius: 3px;
+  padding: 0 7px;
+  margin-right: 5px;
+  min-width: 2.2em;
+}
+:root[data-theme="dark"] .sign-days, :root[data-theme="goblue"] .sign-days { border-color: #FFCB05; }
+.sign-label { text-transform: uppercase; letter-spacing: 0.05em; }
+.sign-what { color: var(--faint); }

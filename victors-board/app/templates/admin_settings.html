@@ -43,6 +43,15 @@
       <input type="text" name="countdown_label" value="{{ countdown_label }}"
              placeholder="Probation ends">
     </label>
+    <label>Last humiliation <span class="hint">(YYYY-MM-DD. The sign under the
+      header counts the days since. Blank takes it down)</span>
+      <input type="text" name="humiliation_at" value="{{ humiliation_at }}"
+             placeholder="2026-11-14">
+    </label>
+    <label>What it was
+      <input type="text" name="humiliation_what" value="{{ humiliation_what }}"
+             placeholder="Oregon 31–7">
+    </label>
     <button type="submit">Save settings</button>
   </form>
 </div>
